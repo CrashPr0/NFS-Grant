@@ -11,11 +11,46 @@ namespace NSFGrant.Gaze
     [RequireComponent(typeof(Collider))]
     public class AttentionTarget : MonoBehaviour
     {
+        /// <summary>
+        /// The information formats compared in the study (one per zone at each
+        /// SDG station, per the research proposal).
+        /// </summary>
+        public enum ContentFormat
+        {
+            Other,
+            TextPanel,
+            DataVisualization,
+            VideoStory,
+            InteractiveObject,
+            Docent,
+            CallToActionWall
+        }
+
         [Tooltip("Stable label used in the data files. Defaults to the GameObject name.")]
         [SerializeField] private string targetId;
 
+        [Tooltip("Information format this object represents, for format-comparison analyses.")]
+        [SerializeField] private ContentFormat format = ContentFormat.Other;
+
+        [Tooltip("Station this object belongs to, e.g. SDG13_ClimateAction. Optional.")]
+        [SerializeField] private string stationId;
+
         /// <summary>Stable identifier written to the CSV logs.</summary>
         public string TargetId => string.IsNullOrEmpty(targetId) ? gameObject.name : targetId;
+
+        /// <summary>Information format category for analysis.</summary>
+        public ContentFormat Format
+        {
+            get => format;
+            set => format = value;
+        }
+
+        /// <summary>Owning station ID (may be empty).</summary>
+        public string StationId
+        {
+            get => stationId;
+            set => stationId = value;
+        }
 
         /// <summary>Cumulative time this target has been gazed at (seconds).</summary>
         public float TotalDwellTime { get; private set; }

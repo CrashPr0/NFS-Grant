@@ -1,9 +1,20 @@
-# NSF Grant — VR Attention Data Collection (Quest 3 / Quest Pro)
+# NSF Grant — UN SDG Discovery Hall (VR Attention Study)
 
-Unity project for collecting attention data in virtual reality on Meta
-Quest headsets. It records per-frame gaze samples (eye tracking on Quest
-Pro, head-gaze on Quest 3), classifies fixations, tracks dwell time on
-labeled areas of interest (AOIs), and exports research-ready CSV files.
+Unity project for the NSF-funded study of information-seeking and
+attention in immersive environments, built for the SJSU LTI Lab /
+ALA IRC UN Subcommittee project in collaboration with the VERA
+(Virtual Experience Research Accelerator) team. One build serves two
+participant groups: Meta Quest headsets in the lab, and a desktop/WebGL
+version for the self-paced web sample.
+
+It records per-frame gaze samples (eye tracking on Quest Pro, head-gaze
+on Quest 3 and desktop), classifies fixations, tracks dwell time on
+labeled areas of interest, logs clicks/key presses/station visits/
+navigation paths as discrete events, supports the three study conditions
+(Passive / Interactive / Guided), and exports research-ready CSV files.
+
+**Start here: [docs/STUDY_DESIGN.md](docs/STUDY_DESIGN.md)** maps every
+study measure and meeting decision to its implementation.
 
 > **Important hardware note:** the **Quest Pro has eye-tracking
 > hardware; the Quest 3 does not.** On Quest 3 this project automatically
@@ -38,26 +49,53 @@ labeled areas of interest (AOIs), and exports research-ready CSV files.
    set **Eye Tracking Support** to **Supported**. This adds
    `com.oculus.permission.EYE_TRACKING` to the manifest; the app requests it
    at runtime.
-5. **Build the sample scene**: from the menu bar run
-   **`NSF Grant > Build Sample Scene`**. This generates
-   `Assets/Scenes/AttentionStudy.unity` containing:
-   - an `OVRCameraRig` with left/right `OVREyeGaze` components,
-   - the data-collection stack (`GazeProvider`, `FixationDetector`,
-     `GazeRaycaster`, `AttentionDataLogger`, `SessionController`),
-   - four colored AOI objects (`AttentionTarget`) in front of the participant.
+5. **Build the study scene**: from the menu bar run
+   **`NSF Grant > Build Discovery Hall Scene`**. This generates
+   `Assets/Scenes/DiscoveryHall.unity` containing:
+   - both rigs — an `OVRCameraRig` (with left/right `OVREyeGaze`) and a
+     `DesktopPlayer` (WASD + mouse) — switched automatically at runtime,
+   - the full data-collection stack (gaze, fixations, events, screenshots,
+     uploader, condition manager, VERA bridge, session controller),
+   - three placeholder SDG stations (SDG 4, SDG 11, SDG 13), each with
+     text panel, data visualization, video kiosk, interactive object,
+     call-to-action wall, and docent placeholder — all instrumented,
+   - a docent beacon route for the Guided condition.
+
+   (`NSF Grant > Build Sample Scene` still generates the original minimal
+   gaze-test scene.)
 6. Add the scene to `Build Settings > Scenes in Build`, connect the headset,
-   and **Build And Run**.
+   and **Build And Run**. For the web sample, switch platform to **WebGL**
+   and build the same scene; configure the upload endpoint on the
+   `RemoteDataUploader` component first.
+
+### Desktop / web controls
+
+WASD or arrow keys to move; hold the **right mouse button** to look around;
+**left-click** to select content. Set **Active Input Handling** to
+"Input Manager (Old)" or "Both" in Player settings (the scripts use the
+classic Input API).
 
 ## How it works
 
 | Script | Responsibility |
 |---|---|
-| `GazeProvider` | Produces one gaze ray per frame: averaged binocular eye gaze on Quest Pro (via `OVREyeGaze`), head gaze fallback on Quest 3. |
+| `GazeProvider` | Produces one gaze ray per frame: averaged binocular eye gaze on Quest Pro (via `OVREyeGaze`), head/camera gaze fallback on Quest 3 and desktop. |
 | `FixationDetector` | I-VT fixation classification (30°/s velocity threshold, 100 ms minimum duration — Salvucci & Goldberg, 2000). Thresholds are editable in the Inspector. |
 | `GazeRaycaster` | Raycasts the gaze ray into the scene and tracks which `AttentionTarget` is being looked at. |
-| `AttentionTarget` | Marks any object (with a Collider) as an AOI; accumulates dwell time, look count, and time-to-first-look. |
-| `AttentionDataLogger` | Streams per-frame samples to CSV and writes a per-target summary at session end. |
-| `SessionController` | Requests the eye-tracking permission, sets the participant ID, starts/stops sessions, drives sampling. |
+| `AttentionTarget` | Marks any object (with a Collider) as an AOI, tagged with its information format (text / data-viz / video / interactive / docent / call-to-action) and station; accumulates dwell time, look count, time-to-first-look. |
+| `SdgStation` | Trigger volume per SDG station; tracks visits, time inside, and first entry — the navigation-path backbone. |
+| `InteractableObject` | Clickable content; every activation logged with world (and on desktop, screen) coordinates. Content response suppressed in the Passive condition. |
+| `DesktopInteractor` / `DesktopPlayerController` | Laptop/WebGL input: WASD + mouse-look navigation, click logging with 2D screen coords, key-press logging. |
+| `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR. |
+| `StudyConditionManager` | Holds the active condition (Passive / Interactive / Guided). |
+| `DocentGuide` | Guided-condition route: beacon highlights the next suggested station; all guidance logged. |
+| `QuizDefinition` / `QuizRunner` | Pre/post knowledge quiz; responses logged as events (IMGUI panel for desktop, API for VR/world-space UI). |
+| `AttentionDataLogger` | Streams per-frame gaze samples to CSV; writes the session summary (targets, stations, interactions). |
+| `StudyEventLogger` | Discrete-event CSV: clicks, key presses, station enter/exit, docent guidance, quiz responses, session lifecycle. |
+| `ScreenshotCapture` | Optional low-rate PNG stills (off by default). |
+| `RemoteDataUploader` | POSTs session CSVs to a configurable endpoint (web sample). |
+| `VeraBridge` | Integration seam for the VERA Unity plugin (session + event stream as C# events). |
+| `SessionController` | Permission, participant ID, condition/platform stamping, session lifecycle, drives sampling and upload. |
 
 To instrument your own stimuli, add an `AttentionTarget` component to any
 object with a Collider and give it a stable **Target Id**.
@@ -72,9 +110,15 @@ Files are written to the app's private storage on the headset:
 
 ```
 /sdcard/Android/data/<your.package.name>/files/StudyData/
-├── gaze_P000_20260610_153000.csv      # per-frame samples
-└── summary_P000_20260610_154500.csv   # per-AOI dwell statistics
+├── gaze_P000_20260610_153000.csv      # per-frame gaze/head samples
+├── events_P000_20260610_153000.csv    # clicks, key presses, stations, docent, quiz
+├── summary_P000_20260610_154500.csv   # per-AOI / per-station / per-object statistics
+└── screenshots/                       # optional low-rate stills (off by default)
 ```
+
+On desktop the same files land in the OS-specific
+`Application.persistentDataPath`; on WebGL they are uploaded via
+`RemoteDataUploader` (configure the endpoint before building).
 
 Retrieve them with:
 
@@ -123,11 +167,18 @@ eye-tracker timestamps rather than frame-aligned samples, resample on
 
 ```
 Assets/
-├── Editor/SampleSceneBuilder.cs    # NSF Grant > Build Sample Scene menu item
+├── Editor/          # Scene builders (Discovery Hall + minimal sample scene)
 └── Scripts/
+    ├── Core/        # Platform detection, rig switcher, study conditions
     ├── Gaze/        # GazeProvider, FixationDetector, GazeRaycaster, AttentionTarget
-    ├── Logging/     # AttentionDataLogger (CSV export)
-    └── Session/     # SessionController (permissions, session lifecycle)
+    ├── Interaction/ # InteractableObject, desktop + VR interactors, desktop movement
+    ├── Stations/    # SdgStation (per-station visit tracking)
+    ├── Docent/      # DocentGuide (Condition C)
+    ├── Survey/      # QuizDefinition, QuizRunner
+    ├── Logging/     # Gaze CSV, event CSV, screenshots, remote upload
+    ├── Vera/        # VeraBridge (VERA Unity plugin integration seam)
+    └── Session/     # SessionController (lifecycle orchestration)
+docs/STUDY_DESIGN.md # Study design ↔ implementation map (read this first)
 Packages/manifest.json              # Meta XR Core SDK + Unity dependencies
 ProjectSettings/ProjectVersion.txt  # Unity 2022.3 LTS
 ```

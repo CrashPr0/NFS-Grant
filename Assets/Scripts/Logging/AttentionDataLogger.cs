@@ -109,8 +109,9 @@ namespace NSFGrant.Logging
             }
         }
 
-        public void WriteSummary(string participantId, float sessionDuration,
-            Gaze.AttentionTarget[] targets, int fixationCount)
+        public void WriteSummary(string participantId, string platform, string condition,
+            float sessionDuration, Gaze.AttentionTarget[] targets, int fixationCount,
+            Stations.SdgStation[] stations, Interaction.InteractableObject[] interactables)
         {
             Directory.CreateDirectory(DataDirectory);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
@@ -119,17 +120,46 @@ namespace NSFGrant.Logging
 
             var inv = CultureInfo.InvariantCulture;
             using var summary = new StreamWriter(path, false, Encoding.UTF8);
-            summary.WriteLine("participant_id,session_duration_s,total_fixations");
-            summary.WriteLine($"{Sanitize(participantId)},{sessionDuration.ToString("F2", inv)},{fixationCount}");
+            summary.WriteLine("participant_id,platform,condition,session_duration_s,total_fixations");
+            summary.WriteLine(
+                $"{Sanitize(participantId)},{Sanitize(platform)},{Sanitize(condition)}," +
+                $"{sessionDuration.ToString("F2", inv)},{fixationCount}");
+
             summary.WriteLine();
-            summary.WriteLine("target_id,total_dwell_time_s,look_count,time_to_first_look_s");
+            summary.WriteLine("target_id,format,station_id,total_dwell_time_s,look_count,time_to_first_look_s");
             foreach (var target in targets)
             {
                 summary.WriteLine(
                     $"{Sanitize(target.TargetId)}," +
+                    $"{target.Format}," +
+                    $"{Sanitize(target.StationId)}," +
                     $"{target.TotalDwellTime.ToString("F3", inv)}," +
                     $"{target.LookCount}," +
                     $"{target.TimeToFirstLook.ToString("F3", inv)}");
+            }
+
+            if (stations != null && stations.Length > 0)
+            {
+                summary.WriteLine();
+                summary.WriteLine("station_id,total_time_s,visit_count,first_entry_s");
+                foreach (var station in stations)
+                {
+                    summary.WriteLine(
+                        $"{Sanitize(station.StationId)}," +
+                        $"{station.TotalTimeIncludingCurrentVisit.ToString("F2", inv)}," +
+                        $"{station.VisitCount}," +
+                        $"{station.FirstEntryTime.ToString("F2", inv)}");
+                }
+            }
+
+            if (interactables != null && interactables.Length > 0)
+            {
+                summary.WriteLine();
+                summary.WriteLine("object_id,activation_count");
+                foreach (var interactable in interactables)
+                {
+                    summary.WriteLine($"{Sanitize(interactable.ObjectId)},{interactable.ActivationCount}");
+                }
             }
 
             Debug.Log($"[AttentionDataLogger] Summary written to {path}");

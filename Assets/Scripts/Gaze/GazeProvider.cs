@@ -51,16 +51,19 @@ namespace NSFGrant.Gaze
 
         public Transform CenterEyeAnchor => centerEyeAnchor;
 
-        private void Awake()
-        {
-            if (centerEyeAnchor == null && Camera.main != null)
-            {
-                centerEyeAnchor = Camera.main.transform;
-            }
-        }
-
         private void Update()
         {
+            // Resolve the head transform lazily: the PlatformRigSwitcher
+            // decides at startup whether the VR rig or the desktop rig is
+            // active, so a serialized anchor may belong to a disabled rig.
+            if (centerEyeAnchor == null || !centerEyeAnchor.gameObject.activeInHierarchy)
+            {
+                if (Camera.main != null)
+                {
+                    centerEyeAnchor = Camera.main.transform;
+                }
+            }
+
             if (TryGetEyeGaze(out var origin, out var direction, out var confidence))
             {
                 GazeOrigin = origin;

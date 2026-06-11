@@ -62,7 +62,7 @@ namespace NSFGrant.EditorTools
             Debug.Log($"[SampleSceneBuilder] Sample scene saved to {path}");
         }
 
-        private static GameObject CreateCameraRig(out Transform centerEye,
+        internal static GameObject CreateCameraRig(out Transform centerEye,
             out OVREyeGaze leftEye, out OVREyeGaze rightEye)
         {
             // Build the rig in code rather than referencing the OVRCameraRig

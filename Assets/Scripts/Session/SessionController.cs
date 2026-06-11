@@ -1,6 +1,10 @@
 using UnityEngine;
+using NSFGrant.Core;
 using NSFGrant.Gaze;
+using NSFGrant.Interaction;
 using NSFGrant.Logging;
+using NSFGrant.Stations;
+using NSFGrant.Vera;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.Android;
@@ -9,15 +13,17 @@ using UnityEngine.Android;
 namespace NSFGrant.Session
 {
     /// <summary>
-    /// Orchestrates a data-collection session: requests the eye-tracking
-    /// permission (Quest Pro), starts/stops the logger, drives per-frame
-    /// sampling, and writes the per-target summary when the session ends.
+    /// Orchestrates a data-collection session across both platforms:
+    /// requests the eye-tracking permission (Quest Pro), starts/stops the
+    /// continuous gaze logger and the discrete event logger, drives per-frame
+    /// sampling, captures optional screenshots, writes the summary, notifies
+    /// the VERA bridge, and (web builds) uploads the session files.
     /// </summary>
     public class SessionController : MonoBehaviour
     {
         private const string EyeTrackingPermission = "com.oculus.permission.EYE_TRACKING";
 
-        [Tooltip("Identifier recorded in the data files. Set per participant before each build/run, or via a launch UI.")]
+        [Tooltip("Identifier recorded in the data files. Set per participant before each run, or via a launch UI / VERA assignment.")]
         [SerializeField] private string participantId = "P000";
 
         [Tooltip("Begin logging as soon as the scene loads.")]
@@ -27,6 +33,9 @@ namespace NSFGrant.Session
         [SerializeField] private GazeRaycaster gazeRaycaster;
         [SerializeField] private FixationDetector fixationDetector;
         [SerializeField] private AttentionDataLogger dataLogger;
+        [SerializeField] private StudyEventLogger eventLogger;
+        [SerializeField] private ScreenshotCapture screenshotCapture;
+        [SerializeField] private RemoteDataUploader uploader;
 
         public bool SessionRunning { get; private set; }
         public float SessionTime { get; private set; }
@@ -43,6 +52,9 @@ namespace NSFGrant.Session
             if (gazeRaycaster == null) gazeRaycaster = GetComponentInChildren<GazeRaycaster>();
             if (fixationDetector == null) fixationDetector = GetComponentInChildren<FixationDetector>();
             if (dataLogger == null) dataLogger = GetComponentInChildren<AttentionDataLogger>();
+            if (eventLogger == null) eventLogger = GetComponentInChildren<StudyEventLogger>();
+            if (screenshotCapture == null) screenshotCapture = GetComponentInChildren<ScreenshotCapture>();
+            if (uploader == null) uploader = GetComponentInChildren<RemoteDataUploader>();
         }
 
         private void Start()
@@ -67,10 +79,28 @@ namespace NSFGrant.Session
             {
                 target.ResetStats();
             }
+            foreach (var station in FindObjectsOfType<SdgStation>())
+            {
+                station.ResetStats();
+            }
+            foreach (var interactable in FindObjectsOfType<InteractableObject>())
+            {
+                interactable.ResetStats();
+            }
+
+            string platform = PlatformDetector.PlatformTag;
+            string condition = CurrentConditionName();
 
             dataLogger.StartSession(participantId);
+            eventLogger?.StartSession(participantId, platform, condition);
+            eventLogger?.LogEvent("session_start", participantId,
+                $"platform={platform};condition={condition};gaze={gazeProvider.Source}");
+            screenshotCapture?.StartCapture(participantId);
+            VeraBridge.Instance?.NotifySessionStarted(participantId, platform, condition);
+
             SessionRunning = true;
-            Debug.Log($"[SessionController] Session started for participant '{participantId}'.");
+            Debug.Log($"[SessionController] Session started: participant='{participantId}', " +
+                      $"platform={platform}, condition={condition}");
         }
 
         public void StopSession()
@@ -81,12 +111,23 @@ namespace NSFGrant.Session
             }
 
             SessionRunning = false;
+            screenshotCapture?.StopCapture();
+            eventLogger?.LogEvent("session_end", participantId, $"duration_s={SessionTime:F1}");
+            eventLogger?.StopSession();
             dataLogger.StopSession();
             dataLogger.WriteSummary(
                 participantId,
+                PlatformDetector.PlatformTag,
+                CurrentConditionName(),
                 SessionTime,
                 FindObjectsOfType<AttentionTarget>(),
-                fixationDetector != null ? fixationDetector.FixationCount : 0);
+                fixationDetector != null ? fixationDetector.FixationCount : 0,
+                FindObjectsOfType<SdgStation>(),
+                FindObjectsOfType<InteractableObject>());
+
+            VeraBridge.Instance?.NotifySessionEnded(participantId, SessionTime);
+            uploader?.UploadSessionFiles();
+
             Debug.Log($"[SessionController] Session stopped after {SessionTime:F1}s.");
         }
 
@@ -99,6 +140,10 @@ namespace NSFGrant.Session
 
             SessionTime += Time.unscaledDeltaTime;
             gazeRaycaster.SessionTime = SessionTime;
+            if (eventLogger != null)
+            {
+                eventLogger.SessionTime = SessionTime;
+            }
 
             Transform head = gazeProvider.CenterEyeAnchor;
             Vector3 headPos = head != null ? head.position : Vector3.zero;
@@ -114,6 +159,13 @@ namespace NSFGrant.Session
                 fixationDetector != null ? fixationDetector.CurrentFixationId : -1,
                 gazeRaycaster.CurrentTarget != null ? gazeRaycaster.CurrentTarget.TargetId : "",
                 gazeRaycaster.HitPoint, gazeRaycaster.HitDistance, gazeRaycaster.HasHit);
+        }
+
+        private static string CurrentConditionName()
+        {
+            return StudyConditionManager.Instance != null
+                ? StudyConditionManager.Instance.Condition.ToString()
+                : "Unspecified";
         }
 
         private void RequestEyeTrackingPermission()
