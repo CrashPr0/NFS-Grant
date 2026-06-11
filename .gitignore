@@ -55,3 +55,7 @@ crashlytics-build.properties
 # Collected study data (never commit participant data)
 StudyData/
 *.csv
+
+# Downloaded media (NSF Grant > Download SDG Media Assets); remove this
+# line to commit them once licensing for redistribution is confirmed
+Assets/StudyContent/Textures/

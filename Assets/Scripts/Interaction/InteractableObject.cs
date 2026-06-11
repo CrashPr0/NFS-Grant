@@ -76,6 +76,7 @@ namespace NSFGrant.Interaction
             if (interactionEnabled)
             {
                 onActivated?.Invoke();
+                GetComponent<ContentLink>()?.Open();
             }
         }
     }

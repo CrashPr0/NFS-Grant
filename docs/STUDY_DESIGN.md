@@ -88,6 +88,20 @@ fallback.
 | `summary_<id>_<utc>.csv` | Per-target dwell/looks (with format + station), per-station time/visits, per-object activation counts |
 | `screenshots/*.png` | Optional low-rate stills (off by default) |
 
+## Station content
+
+Station copy is no longer placeholder: `SdgContentLibrary`
+(Assets/Scripts/Content) carries the student team's curated material from
+the Drive folder — overview texts (including the FrameVR demo-room SDG 13
+copy), the Oodi/Thammasat/seed-library case studies, resource links
+(2025 progress reports, toolkits, videos, 360 tour), call-to-action
+options, per-station citation boards, and the FrameVR docent personas
+(MINERVA / HINA / BHUMI). The 8-question knowledge quiz is generated into
+`Assets/StudyContent/SdgKnowledgeQuiz.asset` by the scene builder.
+Run **NSF Grant > Download SDG Media Assets** to pull the official goal
+icons and SDG 13 photos from the shared Drive (see
+`Assets/StudyContent/CONTENT_SOURCES.md` for attribution).
+
 ## Suggested next steps for the team
 
 1. **Storyboard → scene:** run `NSF Grant > Build Discovery Hall Scene`,

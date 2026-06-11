@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using NSFGrant.Content;
 using NSFGrant.Core;
 using NSFGrant.Docent;
 using NSFGrant.Gaze;
@@ -10,6 +11,7 @@ using NSFGrant.Interaction;
 using NSFGrant.Logging;
 using NSFGrant.Session;
 using NSFGrant.Stations;
+using NSFGrant.Survey;
 using NSFGrant.Vera;
 
 namespace NSFGrant.EditorTools
@@ -18,37 +20,19 @@ namespace NSFGrant.EditorTools
     /// Builds the UN SDG Discovery Hall study scene from the menu:
     /// NSF Grant &gt; Build Discovery Hall Scene.
     ///
-    /// Layout follows Dr. Chow's research proposal and the VERA kickoff
-    /// meeting: a three-station prototype (SDG 4 Quality Education,
-    /// SDG 11 Sustainable Cities, SDG 13 Climate Action), each station
-    /// presenting the same content in five formats — text panel, data
-    /// visualization, video/audio story kiosk, interactive object, and
-    /// call-to-action wall — plus a docent placeholder. The scene carries
-    /// both a VR rig (Quest) and a desktop rig (laptop/WebGL); the
-    /// PlatformRigSwitcher picks one at runtime so the same build serves
-    /// both participant groups.
+    /// Station content comes from <see cref="SdgContentLibrary"/> — the
+    /// curated copy, case studies, docent personas (MINERVA / HINA / BHUMI)
+    /// and resource links produced by the SJSU LTI Lab UN SDG student team.
+    /// Run NSF Grant &gt; Download SDG Media Assets first to pull the official
+    /// goal icons and SDG 13 photos; the builder applies them when present.
     ///
-    /// Every placeholder primitive is meant to be replaced with real content
-    /// by the design team; the AttentionTarget / InteractableObject /
-    /// SdgStation components on them are the data-collection contract and
-    /// should be kept.
+    /// The scene carries both a VR rig (Quest) and a desktop rig (laptop /
+    /// WebGL); the PlatformRigSwitcher picks one at runtime so the same
+    /// build serves both participant groups.
     /// </summary>
     public static class DiscoveryHallBuilder
     {
-        private class StationSpec
-        {
-            public string Id;
-            public string Title;
-            public Color Color;
-        }
-
-        // Official UN SDG goal colors.
-        private static readonly StationSpec[] Stations =
-        {
-            new StationSpec { Id = "SDG04_QualityEducation", Title = "SDG 4 - Quality Education", Color = new Color(0.77f, 0.10f, 0.18f) },
-            new StationSpec { Id = "SDG11_SustainableCities", Title = "SDG 11 - Sustainable Cities", Color = new Color(0.99f, 0.62f, 0.14f) },
-            new StationSpec { Id = "SDG13_ClimateAction", Title = "SDG 13 - Climate Action", Color = new Color(0.25f, 0.49f, 0.27f) }
-        };
+        private const string TexturesDir = "Assets/StudyContent/Textures";
 
         [MenuItem("NSF Grant/Build Discovery Hall Scene")]
         public static void BuildDiscoveryHall()
@@ -97,6 +81,13 @@ namespace NSFGrant.EditorTools
             gazeSo.FindProperty("rightEyeGaze").objectReferenceValue = rightEye;
             gazeSo.ApplyModifiedPropertiesWithoutUndo();
 
+            // --- Pre/post knowledge quiz.
+            var quizRunner = study.AddComponent<QuizRunner>();
+            var quizAsset = CreateQuizAsset();
+            var quizSo = new SerializedObject(quizRunner);
+            quizSo.FindProperty("quiz").objectReferenceValue = quizAsset;
+            quizSo.ApplyModifiedPropertiesWithoutUndo();
+
             // --- Hall geometry.
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
@@ -107,13 +98,13 @@ namespace NSFGrant.EditorTools
             float[] angles = { -55f, 0f, 55f };
             const float radius = 10f;
 
-            for (int i = 0; i < Stations.Length; i++)
+            for (int i = 0; i < SdgContentLibrary.Stations.Length && i < angles.Length; i++)
             {
                 Vector3 center = Quaternion.Euler(0f, angles[i], 0f) * (Vector3.forward * radius);
-                stationComponents.Add(BuildStation(Stations[i], center));
+                stationComponents.Add(BuildStation(SdgContentLibrary.Stations[i], center));
             }
 
-            // --- Docent (active only in Condition C).
+            // --- Docent route (active only in Condition C).
             var docentRoot = new GameObject("DocentGuide");
             var beacon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             beacon.name = "DocentBeacon";
@@ -164,9 +155,12 @@ namespace NSFGrant.EditorTools
             return player;
         }
 
-        private static SdgStation BuildStation(StationSpec spec, Vector3 center)
+        private static SdgStation BuildStation(SdgStationContent content, Vector3 center)
         {
-            var root = new GameObject(spec.Id);
+            Color themeColor = Color.gray;
+            ColorUtility.TryParseHtmlString(content.ThemeColorHex, out themeColor);
+
+            var root = new GameObject(content.StationId);
             root.transform.position = center;
             // Stations face the spawn point at the hall center.
             root.transform.rotation = Quaternion.LookRotation(-center.normalized, Vector3.up);
@@ -175,106 +169,342 @@ namespace NSFGrant.EditorTools
             var trigger = root.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
             trigger.center = new Vector3(0f, 2f, 0f);
-            trigger.size = new Vector3(9f, 4f, 7f);
+            trigger.size = new Vector3(10f, 4f, 7f);
 
             var station = root.AddComponent<SdgStation>();
             var stationSo = new SerializedObject(station);
-            stationSo.FindProperty("stationId").stringValue = spec.Id;
+            stationSo.FindProperty("stationId").stringValue = content.StationId;
             stationSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(root.transform, spec.Title, new Vector3(0f, 3.2f, 0f), 0.5f);
+            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.4f);
+            CreateGoalIcon(root.transform, content, new Vector3(0f, 4.2f, 0f));
 
-            // Five format zones in a shallow arc, all facing the visitor.
-            CreateZone(root.transform, spec, "TextPanel",
+            // --- Format zones (the study's comparison conditions).
+            CreateZone(root.transform, content.StationId, "TextPanel",
                 AttentionTarget.ContentFormat.TextPanel, PrimitiveType.Cube,
-                new Vector3(-3.2f, 1.5f, 1f), new Vector3(1.6f, 1.1f, 0.08f), false,
-                "Text Panel\n(summary + key facts)");
+                new Vector3(-3.6f, 1.5f, 1f), new Vector3(1.8f, 1.3f, 0.08f), themeColor,
+                null, content.OverviewText, 0.06f);
 
-            CreateZone(root.transform, spec, "DataViz",
+            CreateZone(root.transform, content.StationId, "DataViz",
                 AttentionTarget.ContentFormat.DataVisualization, PrimitiveType.Cube,
-                new Vector3(-1.6f, 1.5f, 0.3f), new Vector3(1.6f, 1.1f, 0.08f), true,
-                "Data Visualization\n(charts / dashboards)");
+                new Vector3(-1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
+                content.DataVizUrl, content.DataVizText, 0.09f);
 
-            CreateZone(root.transform, spec, "VideoKiosk",
+            CreateZone(root.transform, content.StationId, "VideoKiosk",
                 AttentionTarget.ContentFormat.VideoStory, PrimitiveType.Cube,
-                new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.1f, 0.08f), true,
-                "Video / Audio Story\n(human-centered)");
+                new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.2f, 0.08f), themeColor,
+                content.VideoUrl, content.VideoText, 0.09f);
 
-            CreateZone(root.transform, spec, "Interactive",
-                AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Sphere,
-                new Vector3(1.8f, 1.2f, 0.3f), Vector3.one * 0.8f, true,
-                "Interactive Simulation");
+            CreateZone(root.transform, content.StationId, "Interactive",
+                AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Cube,
+                new Vector3(1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
+                content.InteractiveUrl, content.InteractiveText, 0.07f);
 
-            CreateZone(root.transform, spec, "CallToAction",
-                AttentionTarget.ContentFormat.CallToActionWall, PrimitiveType.Cube,
-                new Vector3(3.2f, 1.5f, 1f), new Vector3(1.6f, 1.1f, 0.08f), true,
-                "Call To Action Wall\n(choose what matters)");
+            CreateCallToActionWall(root.transform, content, themeColor,
+                new Vector3(3.6f, 1.5f, 1f));
 
-            // Docent placeholder (a future conversational avatar position).
-            CreateZone(root.transform, spec, "Docent",
-                AttentionTarget.ContentFormat.Docent, PrimitiveType.Capsule,
-                new Vector3(0f, 1f, 2.2f), new Vector3(0.5f, 1f, 0.5f), true,
-                "AI Docent");
+            CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 2.4f));
+
+            CreateReferencesBoard(root.transform, content, new Vector3(-5.2f, 1.5f, 2f));
 
             return station;
         }
 
-        private static void CreateZone(Transform parent, StationSpec spec, string zoneName,
+        private static void CreateZone(Transform parent, string stationId, string zoneName,
             AttentionTarget.ContentFormat format, PrimitiveType primitive,
-            Vector3 localPos, Vector3 localScale, bool interactable, string labelText)
+            Vector3 localPos, Vector3 localScale, Color color,
+            string linkUrl, string bodyText, float bodyCharSize)
         {
             var go = GameObject.CreatePrimitive(primitive);
-            string id = $"{spec.Id}_{zoneName}";
+            string id = $"{stationId}_{zoneName}";
             go.name = id;
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localScale = localScale;
 
-            var renderer = go.GetComponent<Renderer>();
-            var material = new Material(renderer.sharedMaterial) { color = spec.Color };
-            renderer.sharedMaterial = material;
+            ApplyColor(go, color);
+            AddAttentionTarget(go, id, format, stationId);
 
-            var target = go.AddComponent<AttentionTarget>();
-            var targetSo = new SerializedObject(target);
-            targetSo.FindProperty("targetId").stringValue = id;
-            targetSo.FindProperty("format").enumValueIndex = (int)format;
-            targetSo.FindProperty("stationId").stringValue = spec.Id;
-            targetSo.ApplyModifiedPropertiesWithoutUndo();
+            // Body copy floats just in front of the panel face.
+            CreateBodyText(go.transform, bodyText, bodyCharSize);
 
-            if (interactable)
+            if (!string.IsNullOrEmpty(linkUrl))
             {
-                var interactableComponent = go.AddComponent<InteractableObject>();
-                var interactableSo = new SerializedObject(interactableComponent);
+                var interactable = go.AddComponent<InteractableObject>();
+                var interactableSo = new SerializedObject(interactable);
                 interactableSo.FindProperty("objectId").stringValue = id;
                 interactableSo.ApplyModifiedPropertiesWithoutUndo();
-            }
 
-            CreateLabel(go.transform, labelText,
-                new Vector3(0f, localScale.y * 0.5f + 0.35f, 0f), 0.15f);
+                var link = go.AddComponent<ContentLink>();
+                var linkSo = new SerializedObject(link);
+                linkSo.FindProperty("url").stringValue = linkUrl;
+                linkSo.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
+        private static void CreateCallToActionWall(Transform parent,
+            SdgStationContent content, Color color, Vector3 localPos)
+        {
+            var wall = new GameObject($"{content.StationId}_CallToAction");
+            wall.transform.SetParent(parent, false);
+            wall.transform.localPosition = localPos;
+
+            CreateLabel(wall.transform, "What will your library do?\nPick an action:",
+                new Vector3(0f, 1.1f, 0f), 0.12f);
+
+            for (int i = 0; i < content.CallToActionOptions.Length; i++)
+            {
+                var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                string id = $"{content.StationId}_CTA_{i + 1}";
+                button.name = id;
+                button.transform.SetParent(wall.transform, false);
+                button.transform.localPosition = new Vector3(0f, 0.7f - i * 0.45f, 0f);
+                button.transform.localScale = new Vector3(2f, 0.32f, 0.06f);
+
+                ApplyColor(button, Color.Lerp(color, Color.white, 0.25f));
+                AddAttentionTarget(button, id,
+                    AttentionTarget.ContentFormat.CallToActionWall, content.StationId);
+
+                var interactable = button.AddComponent<InteractableObject>();
+                var interactableSo = new SerializedObject(interactable);
+                interactableSo.FindProperty("objectId").stringValue = id;
+                interactableSo.ApplyModifiedPropertiesWithoutUndo();
+
+                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.45f);
+            }
+        }
+
+        private static void CreateDocent(Transform parent,
+            SdgStationContent content, Color color, Vector3 localPos)
+        {
+            var docent = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            string id = $"{content.StationId}_Docent_{content.DocentName}";
+            docent.name = id;
+            docent.transform.SetParent(parent, false);
+            docent.transform.localPosition = localPos + Vector3.up;
+            docent.transform.localScale = new Vector3(0.5f, 1f, 0.5f);
+
+            ApplyColor(docent, Color.Lerp(color, Color.white, 0.5f));
+            AddAttentionTarget(docent, id,
+                AttentionTarget.ContentFormat.Docent, content.StationId);
+
+            var interactable = docent.AddComponent<InteractableObject>();
+            var interactableSo = new SerializedObject(interactable);
+            interactableSo.FindProperty("objectId").stringValue = id;
+            interactableSo.ApplyModifiedPropertiesWithoutUndo();
+
+            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.3f);
+            CreateBodyText(docent.transform, content.DocentGreeting, 0.18f);
+        }
+
+        private static void CreateReferencesBoard(Transform parent,
+            SdgStationContent content, Vector3 localPos)
+        {
+            var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            string id = $"{content.StationId}_References";
+            board.name = id;
+            board.transform.SetParent(parent, false);
+            board.transform.localPosition = localPos;
+            board.transform.localScale = new Vector3(1.8f, 1.3f, 0.06f);
+
+            ApplyColor(board, new Color(0.15f, 0.15f, 0.15f));
+            AddAttentionTarget(board, id,
+                AttentionTarget.ContentFormat.Other, content.StationId);
+
+            string text = "References\n" + string.Join("\n", content.References);
+            CreateBodyText(board.transform, text, 0.035f);
+        }
+
+        private static void CreateGoalIcon(Transform parent,
+            SdgStationContent content, Vector3 localPos)
+        {
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"{TexturesDir}/{content.IconFileName}");
+            if (texture == null)
+            {
+                // Icons not downloaded yet; the builder logs a hint instead.
+                Debug.Log($"[DiscoveryHallBuilder] Icon {content.IconFileName} not found - " +
+                          "run NSF Grant > Download SDG Media Assets and rebuild the scene to apply icons.");
+                return;
+            }
+
+            var icon = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            string id = $"{content.StationId}_GoalIcon";
+            icon.name = id;
+            icon.transform.SetParent(parent, false);
+            icon.transform.localPosition = localPos;
+            icon.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            icon.transform.localScale = Vector3.one * 1.5f;
+
+            var material = new Material(Shader.Find("Unlit/Texture")) { mainTexture = texture };
+            icon.GetComponent<Renderer>().sharedMaterial = material;
+
+            AddAttentionTarget(icon, id,
+                AttentionTarget.ContentFormat.Other, content.StationId);
+        }
+
+        private static QuizDefinition CreateQuizAsset()
+        {
+            var quiz = ScriptableObject.CreateInstance<QuizDefinition>();
+            quiz.questions = new[]
+            {
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg4_q1",
+                    prompt = "What is the aim of SDG 4?",
+                    options = new[]
+                    {
+                        "Ensure inclusive, equitable quality education and lifelong learning for all",
+                        "End hunger and improve nutrition",
+                        "Make cities inclusive, safe, resilient and sustainable",
+                        "Conserve the oceans and marine resources"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg4_q2",
+                    prompt = "According to the UN, accelerating progress on Goal 4 would have what effect?",
+                    options = new[]
+                    {
+                        "A catalytic effect on the whole 2030 Agenda",
+                        "No effect on other goals",
+                        "It only affects high-income countries",
+                        "It would slow progress on climate action"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg11_q1",
+                    prompt = "SDG 11 aims to make cities and human settlements...",
+                    options = new[]
+                    {
+                        "inclusive, safe, resilient and sustainable",
+                        "larger and denser",
+                        "centers of industrial production",
+                        "car-free by 2030"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg11_q2",
+                    prompt = "Helsinki's Oodi Central Library is notable as...",
+                    options = new[]
+                    {
+                        "a nearly zero-energy public space co-designed with residents",
+                        "the world's largest book archive",
+                        "a private members-only library",
+                        "a university research library"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg13_q1",
+                    prompt = "What does SDG 13 call for?",
+                    options = new[]
+                    {
+                        "Urgent action to combat climate change and its impacts",
+                        "Universal access to clean water",
+                        "Gender equality in education",
+                        "Reduced inequality among countries"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg13_q2",
+                    prompt = "Thammasat University Library's award-winning green program is built around...",
+                    options = new[]
+                    {
+                        "the circular economy (From Waste to Wealth)",
+                        "banning printed books",
+                        "solar-powered bookmobiles only",
+                        "closing the library to save energy"
+                    },
+                    correctIndex = 0
+                },
+                new QuizDefinition.Question
+                {
+                    questionId = "sdg13_q3",
+                    prompt = "A seed library primarily helps a community by...",
+                    options = new[]
+                    {
+                        "sharing and tracking seeds for local growing",
+                        "selling rare plants",
+                        "storing grain reserves",
+                        "replacing public gardens"
+                    },
+                    correctIndex = 0
+                }
+            };
+
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            const string assetPath = "Assets/StudyContent/SdgKnowledgeQuiz.asset";
+            AssetDatabase.DeleteAsset(assetPath);
+            AssetDatabase.CreateAsset(quiz, assetPath);
+            return quiz;
+        }
+
+        private static void AddAttentionTarget(GameObject go, string id,
+            AttentionTarget.ContentFormat format, string stationId)
+        {
+            var target = go.AddComponent<AttentionTarget>();
+            var so = new SerializedObject(target);
+            so.FindProperty("targetId").stringValue = id;
+            so.FindProperty("format").enumValueIndex = (int)format;
+            so.FindProperty("stationId").stringValue = stationId;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void ApplyColor(GameObject go, Color color)
+        {
+            var renderer = go.GetComponent<Renderer>();
+            var material = new Material(renderer.sharedMaterial) { color = color };
+            renderer.sharedMaterial = material;
+        }
+
+        /// <summary>Floating title text above an object.</summary>
         private static void CreateLabel(Transform parent, string text, Vector3 localPos, float size)
         {
-            var labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(parent, false);
-            labelGo.transform.localPosition = localPos;
+            var mesh = CreateTextMesh(parent, localPos, size);
+            mesh.anchor = TextAnchor.LowerCenter;
+            mesh.text = text;
+        }
+
+        /// <summary>Body copy centered on the front face of a panel.</summary>
+        private static void CreateBodyText(Transform parent, string text, float size)
+        {
+            // Stations face the visitor along local +Z, so the readable face
+            // of each panel is its +Z side.
+            var mesh = CreateTextMesh(parent, new Vector3(0f, 0f, 0.51f), size);
+            mesh.anchor = TextAnchor.MiddleCenter;
+            mesh.text = text;
+        }
+
+        private static TextMesh CreateTextMesh(Transform parent, Vector3 localPos, float size)
+        {
+            var go = new GameObject("Text");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
             // Stations face the visitor along local +Z; flip the TextMesh so
             // it reads correctly from that side.
-            labelGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             // Counteract parent scaling so text is not distorted.
             Vector3 lossy = parent.lossyScale;
-            labelGo.transform.localScale = new Vector3(
+            go.transform.localScale = new Vector3(
                 lossy.x != 0f ? 1f / lossy.x : 1f,
                 lossy.y != 0f ? 1f / lossy.y : 1f,
                 lossy.z != 0f ? 1f / lossy.z : 1f);
 
-            var mesh = labelGo.AddComponent<TextMesh>();
-            mesh.text = text;
+            var mesh = go.AddComponent<TextMesh>();
             mesh.characterSize = size;
             mesh.fontSize = 48;
-            mesh.anchor = TextAnchor.LowerCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = Color.white;
+            return mesh;
         }
     }
 }
