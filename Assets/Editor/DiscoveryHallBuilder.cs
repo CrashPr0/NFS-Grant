@@ -98,10 +98,8 @@ namespace NSFGrant.EditorTools
             quizSo.FindProperty("quiz").objectReferenceValue = quizAsset;
             quizSo.ApplyModifiedPropertiesWithoutUndo();
 
-            // --- Hall geometry.
-            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            floor.name = "Floor";
-            floor.transform.localScale = new Vector3(4f, 1f, 4f); // 40 x 40 m
+            // --- Hall geometry, lighting and ambience.
+            CreateHallEnvironment();
 
             // --- Stations arranged in an arc in front of the spawn point.
             var stationComponents = new List<SdgStation>();
@@ -183,41 +181,60 @@ namespace NSFGrant.EditorTools
             // Trigger volume defining the station footprint.
             var trigger = root.AddComponent<BoxCollider>();
             trigger.isTrigger = true;
-            trigger.center = new Vector3(0f, 2f, 0f);
-            trigger.size = new Vector3(10f, 4f, 7f);
+            trigger.center = new Vector3(0f, 2f, 0.5f);
+            trigger.size = new Vector3(13f, 5f, 9f);
 
             var station = root.AddComponent<SdgStation>();
             var stationSo = new SerializedObject(station);
             stationSo.FindProperty("stationId").stringValue = content.StationId;
             stationSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.04f, 26);
-            CreateGoalIcon(root.transform, content, new Vector3(0f, 4.2f, 0f));
+            // Booth dressing: a theme-tinted platform disc and a muted back
+            // wall so panels read against a wall instead of open sky.
+            // Thin and colliderless so it neither trips the character
+            // controller nor catches gaze rays.
+            CreateVisualPrimitive(root.transform, PrimitiveType.Cylinder,
+                $"{content.StationId}_Platform",
+                new Vector3(0f, 0.02f, 0.8f), new Vector3(13f, 0.015f, 8.5f),
+                Color.Lerp(themeColor, FloorColor, 0.78f));
+
+            var backWall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            backWall.name = $"{content.StationId}_BackWall";
+            backWall.transform.SetParent(root.transform, false);
+            backWall.transform.localPosition = new Vector3(0f, 2.5f, -1.2f);
+            backWall.transform.localScale = new Vector3(12.6f, 5f, 0.15f);
+            ApplyColor(backWall, Color.Lerp(themeColor, Color.black, 0.65f));
+
+            // Icon spans y 3.5-5.0; a two-line title tops out near 3.4.
+            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.0f, 0f), 0.04f, 26);
+            CreateGoalIcon(root.transform, content, new Vector3(0f, 4.25f, 0f));
+            CreatePhotoBoards(root.transform, content);
 
             // --- Format zones (the study's comparison conditions). Slot
             // positions are authored here; the CounterbalanceManager permutes
             // which zone occupies which slot per participant at runtime.
             var zoneTextPanel = CreateZone(root.transform, content.StationId, "TextPanel",
-                AttentionTarget.ContentFormat.TextPanel, PrimitiveType.Cube,
-                new Vector3(-3.6f, 1.5f, 1f), new Vector3(1.8f, 1.3f, 0.08f), themeColor,
+                "Overview", AttentionTarget.ContentFormat.TextPanel,
+                new Vector3(-3.6f, 1.5f, 1f), new Vector2(1.8f, 1.3f), themeColor,
                 null, content.OverviewText, 0.015f, 48);
             AddCounterbalanceMarker(zoneTextPanel, 0);
 
             var zoneDataViz = CreateZone(root.transform, content.StationId, "DataViz",
-                AttentionTarget.ContentFormat.DataVisualization, PrimitiveType.Cube,
-                new Vector3(-1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
-                content.DataVizUrl, content.DataVizText, 0.016f, 38);
+                "Progress data", AttentionTarget.ContentFormat.DataVisualization,
+                new Vector3(-1.8f, 1.5f, 0.3f), new Vector2(1.6f, 1.2f), themeColor,
+                content.DataVizUrl, content.DataVizText, 0.016f, 38,
+                content.DataVizImageFileName);
             AddCounterbalanceMarker(zoneDataViz, 1);
 
             var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
-                AttentionTarget.ContentFormat.VideoStory, PrimitiveType.Cube,
-                new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.2f, 0.08f), themeColor,
+                "Video story", AttentionTarget.ContentFormat.VideoStory,
+                new Vector3(0f, 1.5f, 0f), new Vector2(1.8f, 1.2f), themeColor,
                 content.VideoUrl, content.VideoText, 0.016f, 42);
             AddCounterbalanceMarker(zoneVideo, 2);
 
             var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
-                AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Cube,
-                new Vector3(1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
+                "Case study", AttentionTarget.ContentFormat.InteractiveObject,
+                new Vector3(1.8f, 1.5f, 0.3f), new Vector2(1.6f, 1.2f), themeColor,
                 content.InteractiveUrl, content.InteractiveText, 0.016f, 38);
             AddCounterbalanceMarker(zoneInteractive, 3);
 
@@ -227,7 +244,10 @@ namespace NSFGrant.EditorTools
 
             CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 2.4f));
 
-            CreateReferencesBoard(root.transform, content, new Vector3(-5.2f, 1.5f, 2f));
+            CreateZone(root.transform, content.StationId, "References",
+                "References", AttentionTarget.ContentFormat.Other,
+                new Vector3(-5.2f, 1.5f, 2f), new Vector2(1.8f, 1.3f), themeColor,
+                null, string.Join("\n", content.References), 0.009f, 80);
 
             return station;
         }
@@ -238,23 +258,71 @@ namespace NSFGrant.EditorTools
             marker.SlotIndex = slotIndex;
         }
 
+        // Front surface of a zone panel's face slab, in zone-local space.
+        private const float PanelFaceZ = 0.04f;
+        private static readonly Color FrameColor = new Color(0.10f, 0.10f, 0.12f);
+        private static readonly Color PanelFaceColor = new Color(0.13f, 0.14f, 0.17f);
+        private static readonly Color FloorColor = new Color(0.24f, 0.24f, 0.26f);
+
         private static GameObject CreateZone(Transform parent, string stationId, string zoneName,
-            AttentionTarget.ContentFormat format, PrimitiveType primitive,
-            Vector3 localPos, Vector3 localScale, Color color,
-            string linkUrl, string bodyText, float bodyCharSize, int bodyWrapChars)
+            string headerText, AttentionTarget.ContentFormat format,
+            Vector3 localPos, Vector2 panelSize, Color themeColor,
+            string linkUrl, string bodyText, float bodyCharSize, int bodyWrapChars,
+            string imageFileName = null)
         {
-            var go = GameObject.CreatePrimitive(primitive);
             string id = $"{stationId}_{zoneName}";
-            go.name = id;
+            var go = new GameObject(id);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
-            go.transform.localScale = localScale;
 
-            ApplyColor(go, color);
+            // One collider on the zone root covers panel + header; the
+            // raycasters resolve hits with GetComponentInParent, and the
+            // decorative children carry no colliders of their own.
+            var box = go.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 0.16f, 0f);
+            box.size = new Vector3(panelSize.x + 0.16f, panelSize.y + 0.6f, 0.2f);
+
             AddAttentionTarget(go, id, format, stationId);
 
-            // Body copy floats just in front of the panel face.
-            CreateBodyText(go.transform, bodyText, bodyCharSize, bodyWrapChars);
+            // Framed exhibit panel: dark face for legible white copy, theme
+            // header bar, thin frame, and legs down to the platform.
+            CreateVisualCube(go.transform, "Frame",
+                new Vector3(0f, 0f, -0.025f),
+                new Vector3(panelSize.x + 0.14f, panelSize.y + 0.14f, 0.05f), FrameColor);
+            CreateVisualCube(go.transform, "Face",
+                new Vector3(0f, 0f, 0.005f),
+                new Vector3(panelSize.x, panelSize.y, 0.06f), PanelFaceColor);
+            CreateVisualCube(go.transform, "Header",
+                new Vector3(0f, panelSize.y / 2f + 0.17f, -0.01f),
+                new Vector3(panelSize.x + 0.14f, 0.28f, 0.05f), themeColor);
+            CreateText(go.transform, headerText,
+                new Vector3(0f, panelSize.y / 2f + 0.17f, 0.02f), 0.018f, 40,
+                TextAnchor.MiddleCenter);
+
+            float legHeight = localPos.y - panelSize.y / 2f;
+            if (legHeight > 0.05f)
+            {
+                foreach (float x in new[] { -(panelSize.x / 2f - 0.12f), panelSize.x / 2f - 0.12f })
+                {
+                    CreateVisualCube(go.transform, "Leg",
+                        new Vector3(x, -(panelSize.y / 2f + legHeight / 2f), -0.02f),
+                        new Vector3(0.07f, legHeight, 0.07f), FrameColor);
+                }
+            }
+
+            // Optional image (e.g. the 2025 progress-report card); the body
+            // copy drops to a caption strip under it.
+            float textY = 0f;
+            if (!string.IsNullOrEmpty(imageFileName) &&
+                CreateTexturedQuad(go.transform, imageFileName, "Image",
+                    new Vector3(0f, 0.13f, PanelFaceZ), new Vector2(0.82f, 0.82f)) != null)
+            {
+                textY = -(panelSize.y / 2f) + 0.18f;
+            }
+
+            CreateText(go.transform, bodyText,
+                new Vector3(0f, textY, PanelFaceZ + 0.005f),
+                bodyCharSize, bodyWrapChars, TextAnchor.MiddleCenter);
 
             if (!string.IsNullOrEmpty(linkUrl))
             {
@@ -279,8 +347,19 @@ namespace NSFGrant.EditorTools
             wall.transform.SetParent(parent, false);
             wall.transform.localPosition = localPos;
 
-            CreateLabel(wall.transform, "What will your library do?\nPick an action:",
-                new Vector3(0f, 1.1f, 0f), 0.025f, 30);
+            // Backing board + theme header bar, matching the framed zone
+            // panels; the option buttons keep their own colliders in front.
+            CreateVisualCube(wall.transform, "Backing", new Vector3(0f, 0.35f, -0.06f),
+                new Vector3(2.5f, 2.5f, 0.05f), PanelFaceColor);
+            CreateVisualCube(wall.transform, "Header", new Vector3(0f, 1.55f, -0.07f),
+                new Vector3(2.5f, 0.5f, 0.05f), color);
+            CreateText(wall.transform, "What will your library do?\nPick an action:",
+                new Vector3(0f, 1.55f, -0.03f), 0.018f, 40, TextAnchor.MiddleCenter);
+            foreach (float x in new[] { -1.05f, 1.05f })
+            {
+                CreateVisualCube(wall.transform, "Leg", new Vector3(x, -1.2f, -0.06f),
+                    new Vector3(0.08f, 0.6f, 0.08f), FrameColor);
+            }
 
             for (int i = 0; i < content.CallToActionOptions.Length; i++)
             {
@@ -291,7 +370,9 @@ namespace NSFGrant.EditorTools
                 button.transform.localPosition = new Vector3(0f, 0.7f - i * 0.45f, 0f);
                 button.transform.localScale = new Vector3(2f, 0.32f, 0.06f);
 
-                ApplyColor(button, Color.Lerp(color, Color.white, 0.25f));
+                // Darken toward black so the white option text stays legible
+                // on light theme colors (e.g. SDG 11 orange).
+                ApplyColor(button, Color.Lerp(color, Color.black, 0.25f));
                 AddAttentionTarget(button, id,
                     AttentionTarget.ContentFormat.CallToActionWall, content.StationId);
 
@@ -309,14 +390,17 @@ namespace NSFGrant.EditorTools
         private static void CreateDocent(Transform parent,
             SdgStationContent content, Color color, Vector3 localPos)
         {
-            var docent = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             string id = $"{content.StationId}_Docent_{content.DocentName}";
-            docent.name = id;
+            var docent = new GameObject(id);
             docent.transform.SetParent(parent, false);
-            docent.transform.localPosition = localPos + Vector3.up;
-            docent.transform.localScale = new Vector3(0.5f, 1f, 0.5f);
+            docent.transform.localPosition = localPos;
 
-            ApplyColor(docent, Color.Lerp(color, Color.white, 0.5f));
+            // One capsule collider over the whole figure for gaze + selection.
+            var capsule = docent.AddComponent<CapsuleCollider>();
+            capsule.center = new Vector3(0f, 0.95f, 0f);
+            capsule.height = 1.9f;
+            capsule.radius = 0.35f;
+
             AddAttentionTarget(docent, id,
                 AttentionTarget.ContentFormat.Docent, content.StationId);
 
@@ -325,48 +409,190 @@ namespace NSFGrant.EditorTools
             interactableSo.FindProperty("objectId").stringValue = id;
             interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.04f, 20);
-            CreateBodyText(docent.transform, content.DocentGreeting, 0.015f, 44);
-        }
+            // Simple primitive figure — robe, head, base ring — standing in
+            // for the avatar planned for the Guided condition.
+            CreateVisualPrimitive(docent.transform, PrimitiveType.Cylinder, "BaseRing",
+                new Vector3(0f, 0.03f, 0f), new Vector3(0.9f, 0.03f, 0.9f),
+                Color.Lerp(color, Color.black, 0.4f));
+            CreateVisualPrimitive(docent.transform, PrimitiveType.Capsule, "Robe",
+                new Vector3(0f, 0.75f, 0f), new Vector3(0.5f, 0.6f, 0.5f),
+                Color.Lerp(color, Color.white, 0.35f));
+            CreateVisualPrimitive(docent.transform, PrimitiveType.Sphere, "Head",
+                new Vector3(0f, 1.55f, 0f), Vector3.one * 0.32f,
+                Color.Lerp(color, Color.white, 0.7f));
 
-        private static void CreateReferencesBoard(Transform parent,
-            SdgStationContent content, Vector3 localPos)
-        {
-            var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            string id = $"{content.StationId}_References";
-            board.name = id;
-            board.transform.SetParent(parent, false);
-            board.transform.localPosition = localPos;
-            board.transform.localScale = new Vector3(1.8f, 1.3f, 0.06f);
+            CreateText(docent.transform, content.DocentName,
+                new Vector3(0f, 1.85f, 0f), 0.035f, 20, TextAnchor.LowerCenter);
 
-            ApplyColor(board, new Color(0.15f, 0.15f, 0.15f));
-            AddAttentionTarget(board, id,
-                AttentionTarget.ContentFormat.Other, content.StationId);
-
-            string text = "References\n" + string.Join("\n", content.References);
-            CreateBodyText(board.transform, text, 0.009f, 80);
+            // Greeting on a small framed speech panel beside the figure.
+            CreateVisualCube(docent.transform, "SpeechFrame",
+                new Vector3(1.2f, 1.4f, 0f), new Vector3(1.55f, 0.8f, 0.04f),
+                PanelFaceColor);
+            CreateText(docent.transform, content.DocentGreeting,
+                new Vector3(1.2f, 1.4f, 0.03f), 0.013f, 46, TextAnchor.MiddleCenter);
         }
 
         private static void CreateGoalIcon(Transform parent,
             SdgStationContent content, Vector3 localPos)
         {
-            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                $"{TexturesDir}/{content.IconFileName}");
-            if (texture == null)
+            string id = $"{content.StationId}_GoalIcon";
+            var icon = CreateTexturedQuad(parent, content.IconFileName, id,
+                localPos, Vector2.one * 1.5f);
+            if (icon == null)
             {
-                // Icons not downloaded yet; the builder logs a hint instead.
-                Debug.Log($"[DiscoveryHallBuilder] Icon {content.IconFileName} not found - " +
-                          "run NSF Grant > Download SDG Media Assets and rebuild the scene to apply icons.");
                 return;
             }
 
-            var icon = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            string id = $"{content.StationId}_GoalIcon";
-            icon.name = id;
-            icon.transform.SetParent(parent, false);
-            icon.transform.localPosition = localPos;
-            icon.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            icon.transform.localScale = Vector3.one * 1.5f;
+            // The icon is itself an AOI, so it needs its own collider; give
+            // the flat quad explicit depth so gaze rays hit it reliably.
+            var box = icon.AddComponent<BoxCollider>();
+            box.size = new Vector3(1f, 1f, 0.05f);
+            AddAttentionTarget(icon, id,
+                AttentionTarget.ContentFormat.Other, content.StationId);
+        }
+
+        /// <summary>
+        /// Framed UN photos (with attribution captions) hung above the side
+        /// panels, flanking the goal icon.
+        /// </summary>
+        private static void CreatePhotoBoards(Transform parent, SdgStationContent content)
+        {
+            if (content.PhotoFileNames == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < content.PhotoFileNames.Length; i++)
+            {
+                float x = (i % 2 == 0 ? -1f : 1f) * (2.6f + 2.2f * (i / 2));
+                string id = $"{content.StationId}_Photo{i + 1}";
+                var board = new GameObject(id);
+                board.transform.SetParent(parent, false);
+                board.transform.localPosition = new Vector3(x, 3.35f, 0.2f);
+
+                var box = board.AddComponent<BoxCollider>();
+                box.size = new Vector3(1.75f, 1.25f, 0.1f);
+                AddAttentionTarget(board, id,
+                    AttentionTarget.ContentFormat.Other, content.StationId);
+
+                CreateVisualCube(board.transform, "Frame",
+                    new Vector3(0f, 0f, -0.015f), new Vector3(1.72f, 1.2f, 0.04f),
+                    FrameColor);
+                CreateTexturedQuad(board.transform, content.PhotoFileNames[i], "Photo",
+                    new Vector3(0f, 0f, 0.012f), new Vector2(1.6f, 1.08f));
+
+                if (content.PhotoCaptions != null && i < content.PhotoCaptions.Length)
+                {
+                    CreateText(board.transform, content.PhotoCaptions[i],
+                        new Vector3(0f, -0.66f, 0.012f), 0.008f, 70,
+                        TextAnchor.UpperCenter);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Hall floor, lighting, fog and the welcome plinth at the spawn
+        /// point. Sized for the 18 m station arc.
+        /// </summary>
+        private static void CreateHallEnvironment()
+        {
+            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            floor.name = "Floor";
+            floor.transform.localScale = new Vector3(6f, 1f, 6f); // 60 x 60 m
+            ApplyColor(floor, FloorColor);
+
+            // Museum-style light: warm key light, cool tri-light ambient, and
+            // gentle fog so distant stations recede instead of popping
+            // against the skyline.
+            var lightGo = GameObject.Find("Directional Light");
+            if (lightGo != null)
+            {
+                var light = lightGo.GetComponent<Light>();
+                light.color = new Color(1f, 0.96f, 0.88f);
+                light.intensity = 1.05f;
+                light.shadows = LightShadows.Soft;
+                lightGo.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
+            }
+
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.62f, 0.68f, 0.78f);
+            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.44f, 0.50f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.22f, 0.24f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogStartDistance = 30f;
+            RenderSettings.fogEndDistance = 110f;
+            RenderSettings.fogColor = new Color(0.70f, 0.75f, 0.82f);
+
+            // Low info plinth at the hall center; the sign sits below eye
+            // level so it never occludes the stations from spawn.
+            var plinth = new GameObject("WelcomePlinth");
+            plinth.transform.position = new Vector3(0f, 0f, -0.5f);
+            // Spawn is at -Z, so the plinth faces backward toward it.
+            plinth.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+
+            CreateVisualPrimitive(plinth.transform, PrimitiveType.Cylinder, "Dais",
+                new Vector3(0f, 0.03f, 0f), new Vector3(1.6f, 0.03f, 1.6f), FrameColor);
+            CreateVisualCube(plinth.transform, "Column",
+                new Vector3(0f, 0.5f, 0f), new Vector3(0.12f, 1f, 0.12f), FrameColor);
+
+            var sign = CreateVisualCube(plinth.transform, "Sign",
+                new Vector3(0f, 1.1f, 0f), new Vector3(1.3f, 0.55f, 0.04f),
+                PanelFaceColor);
+            sign.transform.localRotation = Quaternion.Euler(-22f, 0f, 0f);
+            CreateText(sign.transform, "UN SDG Discovery Hall\n\n" +
+                "Visit all three stations. Look closely, explore the exhibits, " +
+                "and pick an action for your library.",
+                new Vector3(0f, 0f, 0.6f), 0.012f, 36, TextAnchor.MiddleCenter);
+        }
+
+        /// <summary>
+        /// Decorative primitive: its collider is removed so it never
+        /// intercepts gaze rays or clicks meant for AOI colliders.
+        /// </summary>
+        private static GameObject CreateVisualPrimitive(Transform parent, PrimitiveType type,
+            string name, Vector3 localPos, Vector3 localScale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            ApplyColor(go, color);
+            return go;
+        }
+
+        private static GameObject CreateVisualCube(Transform parent, string name,
+            Vector3 localPos, Vector3 localScale, Color color)
+        {
+            return CreateVisualPrimitive(parent, PrimitiveType.Cube, name,
+                localPos, localScale, color);
+        }
+
+        /// <summary>
+        /// Unlit textured quad (colliderless), facing the station's readable
+        /// +Z side. Returns null (with a hint) when the texture is missing.
+        /// </summary>
+        private static GameObject CreateTexturedQuad(Transform parent, string fileName,
+            string name, Vector3 localPos, Vector2 size)
+        {
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"{TexturesDir}/{fileName}");
+            if (texture == null)
+            {
+                Debug.Log($"[DiscoveryHallBuilder] Texture {fileName} not found - run " +
+                          "NSF Grant > Download SDG Media Assets and rebuild the scene.");
+                return null;
+            }
+
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = name;
+            Object.DestroyImmediate(quad.GetComponent<Collider>());
+            quad.transform.SetParent(parent, false);
+            quad.transform.localPosition = localPos;
+            quad.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            quad.transform.localScale = new Vector3(size.x, size.y, 1f);
 
             var unlit = Shader.Find("Universal Render Pipeline/Unlit");
             if (unlit == null)
@@ -374,10 +600,8 @@ namespace NSFGrant.EditorTools
                 unlit = Shader.Find("Unlit/Texture");
             }
             var material = new Material(unlit) { mainTexture = texture };
-            icon.GetComponent<Renderer>().sharedMaterial = material;
-
-            AddAttentionTarget(icon, id,
-                AttentionTarget.ContentFormat.Other, content.StationId);
+            quad.GetComponent<Renderer>().sharedMaterial = material;
+            return quad;
         }
 
         private static QuizDefinition CreateQuizAsset()
@@ -512,7 +736,16 @@ namespace NSFGrant.EditorTools
             mesh.text = Wrap(text, maxLineChars);
         }
 
-        /// <summary>Body copy centered on the front face of a panel.</summary>
+        /// <summary>Wrapped white text at an explicit local position.</summary>
+        private static void CreateText(Transform parent, string text, Vector3 localPos,
+            float size, int maxLineChars, TextAnchor anchor)
+        {
+            var mesh = CreateTextMesh(parent, localPos, size);
+            mesh.anchor = anchor;
+            mesh.text = Wrap(text, maxLineChars);
+        }
+
+        /// <summary>Body copy centered on the front face of a scaled panel primitive.</summary>
         private static void CreateBodyText(Transform parent, string text, float size,
             int maxLineChars)
         {

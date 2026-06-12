@@ -73,6 +73,14 @@ today, with prefab visuals instead of primitives.
 
 ## Part C — Asset & rendering upgrades
 
+> **Status (2026-06-12):** an interim procedural dressing pass landed in
+> `DiscoveryHallBuilder` ahead of the full prefab/URP work: framed
+> exhibit panels (dark faces, theme header bars, legs), station back
+> walls and platform discs, the committed UN photos and 2025 Goal-13
+> progress card applied as textures, a primitive docent figure with a
+> speech panel, tri-light ambient + linear fog + warm key light, and a
+> welcome plinth at spawn. Everything below still applies on top.
+
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +
   light/reflection probes), update Meta XR settings. Verify the desktop/

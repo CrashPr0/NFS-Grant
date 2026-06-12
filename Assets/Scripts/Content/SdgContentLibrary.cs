@@ -25,6 +25,19 @@ namespace NSFGrant.Content
         public string DataVizText;
         public string DataVizUrl;
 
+        /// <summary>
+        /// Optional image (in Assets/StudyContent/Textures) shown on the
+        /// data-viz panel, e.g. the UN 2025 progress-report card.
+        /// </summary>
+        public string DataVizImageFileName;
+
+        /// <summary>
+        /// Optional framed photos (in Assets/StudyContent/Textures) hung at
+        /// the station, with matching attribution captions.
+        /// </summary>
+        public string[] PhotoFileNames;
+        public string[] PhotoCaptions;
+
         /// <summary>Video/audio story kiosk.</summary>
         public string VideoText;
         public string VideoUrl;
@@ -189,6 +202,18 @@ namespace NSFGrant.Content
 
                 DataVizText = "SDG 13 progress data\n2025 SDG Progress Report - Goal 13",
                 DataVizUrl = "https://unstats.un.org/sdgs/report/2025/Goal-13/",
+                DataVizImageFileName = "SDG13_ProgressCard_2025.png",
+
+                PhotoFileNames = new[]
+                {
+                    "SDG13_HurricaneDorian_UN730286.jpg",
+                    "SDG13_Forest_UN7860718.jpg"
+                },
+                PhotoCaptions = new[]
+                {
+                    "Hurricane Dorian over Abaco Island, Bahamas. UN Photo / OCHA / Mark Garten",
+                    "Forest in New York State after a rain storm. UN Photo / Mark Garten"
+                },
 
                 VideoText = "Why it matters\nWhy taking action to fight climate change matters (UN)",
                 VideoUrl = "https://www.youtube.com/watch?v=oSqmCNNV2dQ",
