@@ -422,7 +422,7 @@ namespace NSFGrant.EditorTools
                 Color.Lerp(color, Color.white, 0.7f));
 
             CreateText(docent.transform, content.DocentName,
-                new Vector3(0f, 1.85f, 0f), 0.035f, 20, TextAnchor.LowerCenter);
+                new Vector3(0f, 1.85f, 0f), 0.025f, 20, TextAnchor.LowerCenter);
 
             // Greeting on a small framed speech panel beside the figure.
             CreateVisualCube(docent.transform, "SpeechFrame",
@@ -811,7 +811,42 @@ namespace NSFGrant.EditorTools
             mesh.fontSize = 48;
             mesh.alignment = TextAlignment.Center;
             mesh.color = Color.white;
+
+            // The built-in font material draws with ZTest Always, so text
+            // renders through panels and walls; swap in the depth-tested
+            // variant so geometry occludes text naturally.
+            var font = mesh.font;
+            if (font == null)
+            {
+                font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                mesh.font = font;
+            }
+            go.GetComponent<MeshRenderer>().sharedMaterial = GetOccludedTextMaterial(font);
+
             return mesh;
+        }
+
+        private static Material occludedTextMaterial;
+
+        private static Material GetOccludedTextMaterial(Font font)
+        {
+            // One shared material per build; the null check also covers the
+            // previous build's material destroyed by NewScene.
+            if (occludedTextMaterial == null)
+            {
+                var shader = Shader.Find("NSFGrant/TextOccluded");
+                if (shader == null)
+                {
+                    Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/TextOccluded shader " +
+                                     "not found; text will render through geometry.");
+                    return font.material;
+                }
+                occludedTextMaterial = new Material(shader)
+                {
+                    mainTexture = font.material.mainTexture
+                };
+            }
+            return occludedTextMaterial;
         }
     }
 }
