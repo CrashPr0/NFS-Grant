@@ -12,8 +12,13 @@ State as of the evening of 2026-06-12, on branch
 - [ ] Walk the hall in Play mode and confirm:
   - [ ] text no longer renders through panels/walls/docent
         (new `NSFGrant/TextOccluded` shader),
-  - [ ] stations no longer overlap (18 m arc),
-  - [ ] framed panels, back walls, platform discs look right,
+  - [ ] hub-and-rooms layout per the director: spawn in the hexagonal
+        hub (waterfall feature, welcome plinth), three corridors at
+        120 degrees lead to enclosed exhibit rooms with door signs,
+  - [ ] text is comfortably readable at conversational distance
+        (sizes were bumped ~25-30% across the board),
+  - [ ] framed panels, walls, platform discs look right; you cannot
+        walk through walls,
   - [ ] SDG 13 shows the 2025 progress card + both UN photos with captions,
   - [ ] no console errors from the builder.
 - [ ] Screenshot anything off and iterate before piling on new work.
