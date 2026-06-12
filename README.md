@@ -33,6 +33,23 @@ study measure and meeting decision to its implementation.
   device builds and for the eye-tracking permission).
 - USB-C cable and `adb` (installed with Unity's Android module).
 
+## Headless setup (no editor UI)
+
+With Unity 2022.3 + Android module installed via Unity Hub, the whole
+setup can run from the command line:
+
+```bash
+./scripts/unity-tasks.sh setup        # URP + media download + scene + XR config
+./scripts/unity-tasks.sh build-quest  # -> Builds/SDGDiscoveryHall.apk (adb install)
+./scripts/unity-tasks.sh build-webgl  # -> Builds/WebGL/
+```
+
+(Windows: `scripts\unity-tasks.bat setup` etc. Set `UNITY_PATH` if Unity
+isn't in the default Hub location.) The first run imports all packages
+and takes a while. One thing batch mode can't fully replace: run the
+**Meta Project Setup Tool** once in the editor before shipping lab
+builds — it validates manifest/permission details.
+
 ## First-time setup
 
 1. **Open the project** in Unity Hub. On first open, Unity resolves the
