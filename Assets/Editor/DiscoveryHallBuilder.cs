@@ -106,7 +106,7 @@ namespace NSFGrant.EditorTools
             // --- Stations arranged in an arc in front of the spawn point.
             var stationComponents = new List<SdgStation>();
             float[] angles = { -55f, 0f, 55f };
-            const float radius = 10f;
+            const float radius = 18f;
 
             for (int i = 0; i < SdgContentLibrary.Stations.Length && i < angles.Length; i++)
             {
