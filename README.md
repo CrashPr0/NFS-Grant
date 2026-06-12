@@ -50,6 +50,11 @@ and takes a while. One thing batch mode can't fully replace: run the
 **Meta Project Setup Tool** once in the editor before shipping lab
 builds — it validates manifest/permission details.
 
+The SDG goal icons and SDG 13 photos are committed in
+`Assets/StudyContent/Textures/` (attribution in
+`Assets/StudyContent/CONTENT_SOURCES.md`), so setup needs no Google
+Drive access; the media-download step only re-fetches missing files.
+
 ## First-time setup
 
 1. **Open the project** in Unity Hub. On first open, Unity resolves the

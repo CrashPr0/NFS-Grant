@@ -98,9 +98,12 @@ copy), the Oodi/Thammasat/seed-library case studies, resource links
 options, per-station citation boards, and the FrameVR docent personas
 (MINERVA / HINA / BHUMI). The 8-question knowledge quiz is generated into
 `Assets/StudyContent/SdgKnowledgeQuiz.asset` by the scene builder.
-Run **NSF Grant > Download SDG Media Assets** to pull the official goal
-icons and SDG 13 photos from the shared Drive (see
-`Assets/StudyContent/CONTENT_SOURCES.md` for attribution).
+The official goal icons and SDG 13 photos are committed in
+`Assets/StudyContent/Textures/` (attribution in
+`Assets/StudyContent/CONTENT_SOURCES.md`); content was verified against
+the live Drive folder (Asset Tracker, Hand Off Report, SDG-13 reference
+list) on 2026-06-12. **NSF Grant > Download SDG Media Assets** re-fetches
+the media from Drive if it is ever updated.
 
 ## Session flow & assignment (StudyIntake)
 

@@ -191,7 +191,7 @@ namespace NSFGrant.Content
                 DataVizUrl = "https://unstats.un.org/sdgs/report/2025/Goal-13/",
 
                 VideoText = "Why it matters\nWhy taking action to fight climate change matters (UN)",
-                VideoUrl = "https://www.youtube.com/watch?v=HXdtxvC00vo",
+                VideoUrl = "https://www.youtube.com/watch?v=oSqmCNNV2dQ",
 
                 InteractiveText =
                     "Case study: Thammasat University Library, Bangkok\n" +
@@ -227,7 +227,9 @@ namespace NSFGrant.Content
                     "American Library Association. (2020). Resilient communities: A programming guide for libraries. https://www.ala.org/sites/default/files/tools/content/ResComm_ProgGuide%20FINAL100820.pdf",
                     "West Vancouver Memorial Library. (2022). Climate future action toolkit. https://westvanlibrary.ca/wp-content/uploads/2022/04/cf-tool-kit-interactive-website-interactive.pdf",
                     "Seed Library Census & Map. (n.d.). https://seedlibraries.weebly.com/map.html",
-                    "ENSULIB. (2025). IFLA Green Library Award Ceremony: Thammasat University Library [Video]. https://www.youtube.com/watch?v=x2-hCx2bdMQ"
+                    "ENSULIB. (2025). IFLA Green Library Award Ceremony: Thammasat University Library [Video]. https://www.youtube.com/watch?v=x2-hCx2bdMQ",
+                    "UNRISD. (n.d.). Social and solidarity economy for the SDGs: Spotlight on Seoul [Video]. https://www.youtube.com/watch?v=MX0_gxDAGM8",
+                    "UNRISD. (2018). Social and solidarity economy for the SDGs: Spotlight on the social economy in Seoul. https://www.unrisd.org/en/research/projects/social-and-solidarity-economy-for-the-sdgs-spotlight-on-the-social-economy-in-seoul"
                 }
             }
         };

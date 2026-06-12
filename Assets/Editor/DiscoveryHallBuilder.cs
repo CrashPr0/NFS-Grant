@@ -191,7 +191,7 @@ namespace NSFGrant.EditorTools
             stationSo.FindProperty("stationId").stringValue = content.StationId;
             stationSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.4f);
+            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.18f, 26);
             CreateGoalIcon(root.transform, content, new Vector3(0f, 4.2f, 0f));
 
             // --- Format zones (the study's comparison conditions). Slot
@@ -200,25 +200,25 @@ namespace NSFGrant.EditorTools
             var zoneTextPanel = CreateZone(root.transform, content.StationId, "TextPanel",
                 AttentionTarget.ContentFormat.TextPanel, PrimitiveType.Cube,
                 new Vector3(-3.6f, 1.5f, 1f), new Vector3(1.8f, 1.3f, 0.08f), themeColor,
-                null, content.OverviewText, 0.06f);
+                null, content.OverviewText, 0.06f, 48);
             AddCounterbalanceMarker(zoneTextPanel, 0);
 
             var zoneDataViz = CreateZone(root.transform, content.StationId, "DataViz",
                 AttentionTarget.ContentFormat.DataVisualization, PrimitiveType.Cube,
                 new Vector3(-1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
-                content.DataVizUrl, content.DataVizText, 0.09f);
+                content.DataVizUrl, content.DataVizText, 0.07f, 38);
             AddCounterbalanceMarker(zoneDataViz, 1);
 
             var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
                 AttentionTarget.ContentFormat.VideoStory, PrimitiveType.Cube,
                 new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.2f, 0.08f), themeColor,
-                content.VideoUrl, content.VideoText, 0.09f);
+                content.VideoUrl, content.VideoText, 0.07f, 42);
             AddCounterbalanceMarker(zoneVideo, 2);
 
             var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
                 AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Cube,
                 new Vector3(1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
-                content.InteractiveUrl, content.InteractiveText, 0.07f);
+                content.InteractiveUrl, content.InteractiveText, 0.07f, 38);
             AddCounterbalanceMarker(zoneInteractive, 3);
 
             var ctaWall = CreateCallToActionWall(root.transform, content, themeColor,
@@ -241,7 +241,7 @@ namespace NSFGrant.EditorTools
         private static GameObject CreateZone(Transform parent, string stationId, string zoneName,
             AttentionTarget.ContentFormat format, PrimitiveType primitive,
             Vector3 localPos, Vector3 localScale, Color color,
-            string linkUrl, string bodyText, float bodyCharSize)
+            string linkUrl, string bodyText, float bodyCharSize, int bodyWrapChars)
         {
             var go = GameObject.CreatePrimitive(primitive);
             string id = $"{stationId}_{zoneName}";
@@ -254,7 +254,7 @@ namespace NSFGrant.EditorTools
             AddAttentionTarget(go, id, format, stationId);
 
             // Body copy floats just in front of the panel face.
-            CreateBodyText(go.transform, bodyText, bodyCharSize);
+            CreateBodyText(go.transform, bodyText, bodyCharSize, bodyWrapChars);
 
             if (!string.IsNullOrEmpty(linkUrl))
             {
@@ -280,7 +280,7 @@ namespace NSFGrant.EditorTools
             wall.transform.localPosition = localPos;
 
             CreateLabel(wall.transform, "What will your library do?\nPick an action:",
-                new Vector3(0f, 1.1f, 0f), 0.12f);
+                new Vector3(0f, 1.1f, 0f), 0.12f, 30);
 
             for (int i = 0; i < content.CallToActionOptions.Length; i++)
             {
@@ -300,7 +300,7 @@ namespace NSFGrant.EditorTools
                 interactableSo.FindProperty("objectId").stringValue = id;
                 interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.45f);
+                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.06f, 50);
             }
 
             return wall;
@@ -325,8 +325,8 @@ namespace NSFGrant.EditorTools
             interactableSo.FindProperty("objectId").stringValue = id;
             interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.3f);
-            CreateBodyText(docent.transform, content.DocentGreeting, 0.18f);
+            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.15f, 20);
+            CreateBodyText(docent.transform, content.DocentGreeting, 0.06f, 44);
         }
 
         private static void CreateReferencesBoard(Transform parent,
@@ -344,7 +344,7 @@ namespace NSFGrant.EditorTools
                 AttentionTarget.ContentFormat.Other, content.StationId);
 
             string text = "References\n" + string.Join("\n", content.References);
-            CreateBodyText(board.transform, text, 0.035f);
+            CreateBodyText(board.transform, text, 0.035f, 80);
         }
 
         private static void CreateGoalIcon(Transform parent,
@@ -504,21 +504,54 @@ namespace NSFGrant.EditorTools
         }
 
         /// <summary>Floating title text above an object.</summary>
-        private static void CreateLabel(Transform parent, string text, Vector3 localPos, float size)
+        private static void CreateLabel(Transform parent, string text, Vector3 localPos,
+            float size, int maxLineChars)
         {
             var mesh = CreateTextMesh(parent, localPos, size);
             mesh.anchor = TextAnchor.LowerCenter;
-            mesh.text = text;
+            mesh.text = Wrap(text, maxLineChars);
         }
 
         /// <summary>Body copy centered on the front face of a panel.</summary>
-        private static void CreateBodyText(Transform parent, string text, float size)
+        private static void CreateBodyText(Transform parent, string text, float size,
+            int maxLineChars)
         {
             // Stations face the visitor along local +Z, so the readable face
             // of each panel is its +Z side.
             var mesh = CreateTextMesh(parent, new Vector3(0f, 0f, 0.51f), size);
             mesh.anchor = TextAnchor.MiddleCenter;
-            mesh.text = text;
+            mesh.text = Wrap(text, maxLineChars);
+        }
+
+        /// <summary>
+        /// TextMesh has no word wrapping; long lines render meters wide and
+        /// collide with neighboring stations. Re-break each line on word
+        /// boundaries so no line exceeds the panel's character budget.
+        /// </summary>
+        private static string Wrap(string text, int maxLineChars)
+        {
+            var result = new System.Text.StringBuilder();
+            foreach (string line in text.Split('\n'))
+            {
+                int lineLength = 0;
+                foreach (string word in line.Split(' '))
+                {
+                    if (lineLength > 0 && lineLength + 1 + word.Length > maxLineChars)
+                    {
+                        result.Append('\n');
+                        lineLength = 0;
+                    }
+                    else if (lineLength > 0)
+                    {
+                        result.Append(' ');
+                        lineLength++;
+                    }
+                    result.Append(word);
+                    lineLength += word.Length;
+                }
+                result.Append('\n');
+            }
+            return result.ToString().TrimEnd('\n');
         }
 
         private static TextMesh CreateTextMesh(Transform parent, Vector3 localPos, float size)

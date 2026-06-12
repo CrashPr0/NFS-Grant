@@ -56,6 +56,6 @@ crashlytics-build.properties
 StudyData/
 *.csv
 
-# Downloaded media (NSF Grant > Download SDG Media Assets); remove this
-# line to commit them once licensing for redistribution is confirmed
-Assets/StudyContent/Textures/
+# Study media assets are committed (Assets/StudyContent/Textures/) with
+# attribution in Assets/StudyContent/CONTENT_SOURCES.md; review licensing
+# before making this repository public.
