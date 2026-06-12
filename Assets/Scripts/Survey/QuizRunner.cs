@@ -33,8 +33,9 @@ namespace NSFGrant.Survey
             stage = quizStage;
             _currentQuestion = 0;
             _correctCount = 0;
-            IsComplete = false;
             _visible = quiz != null && quiz.questions != null && quiz.questions.Length > 0;
+            // No quiz configured counts as complete so intake flows don't stall.
+            IsComplete = !_visible;
             StudyEventLogger.Instance?.LogEvent("quiz_start", quiz != null ? quiz.name : "", stage);
         }
 

@@ -102,6 +102,21 @@ Run **NSF Grant > Download SDG Media Assets** to pull the official goal
 icons and SDG 13 photos from the shared Drive (see
 `Assets/StudyContent/CONTENT_SOURCES.md` for attribution).
 
+## Session flow & assignment (StudyIntake)
+
+One flow serves both samples: intake → pre-quiz → exploration →
+(F10) → post-quiz → done. Assignment priority:
+
+1. **URL parameters** (web/desktop): `?pid=P123&cond=guided`
+   (`cond` accepts `passive|interactive|guided` or `a|b|c`) — encode
+   assignment directly in recruitment/VERA links.
+2. **On-screen intake panel** (desktop lab sessions without URL params).
+3. **VR**: starts immediately with the Inspector participant ID;
+   quizzes are skipped until a world-space quiz UI exists (or are
+   administered outside the headset / via VERA).
+
+Counterbalancing keys off the participant ID either way.
+
 ## Suggested next steps for the team
 
 1. **Storyboard → scene:** run `NSF Grant > Build Discovery Hall Scene`,

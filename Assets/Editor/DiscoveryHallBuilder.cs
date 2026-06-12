@@ -77,7 +77,13 @@ namespace NSFGrant.EditorTools
             var cbSo = new SerializedObject(counterbalance);
             cbSo.FindProperty("rigRoot").objectReferenceValue = rigs.transform;
             cbSo.ApplyModifiedPropertiesWithoutUndo();
-            study.AddComponent<SessionController>();
+            var sessionController = study.AddComponent<SessionController>();
+            // StudyIntake owns the session lifecycle (URL params / intake
+            // panel / VR auto-start), so the controller must not auto-start.
+            var sessionSo = new SerializedObject(sessionController);
+            sessionSo.FindProperty("autoStart").boolValue = false;
+            sessionSo.ApplyModifiedPropertiesWithoutUndo();
+            study.AddComponent<StudyIntake>();
 
             var gazeSo = new SerializedObject(gazeProvider);
             gazeSo.FindProperty("centerEyeAnchor").objectReferenceValue = centerEye;
