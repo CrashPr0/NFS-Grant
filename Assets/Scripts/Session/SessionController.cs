@@ -36,6 +36,7 @@ namespace NSFGrant.Session
         [SerializeField] private StudyEventLogger eventLogger;
         [SerializeField] private ScreenshotCapture screenshotCapture;
         [SerializeField] private RemoteDataUploader uploader;
+        [SerializeField] private CounterbalanceManager counterbalance;
 
         public bool SessionRunning { get; private set; }
         public float SessionTime { get; private set; }
@@ -55,6 +56,7 @@ namespace NSFGrant.Session
             if (eventLogger == null) eventLogger = GetComponentInChildren<StudyEventLogger>();
             if (screenshotCapture == null) screenshotCapture = GetComponentInChildren<ScreenshotCapture>();
             if (uploader == null) uploader = GetComponentInChildren<RemoteDataUploader>();
+            if (counterbalance == null) counterbalance = GetComponentInChildren<CounterbalanceManager>();
         }
 
         private void Start()
@@ -95,6 +97,9 @@ namespace NSFGrant.Session
             eventLogger?.StartSession(participantId, platform, condition);
             eventLogger?.LogEvent("session_start", participantId,
                 $"platform={platform};condition={condition};gaze={gazeProvider.Source}");
+            // Counterbalance after the event logger is live so the
+            // assignment lands in the log.
+            counterbalance?.Apply(participantId);
             screenshotCapture?.StartCapture(participantId);
             VeraBridge.Instance?.NotifySessionStarted(participantId, platform, condition);
 

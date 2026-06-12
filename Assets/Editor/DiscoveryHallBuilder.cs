@@ -73,6 +73,10 @@ namespace NSFGrant.EditorTools
             study.AddComponent<RemoteDataUploader>();
             study.AddComponent<StudyConditionManager>();
             study.AddComponent<VeraBridge>();
+            var counterbalance = study.AddComponent<CounterbalanceManager>();
+            var cbSo = new SerializedObject(counterbalance);
+            cbSo.FindProperty("rigRoot").objectReferenceValue = rigs.transform;
+            cbSo.ApplyModifiedPropertiesWithoutUndo();
             study.AddComponent<SessionController>();
 
             var gazeSo = new SerializedObject(gazeProvider);
@@ -111,7 +115,12 @@ namespace NSFGrant.EditorTools
             beacon.transform.SetParent(docentRoot.transform);
             beacon.transform.localScale = Vector3.one * 0.6f;
             Object.DestroyImmediate(beacon.GetComponent<Collider>());
-            var beaconMat = new Material(Shader.Find("Standard")) { color = Color.cyan };
+            // Copy the primitive's default material so the beacon follows
+            // the active render pipeline (Built-in or URP).
+            var beaconMat = new Material(beacon.GetComponent<Renderer>().sharedMaterial)
+            {
+                color = Color.cyan
+            };
             beaconMat.EnableKeyword("_EMISSION");
             beaconMat.SetColor("_EmissionColor", Color.cyan);
             beacon.GetComponent<Renderer>().sharedMaterial = beaconMat;
@@ -179,29 +188,36 @@ namespace NSFGrant.EditorTools
             CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.4f);
             CreateGoalIcon(root.transform, content, new Vector3(0f, 4.2f, 0f));
 
-            // --- Format zones (the study's comparison conditions).
-            CreateZone(root.transform, content.StationId, "TextPanel",
+            // --- Format zones (the study's comparison conditions). Slot
+            // positions are authored here; the CounterbalanceManager permutes
+            // which zone occupies which slot per participant at runtime.
+            var zoneTextPanel = CreateZone(root.transform, content.StationId, "TextPanel",
                 AttentionTarget.ContentFormat.TextPanel, PrimitiveType.Cube,
                 new Vector3(-3.6f, 1.5f, 1f), new Vector3(1.8f, 1.3f, 0.08f), themeColor,
                 null, content.OverviewText, 0.06f);
+            AddCounterbalanceMarker(zoneTextPanel, 0);
 
-            CreateZone(root.transform, content.StationId, "DataViz",
+            var zoneDataViz = CreateZone(root.transform, content.StationId, "DataViz",
                 AttentionTarget.ContentFormat.DataVisualization, PrimitiveType.Cube,
                 new Vector3(-1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
                 content.DataVizUrl, content.DataVizText, 0.09f);
+            AddCounterbalanceMarker(zoneDataViz, 1);
 
-            CreateZone(root.transform, content.StationId, "VideoKiosk",
+            var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
                 AttentionTarget.ContentFormat.VideoStory, PrimitiveType.Cube,
                 new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.2f, 0.08f), themeColor,
                 content.VideoUrl, content.VideoText, 0.09f);
+            AddCounterbalanceMarker(zoneVideo, 2);
 
-            CreateZone(root.transform, content.StationId, "Interactive",
+            var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
                 AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Cube,
                 new Vector3(1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
                 content.InteractiveUrl, content.InteractiveText, 0.07f);
+            AddCounterbalanceMarker(zoneInteractive, 3);
 
-            CreateCallToActionWall(root.transform, content, themeColor,
+            var ctaWall = CreateCallToActionWall(root.transform, content, themeColor,
                 new Vector3(3.6f, 1.5f, 1f));
+            AddCounterbalanceMarker(ctaWall, 4);
 
             CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 2.4f));
 
@@ -210,7 +226,13 @@ namespace NSFGrant.EditorTools
             return station;
         }
 
-        private static void CreateZone(Transform parent, string stationId, string zoneName,
+        private static void AddCounterbalanceMarker(GameObject zone, int slotIndex)
+        {
+            var marker = zone.AddComponent<CounterbalancedZone>();
+            marker.SlotIndex = slotIndex;
+        }
+
+        private static GameObject CreateZone(Transform parent, string stationId, string zoneName,
             AttentionTarget.ContentFormat format, PrimitiveType primitive,
             Vector3 localPos, Vector3 localScale, Color color,
             string linkUrl, string bodyText, float bodyCharSize)
@@ -240,9 +262,11 @@ namespace NSFGrant.EditorTools
                 linkSo.FindProperty("url").stringValue = linkUrl;
                 linkSo.ApplyModifiedPropertiesWithoutUndo();
             }
+
+            return go;
         }
 
-        private static void CreateCallToActionWall(Transform parent,
+        private static GameObject CreateCallToActionWall(Transform parent,
             SdgStationContent content, Color color, Vector3 localPos)
         {
             var wall = new GameObject($"{content.StationId}_CallToAction");
@@ -272,6 +296,8 @@ namespace NSFGrant.EditorTools
 
                 CreateBodyText(button.transform, content.CallToActionOptions[i], 0.45f);
             }
+
+            return wall;
         }
 
         private static void CreateDocent(Transform parent,
@@ -336,7 +362,12 @@ namespace NSFGrant.EditorTools
             icon.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             icon.transform.localScale = Vector3.one * 1.5f;
 
-            var material = new Material(Shader.Find("Unlit/Texture")) { mainTexture = texture };
+            var unlit = Shader.Find("Universal Render Pipeline/Unlit");
+            if (unlit == null)
+            {
+                unlit = Shader.Find("Unlit/Texture");
+            }
+            var material = new Material(unlit) { mainTexture = texture };
             icon.GetComponent<Renderer>().sharedMaterial = material;
 
             AddAttentionTarget(icon, id,
