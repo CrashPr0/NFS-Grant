@@ -191,7 +191,7 @@ namespace NSFGrant.EditorTools
             stationSo.FindProperty("stationId").stringValue = content.StationId;
             stationSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.18f, 26);
+            CreateLabel(root.transform, content.Title, new Vector3(0f, 3.2f, 0f), 0.04f, 26);
             CreateGoalIcon(root.transform, content, new Vector3(0f, 4.2f, 0f));
 
             // --- Format zones (the study's comparison conditions). Slot
@@ -200,25 +200,25 @@ namespace NSFGrant.EditorTools
             var zoneTextPanel = CreateZone(root.transform, content.StationId, "TextPanel",
                 AttentionTarget.ContentFormat.TextPanel, PrimitiveType.Cube,
                 new Vector3(-3.6f, 1.5f, 1f), new Vector3(1.8f, 1.3f, 0.08f), themeColor,
-                null, content.OverviewText, 0.06f, 48);
+                null, content.OverviewText, 0.015f, 48);
             AddCounterbalanceMarker(zoneTextPanel, 0);
 
             var zoneDataViz = CreateZone(root.transform, content.StationId, "DataViz",
                 AttentionTarget.ContentFormat.DataVisualization, PrimitiveType.Cube,
                 new Vector3(-1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
-                content.DataVizUrl, content.DataVizText, 0.07f, 38);
+                content.DataVizUrl, content.DataVizText, 0.016f, 38);
             AddCounterbalanceMarker(zoneDataViz, 1);
 
             var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
                 AttentionTarget.ContentFormat.VideoStory, PrimitiveType.Cube,
                 new Vector3(0f, 1.5f, 0f), new Vector3(1.8f, 1.2f, 0.08f), themeColor,
-                content.VideoUrl, content.VideoText, 0.07f, 42);
+                content.VideoUrl, content.VideoText, 0.016f, 42);
             AddCounterbalanceMarker(zoneVideo, 2);
 
             var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
                 AttentionTarget.ContentFormat.InteractiveObject, PrimitiveType.Cube,
                 new Vector3(1.8f, 1.5f, 0.3f), new Vector3(1.6f, 1.2f, 0.08f), themeColor,
-                content.InteractiveUrl, content.InteractiveText, 0.07f, 38);
+                content.InteractiveUrl, content.InteractiveText, 0.016f, 38);
             AddCounterbalanceMarker(zoneInteractive, 3);
 
             var ctaWall = CreateCallToActionWall(root.transform, content, themeColor,
@@ -280,7 +280,7 @@ namespace NSFGrant.EditorTools
             wall.transform.localPosition = localPos;
 
             CreateLabel(wall.transform, "What will your library do?\nPick an action:",
-                new Vector3(0f, 1.1f, 0f), 0.12f, 30);
+                new Vector3(0f, 1.1f, 0f), 0.025f, 30);
 
             for (int i = 0; i < content.CallToActionOptions.Length; i++)
             {
@@ -300,7 +300,7 @@ namespace NSFGrant.EditorTools
                 interactableSo.FindProperty("objectId").stringValue = id;
                 interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.06f, 50);
+                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.018f, 50);
             }
 
             return wall;
@@ -325,8 +325,8 @@ namespace NSFGrant.EditorTools
             interactableSo.FindProperty("objectId").stringValue = id;
             interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.15f, 20);
-            CreateBodyText(docent.transform, content.DocentGreeting, 0.06f, 44);
+            CreateLabel(docent.transform, content.DocentName, new Vector3(0f, 1.3f, 0f), 0.04f, 20);
+            CreateBodyText(docent.transform, content.DocentGreeting, 0.015f, 44);
         }
 
         private static void CreateReferencesBoard(Transform parent,
@@ -344,7 +344,7 @@ namespace NSFGrant.EditorTools
                 AttentionTarget.ContentFormat.Other, content.StationId);
 
             string text = "References\n" + string.Join("\n", content.References);
-            CreateBodyText(board.transform, text, 0.035f, 80);
+            CreateBodyText(board.transform, text, 0.009f, 80);
         }
 
         private static void CreateGoalIcon(Transform parent,
@@ -569,6 +569,10 @@ namespace NSFGrant.EditorTools
                 lossy.y != 0f ? 1f / lossy.y : 1f,
                 lossy.z != 0f ? 1f / lossy.z : 1f);
 
+            // World-space line height is fontSize * characterSize / 10, so at
+            // fontSize 48 a characterSize of 0.015 gives ~7 cm lines; average
+            // glyph width is roughly half the line height. Size text budgets
+            // against the 1.6-1.8 m panels accordingly.
             var mesh = go.AddComponent<TextMesh>();
             mesh.characterSize = size;
             mesh.fontSize = 48;
