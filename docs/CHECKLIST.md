@@ -20,7 +20,12 @@ State as of the evening of 2026-06-12, on branch
   - [ ] framed panels, walls, platform discs look right; you cannot
         walk through walls,
   - [ ] SDG 13 shows the 2025 progress card + both UN photos with captions,
-  - [ ] no console errors from the builder.
+  - [ ] hub waterfall sheets scroll and the basin ripples
+        (`NSFGrant/AnimatedWater`); with `?cond=guided`, the docent
+        beacon pulses (`NSFGrant/EmissivePulse`) — both must animate in
+        Play mode, not just the editor,
+  - [ ] no console errors from the builder (watch for shader-not-found
+        warnings if the `Assets/Shaders` import lagged).
 - [ ] Screenshot anything off and iterate before piling on new work.
 
 ## 2. First end-to-end pilot session (highest research value)

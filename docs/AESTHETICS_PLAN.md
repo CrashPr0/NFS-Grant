@@ -80,6 +80,18 @@ today, with prefab visuals instead of primitives.
 > progress card applied as textures, a primitive docent figure with a
 > speech panel, tri-light ambient + linear fog + warm key light, and a
 > welcome plinth at spawn. Everything below still applies on top.
+>
+> **Status (2026-06-13):** restructured into a hub-and-rooms layout
+> (hexagonal hub the player spawns in, three walled exhibit rooms off
+> corridors at +/-120 degrees), modeled on the team's ReadingNation
+> Waterfall FrameVR room; all text sizes raised ~25-30%. Added
+> **GPU shader animation** on environment-only elements (deliberately
+> not the content AOIs, to avoid a motion confound in the attention
+> measures): `NSFGrant/AnimatedWater` drives the hub waterfall sheets
+> (scrolling) and basin (rippling); `NSFGrant/EmissivePulse` pulses the
+> Condition-C docent beacon. All are `_Time`-driven (no per-frame
+> scripts) so they hold up on Quest/WebGL. Custom shaders are plain CG
+> passes and will need revisiting in the URP migration below.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

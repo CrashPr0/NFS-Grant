@@ -121,14 +121,24 @@ namespace NSFGrant.EditorTools
             beacon.transform.SetParent(docentRoot.transform);
             beacon.transform.localScale = Vector3.one * 0.6f;
             Object.DestroyImmediate(beacon.GetComponent<Collider>());
-            // Copy the primitive's default material so the beacon follows
-            // the active render pipeline (Built-in or URP).
-            var beaconMat = new Material(beacon.GetComponent<Renderer>().sharedMaterial)
+            // Pulsing glow (Condition C navigation aid) on the GPU; falls
+            // back to a static emissive material if the shader is missing.
+            var pulseShader = Shader.Find("NSFGrant/EmissivePulse");
+            Material beaconMat;
+            if (pulseShader != null)
             {
-                color = Color.cyan
-            };
-            beaconMat.EnableKeyword("_EMISSION");
-            beaconMat.SetColor("_EmissionColor", Color.cyan);
+                beaconMat = new Material(pulseShader);
+                beaconMat.SetColor("_Color", Color.cyan);
+            }
+            else
+            {
+                beaconMat = new Material(beacon.GetComponent<Renderer>().sharedMaterial)
+                {
+                    color = Color.cyan
+                };
+                beaconMat.EnableKeyword("_EMISSION");
+                beaconMat.SetColor("_EmissionColor", Color.cyan);
+            }
             beacon.GetComponent<Renderer>().sharedMaterial = beaconMat;
 
             var docent = docentRoot.AddComponent<DocentGuide>();
@@ -620,22 +630,24 @@ namespace NSFGrant.EditorTools
                 new Color(0.30f, 0.30f, 0.33f));
 
             // Stylized waterfall against the solid south wall — the hub's
-            // namesake centerpiece (static placeholder; animate later).
+            // namesake centerpiece. The two sheets scroll downward (the
+            // inner one faster) and the basin ripples slowly, all on the GPU
+            // via NSFGrant/AnimatedWater.
             var stone = new Color(0.36f, 0.38f, 0.42f);
             CreateWall(hub.transform, "WaterfallMonolith",
                 new Vector3(0f, 2f, -5.55f), new Vector3(2.4f, 4f, 0.5f), stone);
             CreateWaterQuad(hub.transform, "WaterSheet",
                 new Vector3(0f, 2.05f, -5.28f), new Vector2(1.9f, 3.7f),
-                new Color(0.5f, 0.75f, 0.95f, 0.45f));
+                new Color(0.5f, 0.75f, 0.95f, 0.45f), new Vector2(0f, -0.55f), 2.2f);
             CreateWaterQuad(hub.transform, "WaterSheetInner",
                 new Vector3(0f, 1.9f, -5.24f), new Vector2(1.5f, 3.3f),
-                new Color(0.65f, 0.85f, 1f, 0.3f));
+                new Color(0.65f, 0.85f, 1f, 0.3f), new Vector2(0f, -0.95f), 3.1f);
             CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "BasinRim",
                 new Vector3(0f, 0.18f, -4.7f), new Vector3(3.4f, 0.18f, 2.4f), stone);
             var pond = CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "BasinWater",
                 new Vector3(0f, 0.3f, -4.7f), new Vector3(3.1f, 0.03f, 2.1f), Color.white);
-            pond.GetComponent<Renderer>().sharedMaterial =
-                TransparentMaterial(new Color(0.5f, 0.75f, 0.95f, 0.55f));
+            pond.GetComponent<Renderer>().sharedMaterial = AnimatedWaterMaterial(
+                new Color(0.5f, 0.75f, 0.95f, 0.55f), new Vector2(0.04f, 0.05f), 1.1f);
 
             // Low info plinth between spawn and the center; the sign sits
             // below eye level so it never occludes the doorways.
@@ -660,9 +672,9 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 0f, 0.6f), 0.015f, 34, TextAnchor.MiddleCenter);
         }
 
-        /// <summary>Translucent vertical water sheet facing the hub center (+Z).</summary>
+        /// <summary>Animated translucent water sheet facing the hub center (+Z).</summary>
         private static void CreateWaterQuad(Transform parent, string name,
-            Vector3 localPos, Vector2 size, Color color)
+            Vector3 localPos, Vector2 size, Color color, Vector2 scrollSpeed, float waveSpeed)
         {
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = name;
@@ -671,7 +683,30 @@ namespace NSFGrant.EditorTools
             quad.transform.localPosition = localPos;
             quad.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             quad.transform.localScale = new Vector3(size.x, size.y, 1f);
-            quad.GetComponent<Renderer>().sharedMaterial = TransparentMaterial(color);
+            quad.GetComponent<Renderer>().sharedMaterial =
+                AnimatedWaterMaterial(color, scrollSpeed, waveSpeed);
+        }
+
+        /// <summary>
+        /// GPU-animated water material (NSFGrant/AnimatedWater). Falls back to
+        /// the static translucent shader if the animated one is missing, so
+        /// the build never breaks.
+        /// </summary>
+        private static Material AnimatedWaterMaterial(Color color, Vector2 scrollSpeed,
+            float waveSpeed)
+        {
+            var shader = Shader.Find("NSFGrant/AnimatedWater");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/AnimatedWater shader " +
+                                 "not found; falling back to static water.");
+                return TransparentMaterial(color);
+            }
+            var material = new Material(shader);
+            material.SetColor("_Color", color);
+            material.SetVector("_ScrollSpeed", new Vector4(scrollSpeed.x, scrollSpeed.y, 0f, 0f));
+            material.SetFloat("_WaveSpeed", waveSpeed);
+            return material;
         }
 
         private static Material TransparentMaterial(Color color)
