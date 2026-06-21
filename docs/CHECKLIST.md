@@ -24,8 +24,14 @@ State as of the evening of 2026-06-12, on branch
         (`NSFGrant/AnimatedWater`); with `?cond=guided`, the docent
         beacon pulses (`NSFGrant/EmissivePulse`) — both must animate in
         Play mode, not just the editor,
+  - [ ] gradient skybox replaces the flat blue sky
+        (`Assets/StudyContent/DiscoveryHallSky.mat` was created), rooms
+        have a soft theme-tinted glow, the waterfall has a cool accent,
+        and the three hub doorways are framed with steady warm trim,
   - [ ] no console errors from the builder (watch for shader-not-found
         warnings if the `Assets/Shaders` import lagged).
+- [ ] **Before any Quest trial:** bake lighting — the four room/hub
+      point lights are realtime placeholders (see AESTHETICS_PLAN Part D).
 - [ ] Screenshot anything off and iterate before piling on new work.
 
 ## 2. First end-to-end pilot session (highest research value)

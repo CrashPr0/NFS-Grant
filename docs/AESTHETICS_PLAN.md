@@ -92,6 +92,18 @@ today, with prefab visuals instead of primitives.
 > Condition-C docent beacon. All are `_Time`-driven (no per-frame
 > scripts) so they hold up on Quest/WebGL. Custom shaders are plain CG
 > passes and will need revisiting in the URP migration below.
+>
+> **Status (2026-06-13, ambient pass):** added a procedural gradient
+> skybox (`NSFGrant/GradientSky`, saved as `DiscoveryHallSky.mat`)
+> replacing the default blue sky; a soft, faintly theme-tinted realtime
+> point light per room plus a cool accent light on the hub waterfall;
+> and steady warm wayfinding trim (`NSFGrant/EmissivePulse` at equal
+> min/max) framing the three hub doorways identically. The skybox and
+> trim are symmetric across rooms/conditions, so none of this biases the
+> attention measures. **The four realtime point lights are placeholders
+> and must be baked before Quest trials** (see Part D); ranges are kept
+> inside each room so they don't cross-light, but realtime per-pixel
+> lights cut against the baked-GI target.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

@@ -237,6 +237,14 @@ namespace NSFGrant.EditorTools
             CreateWall(root.transform, "Corridor_R",
                 new Vector3(1.575f, 1.75f, 8f), new Vector3(0.15f, 3.5f, 4.2f), neutralWall);
 
+            // Soft, faintly theme-tinted fill light so each room reads as its
+            // own space. Realtime placeholder (range stays inside the room so
+            // rooms don't cross-light); bake before Quest trials - see
+            // docs/AESTHETICS_PLAN.md Part D.
+            CreatePointLight(root.transform, $"{content.StationId}_FillLight",
+                new Vector3(0f, 4.2f, 2.4f),
+                Color.Lerp(Color.white, themeColor, 0.25f), 0.9f, 12f);
+
             // Room name on the door lintel, readable from the hub side.
             CreateText(root.transform, content.Title,
                 new Vector3(0f, 3.5f, 6.1f), 0.035f, 30, TextAnchor.LowerCenter);
@@ -315,6 +323,59 @@ namespace NSFGrant.EditorTools
             go.transform.localScale = localScale;
             ApplyColor(go, color);
             return go;
+        }
+
+        /// <summary>Shadowless realtime point light (bake before Quest trials).</summary>
+        private static void CreatePointLight(Transform parent, string name,
+            Vector3 localPos, Color color, float intensity, float range)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.intensity = intensity;
+            light.range = range;
+            light.shadows = LightShadows.None;
+        }
+
+        /// <summary>Colliderless, steadily glowing trim bar (wayfinding accent).</summary>
+        private static void CreateGlowBar(Transform parent, string name,
+            Vector3 localPos, Vector3 localScale, Color color)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            go.GetComponent<Renderer>().sharedMaterial = SteadyGlowMaterial(color, 1.4f);
+        }
+
+        /// <summary>
+        /// Constant (non-pulsing) bright emissive material, via the
+        /// EmissivePulse shader with equal min/max intensity. Falls back to a
+        /// plain colored material if the shader is missing.
+        /// </summary>
+        private static Material SteadyGlowMaterial(Color color, float intensity)
+        {
+            var shader = Shader.Find("NSFGrant/EmissivePulse");
+            if (shader == null)
+            {
+                var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                var fallback = new Material(cube.GetComponent<Renderer>().sharedMaterial)
+                {
+                    color = color
+                };
+                Object.DestroyImmediate(cube);
+                return fallback;
+            }
+            var material = new Material(shader);
+            material.SetColor("_Color", color);
+            material.SetFloat("_MinIntensity", intensity);
+            material.SetFloat("_MaxIntensity", intensity);
+            return material;
         }
 
         private static GameObject CreateZone(Transform parent, string stationId, string zoneName,
@@ -575,9 +636,33 @@ namespace NSFGrant.EditorTools
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = 30f;
             RenderSettings.fogEndDistance = 110f;
-            RenderSettings.fogColor = new Color(0.70f, 0.75f, 0.82f);
+            RenderSettings.fogColor = new Color(0.72f, 0.79f, 0.87f);
+
+            ApplyGradientSky();
 
             CreateHub();
+        }
+
+        /// <summary>
+        /// Procedural gradient skybox (NSFGrant/GradientSky), saved as a
+        /// project asset so the RenderSettings.skybox reference survives scene
+        /// save/reload. No-op (default sky kept) if the shader is missing.
+        /// </summary>
+        private static void ApplyGradientSky()
+        {
+            var shader = Shader.Find("NSFGrant/GradientSky");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/GradientSky shader " +
+                                 "not found; keeping the default skybox.");
+                return;
+            }
+            const string skyPath = "Assets/StudyContent/DiscoveryHallSky.mat";
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            AssetDatabase.DeleteAsset(skyPath);
+            var skyMat = new Material(shader) { name = "DiscoveryHallSky" };
+            AssetDatabase.CreateAsset(skyMat, skyPath);
+            RenderSettings.skybox = skyMat;
         }
 
         /// <summary>
@@ -616,6 +701,21 @@ namespace NSFGrant.EditorTools
                     CreateWall(holder.transform, "Lintel",
                         new Vector3(0f, 3.6f, 0f), new Vector3(DoorWidth, 0.8f, 0.2f),
                         hubWallColor);
+
+                    // Steady warm wayfinding trim framing the opening, facing
+                    // the hub interior (local -z). Identical on all three
+                    // doorways, so it aids navigation without privileging one
+                    // room - distinct from the Condition-C beacon.
+                    var trimColor = new Color(1f, 0.93f, 0.78f);
+                    foreach (float x in new[] { -DoorWidth / 2f, DoorWidth / 2f })
+                    {
+                        CreateGlowBar(holder.transform, "DoorTrim",
+                            new Vector3(x, 1.6f, -0.12f), new Vector3(0.1f, 3.0f, 0.06f),
+                            trimColor);
+                    }
+                    CreateGlowBar(holder.transform, "DoorTrimTop",
+                        new Vector3(0f, 3.1f, -0.12f), new Vector3(DoorWidth + 0.1f, 0.1f, 0.06f),
+                        trimColor);
                 }
                 else
                 {
@@ -628,6 +728,11 @@ namespace NSFGrant.EditorTools
             CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "HubFloor",
                 new Vector3(0f, 0.02f, 0f), new Vector3(13.8f, 0.015f, 13.8f),
                 new Color(0.30f, 0.30f, 0.33f));
+
+            // Cool accent light picking out the waterfall (realtime
+            // placeholder; bake before Quest trials).
+            CreatePointLight(hub.transform, "WaterfallAccentLight",
+                new Vector3(0f, 3.2f, -4.6f), new Color(0.6f, 0.8f, 1f), 1.1f, 9f);
 
             // Stylized waterfall against the solid south wall — the hub's
             // namesake centerpiece. The two sheets scroll downward (the
