@@ -98,3 +98,32 @@ Nothing validates the instrumentation like one real session.
       (see `CONTENT_SOURCES.md`) and before opening the repo.
 - [ ] Open a PR from `claude/brave-euler-8p3tc3` once the scene verifies,
       so the team can review the week's work as one diff.
+
+## 7. Team feedback (2026-06-13) — triage
+
+Relayed from the team. Status: [x] done, [~] needs a decision before build,
+[ ] queued.
+
+- [x] **Click heatmap** — `NSF Grant > Analysis > Generate Click Heatmap...`
+      reads an events_*.csv and renders a top-down world heatmap + a
+      screen-space heatmap + per-AOI click counts. Offline only; no runtime
+      impact. (Verify against a real session CSV once we have one.)
+- [~] **Screen recording + send recording to Google Drive** — decide the
+      approach: in-engine capture (heavy on Quest; the design deliberately
+      uses low-rate stills instead) vs. external capture (Zoom/OBS) with an
+      auto-upload to Drive. A Drive upload seam can extend
+      `RemoteDataUploader`. Awaiting direction.
+- [~] **"SDG: prioritize these 4 values"** — meaning unclear: a participant
+      ranking task? narrowing the study to four goals/values? part of the
+      beauty-vs-information framing? Awaiting the four values + intent.
+- [~] **Gamify** — scope TBD: completion/progress (visit all rooms, badges),
+      a score for engagement, or quiz-as-challenge. Note: heavy game
+      mechanics risk confounding the attention measures; keep light and
+      symmetric across conditions.
+- [ ] **Beauty vs. information** — research framing (the two linked papers:
+      Kunitake, *Potential of VR for the SDGs*; Springer ch.
+      10.1007/978-3-031-81322-1_15). Both 403'd to automated fetch (Springer
+      paywalled); get PDFs/abstracts from the team. Already pulling in this
+      direction with the aesthetic pass — fold the framing into STUDY_DESIGN
+      and keep aesthetics even across format zones so it's a study variable,
+      not a confound.
