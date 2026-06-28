@@ -45,7 +45,7 @@ session, or programmatically (URL parameter / VERA assignment).
 | Navigation path | Ordered `station_enter` events + continuous head positions |
 | Use of help/avatar guidance | `docent_suggest` / `docent_target_reached` events |
 | Pre/post knowledge questions | `QuizDefinition` + `QuizRunner` (`quiz_response` events) — or VERA's survey tools |
-| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (off by default; 10 s interval, downscaled) |
+| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). `RemoteDataUploader` ships the PNGs with the CSVs; point its endpoint at a Drive-backed receiver to land them in Google Drive. |
 | Think-aloud recordings | Out of scope in-app — record via Zoom/room mic per protocol |
 | Biometrics (HRV, pupil dilation) | Not available on Quest hardware via public APIs; revisit with VERA team |
 
@@ -86,7 +86,7 @@ fallback.
 | `gaze_<id>_<utc>.csv` | Continuous per-frame samples: head pose, gaze ray, source, confidence, fixations, gaze hits |
 | `events_<id>_<utc>.csv` | Discrete events: clicks (screen + world coords), key presses, station enter/exit, docent guidance, quiz responses, session lifecycle |
 | `summary_<id>_<utc>.csv` | Per-target dwell/looks (with format + station), per-station time/visits, per-object activation counts |
-| `screenshots/*.png` | Optional low-rate stills (off by default) |
+| `screenshots/*.png` | Low-rate stills (enabled; uploaded with the CSVs) |
 
 ## Station content
 
@@ -108,7 +108,11 @@ the media from Drive if it is ever updated.
 ## Session flow & assignment (StudyIntake)
 
 One flow serves both samples: intake → pre-quiz → exploration →
-(F10) → post-quiz → done. Assignment priority:
+(F10) → post-quiz → value-ranking → done. The **value-ranking task**
+(`ValueRankingRunner` / `SdgValueRanking.asset`) has the participant
+prioritize four SDG-related values; responses log as `value_rank` /
+`value_rank_complete`. (The four values are placeholders pending team
+confirmation.) Assignment priority:
 
 1. **URL parameters** (web/desktop): `?pid=P123&cond=guided`
    (`cond` accepts `passive|interactive|guided` or `a|b|c`) — encode

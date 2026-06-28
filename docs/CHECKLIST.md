@@ -108,18 +108,22 @@ Relayed from the team. Status: [x] done, [~] needs a decision before build,
       reads an events_*.csv and renders a top-down world heatmap + a
       screen-space heatmap + per-AOI click counts. Offline only; no runtime
       impact. (Verify against a real session CSV once we have one.)
-- [~] **Screen recording + send recording to Google Drive** — decide the
-      approach: in-engine capture (heavy on Quest; the design deliberately
-      uses low-rate stills instead) vs. external capture (Zoom/OBS) with an
-      auto-upload to Drive. A Drive upload seam can extend
-      `RemoteDataUploader`. Awaiting direction.
-- [~] **"SDG: prioritize these 4 values"** — meaning unclear: a participant
-      ranking task? narrowing the study to four goals/values? part of the
-      beauty-vs-information framing? Awaiting the four values + intent.
-- [~] **Gamify** — scope TBD: completion/progress (visit all rooms, badges),
-      a score for engagement, or quiz-as-challenge. Note: heavy game
-      mechanics risk confounding the attention measures; keep light and
-      symmetric across conditions.
+- [x] **Recording → Drive (enable screenshots + upload)** — screenshot
+      capture is now ON in the built scene; `RemoteDataUploader` POSTs the
+      PNG stills alongside the CSVs. For Drive, point its `endpointUrl` at a
+      Drive-backed receiver (e.g. a Google Apps Script Web App keyed on the
+      `X-Study-Filename` header) — no Google creds in the build. Confirm
+      storage budget (~120 frames per 20-min session at the 10 s interval).
+- [x] **Value ranking task** — `ValueRankingDefinition` +
+      `ValueRankingRunner`, run post-exploration (Intake → pre-quiz →
+      explore → post-quiz → **ranking** → done); logs `value_rank` /
+      `value_rank_complete`. **The four values in `SdgValueRanking.asset`
+      are PLACEHOLDERS — the team must confirm/replace them** (edit the asset
+      or `CreateValueRankingAsset`). Skipped in VR like the quizzes.
+- [x] **Gamify (light)** — `ProgressTracker`: rooms-explored HUD +
+      completion badge, logs `room_progress` / `exploration_complete`.
+      Screen-space only (not a world AOI) and rewards completion, not
+      interaction, so it doesn't bias the attention measures.
 - [ ] **Beauty vs. information** — research framing (the two linked papers:
       Kunitake, *Potential of VR for the SDGs*; Springer ch.
       10.1007/978-3-031-81322-1_15). Both 403'd to automated fetch (Springer

@@ -9,7 +9,8 @@ namespace NSFGrant.Session
     /// Participant intake and session flow, so the same build runs unattended
     /// for the self-paced web sample and assisted in the LTI Lab:
     ///
-    ///   Intake -> pre-quiz -> exploration -> (End key) -> post-quiz -> done
+    ///   Intake -> pre-quiz -> exploration -> (End key) -> post-quiz
+    ///          -> value-ranking -> done
     ///
     /// Assignment sources, in priority order:
     ///   1. URL parameters on WebGL/desktop: ?pid=P123&amp;cond=guided
@@ -22,21 +23,24 @@ namespace NSFGrant.Session
     /// </summary>
     public class StudyIntake : MonoBehaviour
     {
-        private enum Phase { Intake, PreQuiz, Running, PostQuiz, Done }
+        private enum Phase { Intake, PreQuiz, Running, PostQuiz, Ranking, Done }
 
         [SerializeField] private SessionController session;
         [SerializeField] private QuizRunner quiz;
+        [SerializeField] private ValueRankingRunner ranking;
 
         [Tooltip("Key that ends exploration and opens the post-quiz (desktop).")]
         [SerializeField] private KeyCode endSessionKey = KeyCode.F10;
 
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
+        private bool _skipSurveys;
 
         private void Awake()
         {
             if (session == null) session = GetComponent<SessionController>();
             if (quiz == null) quiz = GetComponent<QuizRunner>();
+            if (ranking == null) ranking = GetComponent<ValueRankingRunner>();
         }
 
         private void Start()
@@ -67,20 +71,38 @@ namespace NSFGrant.Session
                     break;
 
                 case Phase.Running when Input.GetKeyDown(endSessionKey):
-                    if (quiz != null)
+                    if (!_skipSurveys && quiz != null)
                     {
                         quiz.Show("post");
                         _phase = Phase.PostQuiz;
                     }
                     else
                     {
-                        FinishSession();
+                        ShowRankingOrFinish();
                     }
                     break;
 
                 case Phase.PostQuiz when quiz == null || quiz.IsComplete:
+                    ShowRankingOrFinish();
+                    break;
+
+                case Phase.Ranking when ranking == null || ranking.IsComplete:
                     FinishSession();
                     break;
+            }
+        }
+
+        /// <summary>Post-exploration value-ranking task, then finish.</summary>
+        private void ShowRankingOrFinish()
+        {
+            if (!_skipSurveys && ranking != null)
+            {
+                ranking.Show();
+                _phase = Phase.Ranking;
+            }
+            else
+            {
+                FinishSession();
             }
         }
 
@@ -94,6 +116,7 @@ namespace NSFGrant.Session
             }
 
             session.ParticipantId = participantId;
+            _skipSurveys = skipQuizzes;
             session.StartSession();
 
             if (!skipQuizzes && quiz != null)

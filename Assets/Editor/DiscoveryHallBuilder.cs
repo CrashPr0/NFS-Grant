@@ -69,7 +69,12 @@ namespace NSFGrant.EditorTools
             study.AddComponent<GazeRaycaster>();
             study.AddComponent<AttentionDataLogger>();
             study.AddComponent<StudyEventLogger>();
-            study.AddComponent<ScreenshotCapture>();
+            // Low-rate screenshot capture enabled per the team's request;
+            // RemoteDataUploader ships these PNGs alongside the CSVs.
+            var screenshots = study.AddComponent<ScreenshotCapture>();
+            var shotSo = new SerializedObject(screenshots);
+            shotSo.FindProperty("captureEnabled").boolValue = true;
+            shotSo.ApplyModifiedPropertiesWithoutUndo();
             study.AddComponent<RemoteDataUploader>();
             study.AddComponent<StudyConditionManager>();
             study.AddComponent<VeraBridge>();
@@ -83,7 +88,13 @@ namespace NSFGrant.EditorTools
             var sessionSo = new SerializedObject(sessionController);
             sessionSo.FindProperty("autoStart").boolValue = false;
             sessionSo.ApplyModifiedPropertiesWithoutUndo();
-            study.AddComponent<StudyIntake>();
+            var studyIntake = study.AddComponent<StudyIntake>();
+
+            // Light gamification: rooms-explored progress + completion badge.
+            var progress = study.AddComponent<ProgressTracker>();
+            var progressSo = new SerializedObject(progress);
+            progressSo.FindProperty("session").objectReferenceValue = sessionController;
+            progressSo.ApplyModifiedPropertiesWithoutUndo();
 
             var gazeSo = new SerializedObject(gazeProvider);
             gazeSo.FindProperty("centerEyeAnchor").objectReferenceValue = centerEye;
@@ -97,6 +108,20 @@ namespace NSFGrant.EditorTools
             var quizSo = new SerializedObject(quizRunner);
             quizSo.FindProperty("quiz").objectReferenceValue = quizAsset;
             quizSo.ApplyModifiedPropertiesWithoutUndo();
+
+            // --- Post-exploration value-ranking task.
+            var rankingRunner = study.AddComponent<ValueRankingRunner>();
+            var rankingAsset = CreateValueRankingAsset();
+            var rankingSo = new SerializedObject(rankingRunner);
+            rankingSo.FindProperty("definition").objectReferenceValue = rankingAsset;
+            rankingSo.ApplyModifiedPropertiesWithoutUndo();
+
+            // Wire the survey runners StudyIntake drives through the flow.
+            var intakeSo = new SerializedObject(studyIntake);
+            intakeSo.FindProperty("session").objectReferenceValue = sessionController;
+            intakeSo.FindProperty("quiz").objectReferenceValue = quizRunner;
+            intakeSo.FindProperty("ranking").objectReferenceValue = rankingRunner;
+            intakeSo.ApplyModifiedPropertiesWithoutUndo();
 
             // --- Hall geometry, lighting and ambience.
             CreateHallEnvironment();
@@ -994,6 +1019,33 @@ namespace NSFGrant.EditorTools
             AssetDatabase.DeleteAsset(assetPath);
             AssetDatabase.CreateAsset(quiz, assetPath);
             return quiz;
+        }
+
+        /// <summary>
+        /// Seeds the value-ranking task. The four values are PLACEHOLDERS the
+        /// content team should confirm/replace (edit the asset or this method);
+        /// the prompt and values are data so no code change is needed.
+        /// </summary>
+        private static ValueRankingDefinition CreateValueRankingAsset()
+        {
+            var ranking = ScriptableObject.CreateInstance<ValueRankingDefinition>();
+            ranking.rankingId = "sdg_values";
+            ranking.prompt =
+                "After exploring the hall: which of these matters most to you for " +
+                "libraries advancing the UN SDGs? Rank from most (1) to least (4) important.";
+            ranking.values = new[]
+            {
+                "Quality education & lifelong learning (SDG 4)",
+                "Sustainable, inclusive communities (SDG 11)",
+                "Urgent climate action (SDG 13)",
+                "Equitable access for everyone"
+            };
+
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            const string assetPath = "Assets/StudyContent/SdgValueRanking.asset";
+            AssetDatabase.DeleteAsset(assetPath);
+            AssetDatabase.CreateAsset(ranking, assetPath);
+            return ranking;
         }
 
         private static void AddAttentionTarget(GameObject go, string id,
