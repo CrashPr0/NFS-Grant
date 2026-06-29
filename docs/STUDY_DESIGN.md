@@ -45,7 +45,7 @@ session, or programmatically (URL parameter / VERA assignment).
 | Navigation path | Ordered `station_enter` events + continuous head positions |
 | Use of help/avatar guidance | `docent_suggest` / `docent_target_reached` events |
 | Pre/post knowledge questions | `QuizDefinition` + `QuizRunner` (`quiz_response` events) — or VERA's survey tools |
-| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). `RemoteDataUploader` ships the PNGs with the CSVs; point its endpoint at a Drive-backed receiver to land them in Google Drive. |
+| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). `RemoteDataUploader` ships the PNGs with the CSVs; connect it to Google Drive via `docs/GOOGLE_DRIVE_SETUP.md`. |
 | Think-aloud recordings | Out of scope in-app — record via Zoom/room mic per protocol |
 | Biometrics (HRV, pupil dilation) | Not available on Quest hardware via public APIs; revisit with VERA team |
 

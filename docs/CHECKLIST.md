@@ -109,11 +109,12 @@ Relayed from the team. Status: [x] done, [~] needs a decision before build,
       screen-space heatmap + per-AOI click counts. Offline only; no runtime
       impact. (Verify against a real session CSV once we have one.)
 - [x] **Recording → Drive (enable screenshots + upload)** — screenshot
-      capture is now ON in the built scene; `RemoteDataUploader` POSTs the
-      PNG stills alongside the CSVs. For Drive, point its `endpointUrl` at a
-      Drive-backed receiver (e.g. a Google Apps Script Web App keyed on the
-      `X-Study-Filename` header) — no Google creds in the build. Confirm
-      storage budget (~120 frames per 20-min session at the 10 s interval).
+      capture is ON in the built scene; `RemoteDataUploader` POSTs the PNG
+      stills alongside the CSVs. **Google Drive connector:** deploy the Apps
+      Script Web App in `docs/GOOGLE_DRIVE_SETUP.md`, paste its URL + token
+      into the `RemoteDataUploader` component (no Google creds in the build).
+      Confirm storage budget (~120 frames per 20-min session at 10 s) and
+      that the folder's sharing meets the IRB/data plan before real data.
 - [x] **Value ranking task** — `ValueRankingDefinition` +
       `ValueRankingRunner`, run post-exploration (Intake → pre-quiz →
       explore → post-quiz → **ranking** → done); logs `value_rank` /
