@@ -48,7 +48,7 @@ namespace NSFGrant.Logging
             _platform = Sanitize(platform);
             _condition = Sanitize(condition);
 
-            string dir = Path.Combine(Application.persistentDataPath, "StudyData");
+            string dir = StudyPaths.Root;
             Directory.CreateDirectory(dir);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
             string path = Path.Combine(dir, $"events_{Sanitize(participantId)}_{stamp}.csv");

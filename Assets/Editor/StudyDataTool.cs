@@ -1,20 +1,39 @@
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using NSFGrant.Session;
 
 namespace NSFGrant.EditorTools
 {
     /// <summary>
-    /// Convenience menu for locating the collected study data. The logs are
-    /// written under <see cref="Application.persistentDataPath"/>/StudyData,
-    /// which is an awkward per-app path to find by hand (especially on
-    /// Windows under AppData\LocalLow). These items open it directly.
-    /// In the editor this is the same folder Play-mode sessions write to.
+    /// Convenience menu for locating the collected study data. By default the
+    /// logs are written under <see cref="Application.persistentDataPath"/>/
+    /// StudyData (an awkward per-app path, especially on Windows under
+    /// AppData\LocalLow). If the open scene's SessionController has a
+    /// <c>customDataFolder</c> set, that folder is used instead. These items
+    /// open whichever is active.
     /// </summary>
     public static class StudyDataTool
     {
-        private static string StudyDataDir =>
-            Path.Combine(Application.persistentDataPath, "StudyData");
+        // Mirrors StudyPaths.Root: the custom folder if the open scene's
+        // SessionController sets one, else the default StudyData path.
+        private static string StudyDataDir
+        {
+            get
+            {
+                var controller = Object.FindObjectOfType<SessionController>();
+                if (controller != null)
+                {
+                    var prop = new SerializedObject(controller)
+                        .FindProperty("customDataFolder");
+                    if (prop != null && !string.IsNullOrEmpty(prop.stringValue))
+                    {
+                        return prop.stringValue;
+                    }
+                }
+                return Path.Combine(Application.persistentDataPath, "StudyData");
+            }
+        }
 
         [MenuItem("NSF Grant/Analysis/Open Study Data Folder")]
         public static void OpenStudyDataFolder()

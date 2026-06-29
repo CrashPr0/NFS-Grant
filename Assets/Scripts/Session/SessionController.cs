@@ -29,6 +29,11 @@ namespace NSFGrant.Session
         [Tooltip("Begin logging as soon as the scene loads.")]
         [SerializeField] private bool autoStart = true;
 
+        [Tooltip("Optional folder where ALL session files are written (CSVs + " +
+                 "screenshots). Empty = the default persistentDataPath/StudyData. " +
+                 "Point it at any folder, including an OS-encrypted volume.")]
+        [SerializeField] private string customDataFolder = "";
+
         [SerializeField] private GazeProvider gazeProvider;
         [SerializeField] private GazeRaycaster gazeRaycaster;
         [SerializeField] private FixationDetector fixationDetector;
@@ -75,6 +80,10 @@ namespace NSFGrant.Session
             {
                 return;
             }
+
+            // Redirect every logger/screenshot/upload path to the chosen
+            // folder before any of them open files. Empty = default.
+            StudyPaths.OverrideRoot = customDataFolder;
 
             SessionTime = 0f;
             foreach (var target in FindObjectsOfType<AttentionTarget>())

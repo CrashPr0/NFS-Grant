@@ -142,6 +142,15 @@ On desktop the same files land in the OS-specific
 `Application.persistentDataPath`; on WebGL they are uploaded via
 `RemoteDataUploader` (configure the endpoint before building).
 
+**One folder for everything:** set **Custom Data Folder** on the
+`SessionController` (the `AttentionStudy` object) to write every file —
+CSVs and screenshots — into a folder you choose instead of the buried
+per-app path. Point it at a project folder, an external drive, or an
+OS-encrypted volume (BitLocker / FileVault / VeraCrypt) if the data must
+be private at rest. `NSF Grant > Analysis > Open Study Data Folder` opens
+whichever folder is active. To send copies to Google Drive on top of
+this, see [docs/GOOGLE_DRIVE_SETUP.md](docs/GOOGLE_DRIVE_SETUP.md).
+
 Retrieve them with:
 
 ```bash

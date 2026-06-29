@@ -40,8 +40,7 @@ namespace NSFGrant.Logging
 
         public bool IsLogging => _writer != null;
 
-        public string DataDirectory =>
-            Path.Combine(Application.persistentDataPath, "StudyData");
+        public string DataDirectory => StudyPaths.Root;
 
         public void StartSession(string participantId)
         {

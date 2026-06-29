@@ -36,7 +36,7 @@ namespace NSFGrant.Logging
             }
 
             _participantId = participantId;
-            _directory = Path.Combine(Application.persistentDataPath, "StudyData", "screenshots");
+            _directory = StudyPaths.ScreenshotsDir;
             Directory.CreateDirectory(_directory);
             _loop = StartCoroutine(CaptureLoop());
         }

@@ -50,7 +50,7 @@ namespace NSFGrant.Logging
 
         private IEnumerator UploadAll()
         {
-            string dir = Path.Combine(Application.persistentDataPath, "StudyData");
+            string dir = StudyPaths.Root;
             if (!Directory.Exists(dir))
             {
                 yield break;
@@ -61,7 +61,7 @@ namespace NSFGrant.Logging
                 yield return UploadFile(path, "text/csv");
             }
 
-            string shotDir = Path.Combine(dir, "screenshots");
+            string shotDir = StudyPaths.ScreenshotsDir;
             if (uploadScreenshots && Directory.Exists(shotDir))
             {
                 foreach (string path in Directory.GetFiles(shotDir, "*.png"))
