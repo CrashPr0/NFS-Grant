@@ -146,7 +146,7 @@ namespace NSFGrant.EditorTools
                 outputs.Add($"{p2}  ({screenPoints.Count} on-screen clicks, normalised to click bounds)");
             }
 
-            string summaryPath = Path.Combine(dir, $"clickcounts_{baseName}.txt");
+            string summaryPath = Path.Combine(dir, $"clickcounts_{baseName}.csv");
             WriteTargetSummary(summaryPath, perTarget);
             outputs.Add(summaryPath);
 
