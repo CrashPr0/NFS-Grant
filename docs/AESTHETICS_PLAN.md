@@ -122,6 +122,21 @@ today, with prefab visuals instead of primitives.
 > attention measures. The reflection probe is realtime like the point
 > lights and should be revisited (baked) alongside them at the URP/GI
 > migration in Part D.
+>
+> **Status (2026-06-30, baked sky + glass ceiling follow-up):**
+> `NSFGrant/GradientSky` is now baked into a static Cubemap
+> (`DiscoveryHallSkyBaked.asset`) + `Skybox/Cubemap` material at scene-
+> build time (`BakeGradientSkybox`, computed purely on the CPU - the
+> headless pipeline runs Unity with `-nographics`, where
+> `Camera.RenderToCubemap` would not work). The live procedural material
+> still gets saved alongside it for tweaking in the editor's Lighting
+> window, but the *active* skybox is the baked snapshot - cheaper to
+> sample than a custom shader pass on Quest, and it's what the hub
+> reflection probe now actually reflects. `HubCeiling` is no longer an
+> opaque disc: it's a full transparent glass pane (new
+> `NSFGrant/GlassCeiling` shader) that samples the hub's reflection probe
+> for a Fresnel-rimmed glint of the baked sky, so the whole hub ceiling
+> reads as a real skylight rather than just the central oculus inset.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

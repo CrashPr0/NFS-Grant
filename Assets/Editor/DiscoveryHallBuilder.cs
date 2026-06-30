@@ -671,7 +671,10 @@ namespace NSFGrant.EditorTools
         /// <summary>
         /// Procedural gradient skybox (NSFGrant/GradientSky), saved as a
         /// project asset so the RenderSettings.skybox reference survives scene
-        /// save/reload. No-op (default sky kept) if the shader is missing.
+        /// save/reload (and stays available to tweak live in the editor's
+        /// Lighting window). No-op (default sky kept) if the shader is
+        /// missing. The *active* skybox is then replaced with a baked
+        /// snapshot of it - see <see cref="BakeGradientSkybox"/>.
         /// </summary>
         private static void ApplyGradientSky()
         {
@@ -688,6 +691,115 @@ namespace NSFGrant.EditorTools
             var skyMat = new Material(shader) { name = "DiscoveryHallSky" };
             AssetDatabase.CreateAsset(skyMat, skyPath);
             RenderSettings.skybox = skyMat;
+
+            BakeGradientSkybox();
+        }
+
+        /// <summary>
+        /// Bakes the procedural gradient into a static Cubemap + a
+        /// Skybox/Cubemap material and assigns it as the active sky -
+        /// sampling a baked texture costs less than a custom shader pass on
+        /// Quest, and a baked Cubemap is also what the hub's reflection
+        /// probe and glass-ceiling shader end up reflecting. Computed
+        /// purely on the CPU (no camera render): the headless build
+        /// pipeline (scripts/unity-tasks.sh) runs Unity with -nographics,
+        /// where Camera.RenderToCubemap would not work. Colors/exponent are
+        /// read straight off NSFGrant/GradientSky's own Properties
+        /// defaults, so the bake can't drift out of sync with the shader;
+        /// the shader's slow horizon drift is necessarily lost in a static
+        /// snapshot. No-op if the source shader is missing.
+        /// </summary>
+        private static void BakeGradientSkybox()
+        {
+            var shader = Shader.Find("NSFGrant/GradientSky");
+            if (shader == null)
+            {
+                return;
+            }
+
+            var source = new Material(shader);
+            Color top = source.GetColor("_TopColor");
+            Color horizon = source.GetColor("_HorizonColor");
+            Color bottom = source.GetColor("_BottomColor");
+            float exponent = source.GetFloat("_Exponent");
+            Object.DestroyImmediate(source);
+
+            const int size = 128;
+            var cubemap = new Cubemap(size, TextureFormat.RGBA32, false) { name = "DiscoveryHallSkyBaked" };
+            var faces = new[]
+            {
+                CubemapFace.PositiveX, CubemapFace.NegativeX,
+                CubemapFace.PositiveY, CubemapFace.NegativeY,
+                CubemapFace.PositiveZ, CubemapFace.NegativeZ
+            };
+            foreach (CubemapFace face in faces)
+            {
+                var pixels = new Color[size * size];
+                for (int y = 0; y < size; y++)
+                {
+                    float v = (y + 0.5f) / size * 2f - 1f;
+                    for (int x = 0; x < size; x++)
+                    {
+                        float u = (x + 0.5f) / size * 2f - 1f;
+                        Vector3 dir = CubemapFaceDirection(face, u, v);
+                        pixels[y * size + x] = GradientSkyColor(dir, top, horizon, bottom, exponent);
+                    }
+                }
+                cubemap.SetPixels(pixels, face);
+            }
+            cubemap.Apply();
+
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            const string cubemapPath = "Assets/StudyContent/DiscoveryHallSkyBaked.asset";
+            AssetDatabase.DeleteAsset(cubemapPath);
+            AssetDatabase.CreateAsset(cubemap, cubemapPath);
+
+            var skyboxShader = Shader.Find("Skybox/Cubemap");
+            if (skyboxShader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] Built-in Skybox/Cubemap shader " +
+                                  "not found; keeping the live procedural sky.");
+                return;
+            }
+            var skyMat = new Material(skyboxShader) { name = "DiscoveryHallSkyBaked" };
+            skyMat.SetTexture("_Tex", cubemap);
+
+            const string matPath = "Assets/StudyContent/DiscoveryHallSkyBaked.mat";
+            AssetDatabase.DeleteAsset(matPath);
+            AssetDatabase.CreateAsset(skyMat, matPath);
+
+            RenderSettings.skybox = skyMat;
+        }
+
+        // Standard OpenGL cubemap face-direction convention: (u, v) in
+        // [-1, 1] map to a direction per face, with v increasing "upward" -
+        // matching Unity's bottom-left-origin pixel array layout, so this
+        // lines up with Cubemap.SetPixels without a vertical flip.
+        private static Vector3 CubemapFaceDirection(CubemapFace face, float u, float v)
+        {
+            switch (face)
+            {
+                case CubemapFace.PositiveX: return new Vector3(1f, -v, -u).normalized;
+                case CubemapFace.NegativeX: return new Vector3(-1f, -v, u).normalized;
+                case CubemapFace.PositiveY: return new Vector3(u, 1f, v).normalized;
+                case CubemapFace.NegativeY: return new Vector3(u, -1f, -v).normalized;
+                case CubemapFace.PositiveZ: return new Vector3(u, -v, 1f).normalized;
+                default: return new Vector3(-u, -v, -1f).normalized; // NegativeZ
+            }
+        }
+
+        // Mirrors NSFGrant/GradientSky's frag() math exactly (minus the
+        // horizon drift, which a static bake cannot represent).
+        private static Color GradientSkyColor(Vector3 dir, Color top, Color horizon, Color bottom, float exponent)
+        {
+            float h = dir.y;
+            if (h > 0f)
+            {
+                float t = Mathf.Pow(Mathf.Clamp01(h), exponent);
+                return Color.Lerp(horizon, top, t);
+            }
+            float tb = Mathf.Pow(Mathf.Clamp01(-h), exponent);
+            return Color.Lerp(horizon, bottom, tb);
         }
 
         /// <summary>
@@ -909,21 +1021,23 @@ namespace NSFGrant.EditorTools
         }
 
         /// <summary>
-        /// Pantheon-style oculus: a flat ceiling disc with a bright inset
-        /// "skylight" emissive panel at hub center, a soft additive light
-        /// shaft (NSFGrant/LightShaft) falling from it to the floor, and a
-        /// downward fill light so the beam actually lights the welcome
-        /// plinth below it. Environment-only, so it cannot bias the
-        /// attention measures - this is the "what can Unity do" centerpiece.
+        /// Pantheon-style glass ceiling: the whole hub ceiling is a
+        /// transparent, reflective pane (NSFGrant/GlassCeiling) so the now-
+        /// baked sky shows through it, with a brighter emissive "sun" inset
+        /// at hub center and a soft additive light shaft (NSFGrant/
+        /// LightShaft) falling from it to the floor, lit by a downward fill
+        /// light so the beam actually lights the welcome plinth below it.
+        /// Environment-only, so it cannot bias the attention measures -
+        /// this is the "what can Unity do" centerpiece.
         /// </summary>
         private static void CreateHubSkylight(Transform parent)
         {
             const float ceilingY = 4.3f;
             const float skylightY = ceilingY - 0.15f;
 
-            CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "HubCeiling",
-                new Vector3(0f, ceilingY, 0f), new Vector3(13.9f, 0.02f, 13.9f),
-                Color.Lerp(new Color(0.30f, 0.30f, 0.33f), Color.black, 0.35f));
+            var ceiling = CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "HubCeiling",
+                new Vector3(0f, ceilingY, 0f), new Vector3(13.9f, 0.02f, 13.9f), Color.white);
+            ceiling.GetComponent<Renderer>().sharedMaterial = GlassCeilingMaterial();
 
             var skylight = CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "SkylightOculus",
                 new Vector3(0f, skylightY, 0f), new Vector3(3.4f, 0.02f, 3.4f), Color.white);
@@ -959,6 +1073,25 @@ namespace NSFGrant.EditorTools
             var material = new Material(shader);
             material.SetColor("_Color", new Color(1f, 0.95f, 0.82f));
             return material;
+        }
+
+        /// <summary>
+        /// Transparent, reflective glass material (NSFGrant/GlassCeiling)
+        /// for the hub ceiling - samples the nearest reflection probe (see
+        /// <see cref="CreateReflectionProbe"/>) so the baked sky shows
+        /// through with a Fresnel glint. Falls back to a faint flat
+        /// translucent tint if the shader is missing.
+        /// </summary>
+        private static Material GlassCeilingMaterial()
+        {
+            var shader = Shader.Find("NSFGrant/GlassCeiling");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/GlassCeiling shader " +
+                                  "not found; using a faint static translucent ceiling.");
+                return TransparentMaterial(new Color(0.75f, 0.85f, 0.95f, 0.22f));
+            }
+            return new Material(shader);
         }
 
         /// <summary>
