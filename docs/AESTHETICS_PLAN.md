@@ -104,6 +104,24 @@ today, with prefab visuals instead of primitives.
 > and must be baked before Quest trials** (see Part D); ranges are kept
 > inside each room so they don't cross-light, but realtime per-pixel
 > lights cut against the baked-GI target.
+>
+> **Status (2026-06-30, hub showcase pass):** the hub is the demo
+> centerpiece, so it got a dedicated polish pass. Added a Pantheon-style
+> oculus skylight (`HubCeiling` + emissive `SkylightOculus` inset +
+> `NSFGrant/LightShaft`, a new additive, height-gradient CG shader) with
+> a downward fill light so the beam actually lights the floor below it;
+> a procedural radial-ring + room-spoke inlay floor (`NSFGrant/RadialFloor`,
+> a *Standard surface shader* - unlike the other NSFGrant shaders this one
+> is lit, so it keeps catching the key light, ambient trilight, and a new
+> realtime `HubReflectionProbe` at the hub center, refreshed once on
+> `OnAwake` rather than every frame); a wainscoting baseboard on the solid
+> hub walls; ambient warm motes drifting through the hub and a light mist
+> rising off the waterfall basin (both `ParticleSystem`, additive, with a
+> procedurally generated soft-dot sprite - no texture asset needed). All
+> environment-only (no `AttentionTarget`), so none of it can bias the
+> attention measures. The reflection probe is realtime like the point
+> lights and should be revisited (baked) alongside them at the URP/GI
+> migration in Part D.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

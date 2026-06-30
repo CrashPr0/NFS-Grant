@@ -746,13 +746,21 @@ namespace NSFGrant.EditorTools
                 {
                     CreateWall(holder.transform, "Wall",
                         new Vector3(0f, 2f, 0f), new Vector3(wallWidth, 4f, 0.2f), hubWallColor);
+                    // Wainscoting baseboard - a small architectural detail
+                    // that reads as "designed" rather than blank gray panels.
+                    CreateWall(holder.transform, "Baseboard",
+                        new Vector3(0f, 0.22f, 0.02f), new Vector3(wallWidth + 0.05f, 0.45f, 0.24f),
+                        Color.Lerp(hubWallColor, Color.black, 0.5f));
                 }
             }
 
-            // Hub floor disc.
-            CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "HubFloor",
-                new Vector3(0f, 0.02f, 0f), new Vector3(13.8f, 0.015f, 13.8f),
-                new Color(0.30f, 0.30f, 0.33f));
+            // Hub floor disc: procedural radial-ring + room-spoke inlay
+            // (PBR surface shader) instead of a flat tint - the showcase
+            // piece for "what Unity can do" in the hub.
+            CreateRadialHubFloor(hub.transform);
+            CreateHubSkylight(hub.transform);
+            CreateReflectionProbe(hub.transform, new Vector3(0f, 1.6f, 0f), 7f);
+            CreateAmbientMotes(hub.transform);
 
             // Cool accent light picking out the waterfall (realtime
             // placeholder; bake before Quest trials).
@@ -778,6 +786,7 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 0.3f, -4.7f), new Vector3(3.1f, 0.03f, 2.1f), Color.white);
             pond.GetComponent<Renderer>().sharedMaterial = AnimatedWaterMaterial(
                 new Color(0.5f, 0.75f, 0.95f, 0.55f), new Vector2(0.04f, 0.05f), 1.1f);
+            CreateWaterfallMist(hub.transform, new Vector3(0f, 0.35f, -4.7f));
 
             // Low info plinth between spawn and the center; the sign sits
             // below eye level so it never occludes the doorways.
@@ -855,6 +864,281 @@ namespace NSFGrant.EditorTools
             }
             var material = new Material(shader);
             material.SetColor("_Color", color);
+            return material;
+        }
+
+        /// <summary>
+        /// Hub floor disc using the procedural radial-ring + room-spoke
+        /// inlay (NSFGrant/RadialFloor), a real Standard surface shader so
+        /// it keeps catching the key light, ambient trilight, and the hub
+        /// reflection probe like every other primitive in the room.
+        /// </summary>
+        private static void CreateRadialHubFloor(Transform parent)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            go.name = "HubFloor";
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.02f, 0f);
+            go.transform.localScale = new Vector3(13.8f, 0.015f, 13.8f);
+            go.GetComponent<Renderer>().sharedMaterial = RadialFloorMaterial();
+        }
+
+        private static Material RadialFloorMaterial()
+        {
+            var shader = Shader.Find("NSFGrant/RadialFloor");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/RadialFloor shader " +
+                                  "not found; using a flat floor tint.");
+                var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                var fallback = new Material(cube.GetComponent<Renderer>().sharedMaterial)
+                {
+                    color = new Color(0.30f, 0.30f, 0.33f)
+                };
+                Object.DestroyImmediate(cube);
+                return fallback;
+            }
+            var material = new Material(shader);
+            material.SetColor("_BaseColor", new Color(0.30f, 0.30f, 0.33f));
+            material.SetColor("_RingColor", new Color(0.55f, 0.57f, 0.62f));
+            material.SetColor("_SpokeColor", new Color(1f, 0.85f, 0.55f));
+            // Matches the -120/0/120 station angles in BuildDiscoveryHall.
+            material.SetVector("_SpokeAngles", new Vector4(-120f, 0f, 120f, 0f));
+            return material;
+        }
+
+        /// <summary>
+        /// Pantheon-style oculus: a flat ceiling disc with a bright inset
+        /// "skylight" emissive panel at hub center, a soft additive light
+        /// shaft (NSFGrant/LightShaft) falling from it to the floor, and a
+        /// downward fill light so the beam actually lights the welcome
+        /// plinth below it. Environment-only, so it cannot bias the
+        /// attention measures - this is the "what can Unity do" centerpiece.
+        /// </summary>
+        private static void CreateHubSkylight(Transform parent)
+        {
+            const float ceilingY = 4.3f;
+            const float skylightY = ceilingY - 0.15f;
+
+            CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "HubCeiling",
+                new Vector3(0f, ceilingY, 0f), new Vector3(13.9f, 0.02f, 13.9f),
+                Color.Lerp(new Color(0.30f, 0.30f, 0.33f), Color.black, 0.35f));
+
+            var skylight = CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "SkylightOculus",
+                new Vector3(0f, skylightY, 0f), new Vector3(3.4f, 0.02f, 3.4f), Color.white);
+            skylight.GetComponent<Renderer>().sharedMaterial =
+                SteadyGlowMaterial(new Color(1f, 0.95f, 0.82f), 2.2f);
+
+            var beam = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            beam.name = "SkylightBeam";
+            Object.DestroyImmediate(beam.GetComponent<Collider>());
+            beam.transform.SetParent(parent, false);
+            beam.transform.localPosition = new Vector3(0f, skylightY * 0.5f, 0f);
+            beam.transform.localScale = new Vector3(2.6f, skylightY * 0.5f, 2.6f);
+            beam.GetComponent<Renderer>().sharedMaterial = LightShaftMaterial();
+
+            CreatePointLight(parent, "SkylightFill",
+                new Vector3(0f, skylightY - 0.2f, 0f), new Color(1f, 0.95f, 0.85f), 1.3f, 9f);
+        }
+
+        /// <summary>
+        /// Additive light-shaft material (NSFGrant/LightShaft) for the hub
+        /// oculus beam. Falls back to a faint static translucent fill if
+        /// the shader is missing.
+        /// </summary>
+        private static Material LightShaftMaterial()
+        {
+            var shader = Shader.Find("NSFGrant/LightShaft");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/LightShaft shader " +
+                                  "not found; falling back to a static translucent fill.");
+                return TransparentMaterial(new Color(1f, 0.95f, 0.82f, 0.12f));
+            }
+            var material = new Material(shader);
+            material.SetColor("_Color", new Color(1f, 0.95f, 0.82f));
+            return material;
+        }
+
+        /// <summary>
+        /// Realtime reflection probe at the hub center so the radial floor
+        /// (and every other Standard-shaded primitive in the room) picks up
+        /// real environment reflections. Refreshes once on scene start
+        /// (OnAwake) rather than every frame, since the hub is static - a
+        /// genuine reflection capture for the cost of a single bake.
+        /// Revisit alongside the other realtime lights at the URP/baked-GI
+        /// migration (docs/AESTHETICS_PLAN.md Part D).
+        /// </summary>
+        private static void CreateReflectionProbe(Transform parent, Vector3 localPos, float radius)
+        {
+            var go = new GameObject("HubReflectionProbe");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            var probe = go.AddComponent<ReflectionProbe>();
+            probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Realtime;
+            probe.refreshMode = UnityEngine.Rendering.ReflectionProbeRefreshMode.OnAwake;
+            probe.resolution = 128;
+            probe.size = new Vector3(radius * 2f, 5f, radius * 2f);
+            probe.intensity = 0.6f;
+        }
+
+        /// <summary>
+        /// Slow, sparse warm motes drifting up through the hub. Pure
+        /// atmosphere - no AttentionTarget, so it carries no gaze-data
+        /// weight and cannot confound the study measures.
+        /// </summary>
+        private static void CreateAmbientMotes(Transform parent)
+        {
+            var go = new GameObject("AmbientMotes");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(9f, 15f);
+            main.startSpeed = 0f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.025f, 0.06f);
+            main.startColor = new Color(1f, 0.92f, 0.72f, 1f);
+            main.maxParticles = 60;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 3.5f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(11f, 0.1f, 11f);
+
+            var vel = ps.velocityOverLifetime;
+            vel.enabled = true;
+            vel.space = ParticleSystemSimulationSpace.World;
+            vel.y = new ParticleSystem.MinMaxCurve(0.12f, 0.28f);
+            vel.x = new ParticleSystem.MinMaxCurve(-0.05f, 0.05f);
+            vel.z = new ParticleSystem.MinMaxCurve(-0.05f, 0.05f);
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[]
+                {
+                    new GradientColorKey(new Color(1f, 0.88f, 0.6f), 0f),
+                    new GradientColorKey(new Color(1f, 0.95f, 0.8f), 1f)
+                },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(0.55f, 0.25f),
+                    new GradientAlphaKey(0.55f, 0.75f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = grad;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.material = ParticleMaterial(additive: true);
+        }
+
+        /// <summary>
+        /// Light spray rising off the waterfall basin - short-lived
+        /// particles bursting gently up and falling back under light
+        /// gravity, so the water feature reads as actually striking water.
+        /// </summary>
+        private static void CreateWaterfallMist(Transform parent, Vector3 localPos)
+        {
+            var go = new GameObject("WaterfallMist");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            // Cone shape emits along local +Z by default; this rotation
+            // points that axis straight up.
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.1f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 1.0f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.07f);
+            main.startColor = new Color(0.85f, 0.93f, 1f, 0.8f);
+            main.gravityModifier = 0.6f;
+            main.maxParticles = 40;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 18f;
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 25f;
+            shape.radius = 0.6f;
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(0.7f, 0.3f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = grad;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.material = ParticleMaterial(additive: true);
+        }
+
+        private static Texture2D _softDotTexture;
+
+        /// <summary>Soft radial-falloff sprite, built once and shared by every particle material.</summary>
+        private static Texture2D SoftDotTexture()
+        {
+            if (_softDotTexture != null)
+            {
+                return _softDotTexture;
+            }
+
+            const int size = 32;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "NSFGrant_SoftDot" };
+            var pixels = new Color32[size * size];
+            float center = (size - 1) * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Vector2.Distance(new Vector2(x, y), new Vector2(center, center)) / center;
+                    float a = Mathf.Clamp01(1f - dist);
+                    a *= a;
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, a);
+                }
+            }
+            tex.SetPixels32(pixels);
+            tex.Apply();
+            _softDotTexture = tex;
+            return tex;
+        }
+
+        /// <summary>Soft circular particle material; additive glow or alpha-blended.</summary>
+        private static Material ParticleMaterial(bool additive)
+        {
+            var shader = Shader.Find(additive ? "Particles/Additive" : "Particles/Alpha Blended");
+            if (shader == null)
+            {
+                shader = Shader.Find("Mobile/Particles/Additive");
+            }
+            if (shader == null)
+            {
+                shader = Shader.Find("Sprites/Default");
+            }
+            var material = new Material(shader);
+            if (material.HasProperty("_MainTex"))
+            {
+                material.mainTexture = SoftDotTexture();
+            }
             return material;
         }
 
