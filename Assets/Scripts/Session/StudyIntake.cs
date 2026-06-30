@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using NSFGrant.Core;
 using NSFGrant.Survey;
+using NSFGrant.UI;
 
 namespace NSFGrant.Session
 {
@@ -188,32 +189,75 @@ namespace NSFGrant.Session
 
         private void DrawIntakePanel()
         {
-            const float width = 420f;
-            GUILayout.BeginArea(
-                new Rect((Screen.width - width) * 0.5f, 120f, width, 240f), GUI.skin.box);
-            GUILayout.Label("UN SDG Discovery Hall - Study Session");
-            GUILayout.Space(8f);
-            GUILayout.Label("Participant ID:");
-            _enteredId = GUILayout.TextField(_enteredId, 32);
-            GUILayout.Space(8f);
+            float baseUnit = StudyGuiKit.BaseUnit();
 
-            GUI.enabled = !string.IsNullOrWhiteSpace(_enteredId);
-            if (GUILayout.Button("Start", GUILayout.Height(32f)))
+            float pad     = 30f * baseUnit;
+            float headerH = 64f * baseUnit;
+            float labelH  = 24f * baseUnit;
+            float fieldH  = 46f * baseUnit;
+            float gap     = 14f * baseUnit;
+            float btnH    = 52f * baseUnit;
+
+            float cardW = Mathf.Min(520f * baseUnit, Screen.width - 60f);
+            float cardH = headerH + pad + labelH + fieldH + gap + btnH + pad;
+            float cardX = (Screen.width - cardW) * 0.5f;
+            float cardY = (Screen.height - cardH) * 0.5f;
+
+            StudyGuiKit.DrawOverlay();
+            StudyGuiKit.DrawCard(new Rect(cardX, cardY, cardW, cardH));
+            StudyGuiKit.DrawHeader(new Rect(cardX, cardY, cardW, headerH));
+
+            var titleStyle = StudyGuiKit.TitleStyle(baseUnit);
+            GUI.Label(new Rect(cardX + pad, cardY, cardW - pad * 2f, headerH * 0.6f),
+                      "UN SDG Discovery Hall", titleStyle);
+            GUI.Label(new Rect(cardX + pad, cardY + headerH * 0.55f, cardW - pad * 2f, headerH * 0.45f),
+                      "Study Session", StudyGuiKit.SubtitleStyle(baseUnit));
+
+            float x = cardX + pad;
+            float w = cardW - pad * 2f;
+            float y = cardY + headerH + pad;
+
+            GUI.Label(new Rect(x, y, w, labelH), "Participant ID", StudyGuiKit.BodyStyle(baseUnit));
+            y += labelH;
+            GUI.SetNextControlName("ParticipantIdField");
+            _enteredId = GUI.TextField(new Rect(x, y, w, fieldH), _enteredId, 32, StudyGuiKit.FieldStyle(baseUnit));
+            y += fieldH + gap;
+
+            bool canStart = !string.IsNullOrWhiteSpace(_enteredId);
+            var prevColor = GUI.color;
+            if (!canStart) GUI.color = new Color(1f, 1f, 1f, 0.5f);
+            GUI.enabled = canStart;
+            if (GUI.Button(new Rect(x, y, w, btnH), "Start", StudyGuiKit.ButtonStyle(baseUnit)))
             {
                 Begin(_enteredId.Trim(), null, skipQuizzes: false);
             }
             GUI.enabled = true;
-            GUILayout.EndArea();
+            GUI.color = prevColor;
         }
 
         private void DrawDonePanel()
         {
-            const float width = 420f;
-            GUILayout.BeginArea(
-                new Rect((Screen.width - width) * 0.5f, 120f, width, 120f), GUI.skin.box);
-            GUILayout.Label("Session complete - thank you for participating!");
-            GUILayout.Label("Your responses have been recorded. You may close this window.");
-            GUILayout.EndArea();
+            float baseUnit = StudyGuiKit.BaseUnit();
+
+            float pad     = 30f * baseUnit;
+            float headerH = 64f * baseUnit;
+            float bodyH   = 80f * baseUnit;
+
+            float cardW = Mathf.Min(520f * baseUnit, Screen.width - 60f);
+            float cardH = headerH + pad + bodyH + pad;
+            float cardX = (Screen.width - cardW) * 0.5f;
+            float cardY = (Screen.height - cardH) * 0.5f;
+
+            StudyGuiKit.DrawOverlay();
+            StudyGuiKit.DrawCard(new Rect(cardX, cardY, cardW, cardH));
+            StudyGuiKit.DrawAccentHeader(new Rect(cardX, cardY, cardW, headerH));
+            GUI.Label(new Rect(cardX + pad, cardY, cardW - pad * 2f, headerH),
+                      "Session Complete", StudyGuiKit.TitleStyle(baseUnit));
+
+            var bodyStyle = StudyGuiKit.BodyStyle(baseUnit);
+            GUI.Label(new Rect(cardX + pad, cardY + headerH + pad, cardW - pad * 2f, bodyH),
+                      "Thank you for participating! Your responses have been recorded. " +
+                      "You may close this window.", bodyStyle);
         }
     }
 }
