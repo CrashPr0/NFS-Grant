@@ -981,9 +981,11 @@ namespace NSFGrant.EditorTools
 
         /// <summary>
         /// Hub floor disc using the procedural radial-ring + room-spoke
-        /// inlay (NSFGrant/RadialFloor), a real Standard surface shader so
-        /// it keeps catching the key light, ambient trilight, and the hub
-        /// reflection probe like every other primitive in the room.
+        /// inlay (NSFGrant/RadialFloor) - a plain CGPROGRAM pass, not a
+        /// Standard surface shader (those depend on the Built-in Render
+        /// Pipeline's lighting library and fail to compile under URP), so
+        /// it renders the pattern correctly under either pipeline but does
+        /// not react to the key light/ambient like a Lit floor would.
         /// </summary>
         private static void CreateRadialHubFloor(Transform parent)
         {

@@ -110,11 +110,9 @@ today, with prefab visuals instead of primitives.
 > oculus skylight (`HubCeiling` + emissive `SkylightOculus` inset +
 > `NSFGrant/LightShaft`, a new additive, height-gradient CG shader) with
 > a downward fill light so the beam actually lights the floor below it;
-> a procedural radial-ring + room-spoke inlay floor (`NSFGrant/RadialFloor`,
-> a *Standard surface shader* - unlike the other NSFGrant shaders this one
-> is lit, so it keeps catching the key light, ambient trilight, and a new
-> realtime `HubReflectionProbe` at the hub center, refreshed once on
-> `OnAwake` rather than every frame); a wainscoting baseboard on the solid
+> a procedural radial-ring + room-spoke inlay floor (`NSFGrant/RadialFloor`);
+> a new realtime `HubReflectionProbe` at the hub center, refreshed once on
+> `OnAwake` rather than every frame; a wainscoting baseboard on the solid
 > hub walls; ambient warm motes drifting through the hub and a light mist
 > rising off the waterfall basin (both `ParticleSystem`, additive, with a
 > procedurally generated soft-dot sprite - no texture asset needed). All
@@ -137,6 +135,18 @@ today, with prefab visuals instead of primitives.
 > `NSFGrant/GlassCeiling` shader) that samples the hub's reflection probe
 > for a Fresnel-rimmed glint of the baked sky, so the whole hub ceiling
 > reads as a real skylight rather than just the central oculus inset.
+>
+> **Status (2026-06-30, magenta-floor fix):** `NSFGrant/RadialFloor` was
+> originally written as a `#pragma surface` Standard surface shader so it
+> would react to real lighting - but surface shaders depend on the Built-
+> in Render Pipeline's lighting library and fail to compile under URP,
+> which Unity reports by swapping in the magenta error material (exactly
+> what showed up on the hub floor once URP was active). Rewritten as a
+> plain CGPROGRAM pass like every other NSFGrant shader; it renders the
+> ring/spoke pattern correctly under either pipeline now, at the cost of
+> no longer reacting to the directional key light. Worth remembering for
+> the URP migration below: `#pragma surface` is off the table for any
+> future NSFGrant shader on this project.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +
