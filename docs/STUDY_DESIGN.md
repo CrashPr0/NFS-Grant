@@ -57,9 +57,10 @@ left-click to select). `PlatformDetector.PlatformTag` stamps every data file
 with `headset` or `desktop` so the groups separate cleanly in analysis.
 
 - Headset: eye gaze (Quest Pro) or head gaze (Quest 3) + controller-trigger
-  selection + `VRLocomotion` teleport/snap-turn (no XR Interaction Toolkit
-  or Meta Interaction SDK is installed, so this is hand-rolled — see
-  Packages/manifest.json).
+  selection + `VRLocomotion` (left-stick smooth walk, right-stick teleport +
+  snap-turn; no XR Interaction Toolkit or Meta Interaction SDK is installed,
+  so this is hand-rolled — see Packages/manifest.json). Smooth walking needs
+  no discrete event: the per-frame head-position stream captures it.
 - Desktop/WebGL: camera-forward "head gaze" proxy + full pointer/keyboard stream.
 - Web data return: `RemoteDataUploader` POSTs the session CSVs to a
   configurable endpoint at session end (or hand off to VERA ingestion).

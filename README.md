@@ -99,13 +99,19 @@ classic Input API).
 
 ### VR (Quest) controls
 
-Gaze at content and pull **either trigger** to select (a short haptic pulse
-confirms the hit). Push the **right thumbstick forward** to aim a teleport
-arc from that controller and release to teleport onto the highlighted spot
-(green = valid, red = out of bounds); flick the **left thumbstick**
-left/right to snap-turn. Both fade briefly to black — the hall's hub-to-room
-distance is well past a typical Guardian space, so teleporting is the only
-way to reach the rooms without physically walking that far.
+Standard Quest scheme. **Left thumbstick** walks smoothly in the direction
+you're facing (with real wall collision). Push the **right thumbstick
+forward** to aim a teleport arc and release to jump to the highlighted spot
+(green = valid, red = out of bounds); flick the **right thumbstick**
+left/right to snap-turn in place. Teleports and turns fade briefly to
+black. Gaze at content and pull **either trigger** to select (a short
+haptic pulse confirms the hit).
+
+> **Rebuild the scene before every headset build.** The scene file is
+> generated output — `scripts/unity-tasks.sh build-quest` now regenerates
+> it automatically, but if you Build And Run from the editor, run
+> **`NSF Grant > Build Discovery Hall Scene`** first or the APK ships
+> whatever old scene is on disk.
 
 ## How it works
 
@@ -119,7 +125,8 @@ way to reach the rooms without physically walking that far.
 | `InteractableObject` | Clickable content; every activation logged with world (and on desktop, screen) coordinates. Content response suppressed in the Passive condition. |
 | `DesktopInteractor` / `DesktopPlayerController` | Laptop/WebGL input: WASD + mouse-look navigation, click logging with 2D screen coords, key-press logging. |
 | `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR; short haptic pulse on a successful selection. |
-| `VRLocomotion` | Hand-rolled VR teleport (arc + reticle) and snap-turn, since the hall spans well past any realistic Guardian space. Fades to black around both, and logs every teleport/turn. |
+| `VRLocomotion` | Hand-rolled VR locomotion: left-stick smooth walk (CharacterController collision), right-stick teleport arc + reticle, right-stick snap turn pivoting on the head. Fades to black around jumps; logs every teleport/turn. |
+| `ProceduralAmbience` | Runtime-synthesized spatial waterfall loop in the hub (no audio asset); fixed seed so every participant hears the same sound. |
 | `TeleportSurface` | Marks a collider as a valid teleport destination (the hall's base floor plane). |
 | `StudyConditionManager` | Holds the active condition (Passive / Interactive / Guided). |
 | `DocentGuide` | Guided-condition route: beacon highlights the next suggested station; all guidance logged. |

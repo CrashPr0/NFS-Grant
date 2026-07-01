@@ -147,6 +147,25 @@ today, with prefab visuals instead of primitives.
 > no longer reacting to the directional key light. Worth remembering for
 > the URP migration below: `#pragma surface` is off the table for any
 > future NSFGrant shader on this project.
+>
+> **Status (2026-07-01, headset pass):** first on-device test found VR
+> locomotion dead — root causes: (1) `CiTools` player builds reused a
+> stale scene generated before `VRLocomotion` existed (builds now ALWAYS
+> regenerate the scene); (2) the teleport arc's `Physics.Linecast` hit
+> the invisible `SdgStation` trigger volumes, which extend into the
+> corridors (now `QueryTriggerInteraction.Ignore`). Locomotion was also
+> reworked to the standard Quest scheme: left stick = smooth walk driven
+> through a CharacterController (real wall collision), right stick
+> forward = teleport, right stick left/right = snap turn pivoting around
+> the *head* (pivoting the rig origin translates the user sideways), and
+> teleports land the head - not the rig origin - on the reticle. Hub
+> beauty pass for the headset: a colonnade at the six hexagon corners
+> (warm glowing capitals echoing the door trim; symmetric, so no room is
+> privileged), stone benches facing the waterfall, a runtime-synthesized
+> spatialized waterfall loop (`ProceduralAmbience`, fixed seed, hub-only
+> and equidistant from all rooms so it favors no condition), and the sky
+> bake bumped to 256/face with a half-LSB dither because 8-bit gradient
+> banding is clearly visible on a headset display.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

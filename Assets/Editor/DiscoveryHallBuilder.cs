@@ -742,7 +742,10 @@ namespace NSFGrant.EditorTools
             float exponent = source.GetFloat("_Exponent");
             Object.DestroyImmediate(source);
 
-            const int size = 128;
+            // 256/face + a +/-half-LSB hash dither: a smooth gradient
+            // quantized straight to 8-bit shows visible banding on a
+            // headset display; the dither trades it for imperceptible noise.
+            const int size = 256;
             var cubemap = new Cubemap(size, TextureFormat.RGBA32, false) { name = "DiscoveryHallSkyBaked" };
             var faces = new[]
             {
@@ -750,8 +753,9 @@ namespace NSFGrant.EditorTools
                 CubemapFace.PositiveY, CubemapFace.NegativeY,
                 CubemapFace.PositiveZ, CubemapFace.NegativeZ
             };
-            foreach (CubemapFace face in faces)
+            for (int f = 0; f < faces.Length; f++)
             {
+                CubemapFace face = faces[f];
                 var pixels = new Color[size * size];
                 for (int y = 0; y < size; y++)
                 {
@@ -760,7 +764,15 @@ namespace NSFGrant.EditorTools
                     {
                         float u = (x + 0.5f) / size * 2f - 1f;
                         Vector3 dir = CubemapFaceDirection(face, u, v);
-                        pixels[y * size + x] = GradientSkyColor(dir, top, horizon, bottom, exponent);
+                        Color c = GradientSkyColor(dir, top, horizon, bottom, exponent);
+
+                        // Deterministic per-pixel hash in [-0.5, 0.5] LSB.
+                        uint h = (uint)(x * 374761393 + y * 668265263 + f * 2246822519);
+                        h = (h ^ (h >> 13)) * 1274126177u;
+                        float dither = (((h >> 8) & 0xFFFF) / 65535f - 0.5f) / 255f;
+                        c.r += dither; c.g += dither; c.b += dither;
+
+                        pixels[y * size + x] = c;
                     }
                 }
                 cubemap.SetPixels(pixels, face);
@@ -892,6 +904,13 @@ namespace NSFGrant.EditorTools
             CreateReflectionProbe(hub.transform, new Vector3(0f, 1.6f, 0f), 7f);
             CreateAmbientMotes(hub.transform);
 
+            // Colonnade at the six hexagon corners (walls are centered at
+            // 60-degree steps, so the corners sit at the 30-degree offsets,
+            // clear of every doorway). Near-field vertical geometry is a
+            // strong parallax/depth cue in the headset, where the bare
+            // walls otherwise read as a flat backdrop.
+            CreateColonnade(hub.transform);
+
             // Cool accent light picking out the waterfall (realtime
             // placeholder; bake before Quest trials).
             CreatePointLight(hub.transform, "WaterfallAccentLight",
@@ -917,6 +936,35 @@ namespace NSFGrant.EditorTools
             pond.GetComponent<Renderer>().sharedMaterial = AnimatedWaterMaterial(
                 new Color(0.5f, 0.75f, 0.95f, 0.55f), new Vector2(0.04f, 0.05f), 1.1f);
             CreateWaterfallMist(hub.transform, new Vector3(0f, 0.35f, -4.7f));
+
+            // Spatialized waterfall sound, synthesized at runtime (no audio
+            // asset). Hearing the water from the right direction is a huge
+            // presence cue in the headset; the source is hub-only and
+            // equidistant from the three rooms, so it favors no condition.
+            var ambience = new GameObject("WaterfallAmbience");
+            ambience.transform.SetParent(hub.transform, false);
+            ambience.transform.localPosition = new Vector3(0f, 1.2f, -4.9f);
+            ambience.AddComponent<ProceduralAmbience>();
+
+            // Stone benches flanking the basin, angled toward the water -
+            // they invite participants to pause in the hub and give the
+            // space furniture-scale detail, which headset viewing rewards.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                var bench = new GameObject(side < 0f ? "Bench_L" : "Bench_R");
+                bench.transform.SetParent(hub.transform, false);
+                bench.transform.localPosition = new Vector3(side * 3.1f, 0f, -3.1f);
+                bench.transform.localRotation = Quaternion.Euler(0f, side * 35f, 0f);
+                CreateWall(bench.transform, "Seat",
+                    new Vector3(0f, 0.42f, 0f), new Vector3(1.7f, 0.1f, 0.48f),
+                    Color.Lerp(stone, Color.white, 0.15f));
+                foreach (float end in new[] { -0.7f, 0.7f })
+                {
+                    CreateWall(bench.transform, "Leg",
+                        new Vector3(end, 0.19f, 0f), new Vector3(0.14f, 0.38f, 0.42f),
+                        Color.Lerp(stone, Color.black, 0.3f));
+                }
+            }
 
             // Low info plinth between spawn and the center; the sign sits
             // below eye level so it never occludes the doorways.
@@ -1134,6 +1182,52 @@ namespace NSFGrant.EditorTools
             probe.resolution = 128;
             probe.size = new Vector3(radius * 2f, 5f, radius * 2f);
             probe.intensity = 0.6f;
+        }
+
+        /// <summary>
+        /// Six columns at the hexagon corners (30-degree offsets from the
+        /// wall centers, so none stands in a doorway): base, shaft, warm
+        /// glowing capital ring echoing the doorway trim, and cap. The
+        /// shaft keeps its collider - it's architecture, and the smooth-
+        /// locomotion CharacterController should collide with it like a
+        /// wall. Identical at all six corners: adds VR depth/parallax
+        /// without privileging any room.
+        /// </summary>
+        private static void CreateColonnade(Transform parent)
+        {
+            var stone = new Color(0.34f, 0.35f, 0.39f);
+            var warmTrim = new Color(1f, 0.93f, 0.78f);
+            const float cornerRadius = 6.45f;
+
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = i * 60f - 150f;
+                var column = new GameObject($"HubColumn_{angle:F0}");
+                column.transform.SetParent(parent, false);
+                column.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
+                column.transform.localPosition =
+                    Quaternion.Euler(0f, angle, 0f) * (Vector3.forward * cornerRadius);
+
+                CreateVisualPrimitive(column.transform, PrimitiveType.Cylinder, "Base",
+                    new Vector3(0f, 0.05f, 0f), new Vector3(0.56f, 0.05f, 0.56f),
+                    Color.Lerp(stone, Color.black, 0.35f));
+
+                // Shaft keeps the primitive's collider (walkable-space geometry).
+                var shaft = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                shaft.name = "Shaft";
+                shaft.transform.SetParent(column.transform, false);
+                shaft.transform.localPosition = new Vector3(0f, 1.95f, 0f);
+                shaft.transform.localScale = new Vector3(0.34f, 1.9f, 0.34f);
+                ApplyColor(shaft, stone);
+
+                var ring = CreateVisualPrimitive(column.transform, PrimitiveType.Cylinder, "CapitalRing",
+                    new Vector3(0f, 3.9f, 0f), new Vector3(0.46f, 0.03f, 0.46f), Color.white);
+                ring.GetComponent<Renderer>().sharedMaterial = SteadyGlowMaterial(warmTrim, 1.2f);
+
+                CreateVisualPrimitive(column.transform, PrimitiveType.Cylinder, "Cap",
+                    new Vector3(0f, 3.99f, 0f), new Vector3(0.52f, 0.05f, 0.52f),
+                    Color.Lerp(stone, Color.black, 0.35f));
+            }
         }
 
         /// <summary>

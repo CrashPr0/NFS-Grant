@@ -57,7 +57,7 @@ namespace NSFGrant.EditorTools
 
         public static void BuildQuest()
         {
-            EnsureSceneExists();
+            PrepareScene();
             EditorUserBuildSettings.buildAppBundle = false;
             Run(new BuildPlayerOptions
             {
@@ -70,7 +70,7 @@ namespace NSFGrant.EditorTools
 
         public static void BuildWebGL()
         {
-            EnsureSceneExists();
+            PrepareScene();
             Run(new BuildPlayerOptions
             {
                 scenes = new[] { ScenePath },
@@ -80,13 +80,21 @@ namespace NSFGrant.EditorTools
             });
         }
 
-        private static void EnsureSceneExists()
+        private static void PrepareScene()
         {
             if (!File.Exists(ScenePath))
             {
                 Debug.Log("[CiTools] Scene missing - running SetupProject first.");
                 SetupProject();
+                return;
             }
+            // ALWAYS regenerate the scene before a player build. The scene
+            // file is generated output, not source: building a player from
+            // an existing (possibly stale) scene once shipped an APK
+            // without the then-new VRLocomotion component. Regeneration is
+            // deterministic and cheap next to the player build itself.
+            Debug.Log("[CiTools] Regenerating scene so the build can't ship a stale one.");
+            DiscoveryHallBuilder.BuildDiscoveryHall();
         }
 
         private static void Run(BuildPlayerOptions options)
