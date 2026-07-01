@@ -51,6 +51,20 @@ namespace NSFGrant.EditorTools
                 out Transform centerEye, out OVREyeGaze leftEye, out OVREyeGaze rightEye);
             vrRig.AddComponent<VRInteractor>();
 
+            // Teleport + snap-turn locomotion - the hall's ~32 m hub-to-room
+            // arc is far past any realistic Guardian space, so this is
+            // required to reach the rooms at all in VR, not just polish.
+            var ovrRigComponent = vrRig.GetComponent<OVRCameraRig>();
+            Transform controllerAnchor = ovrRigComponent.rightControllerAnchor != null
+                ? ovrRigComponent.rightControllerAnchor
+                : centerEye;
+            var locomotion = vrRig.AddComponent<VRLocomotion>();
+            var locomotionSo = new SerializedObject(locomotion);
+            locomotionSo.FindProperty("rigRoot").objectReferenceValue = vrRig.transform;
+            locomotionSo.FindProperty("controllerAnchor").objectReferenceValue = controllerAnchor;
+            locomotionSo.FindProperty("centerEye").objectReferenceValue = centerEye;
+            locomotionSo.ApplyModifiedPropertiesWithoutUndo();
+
             GameObject desktopRig = CreateDesktopRig();
 
             var rigs = new GameObject("Rigs");
@@ -639,6 +653,10 @@ namespace NSFGrant.EditorTools
             floor.name = "Floor";
             floor.transform.localScale = new Vector3(6f, 1f, 6f); // 60 x 60 m
             ApplyColor(floor, FloorColor);
+            // The one collider spanning the whole hub+rooms+corridors
+            // footprint (decorative floor tints are colliderless), so it's
+            // what VRLocomotion's teleport arc validates against.
+            floor.AddComponent<TeleportSurface>();
 
             // Museum-style light: warm key light, cool tri-light ambient, and
             // gentle fog so distant stations recede instead of popping

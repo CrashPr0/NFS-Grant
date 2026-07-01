@@ -16,6 +16,11 @@ namespace NSFGrant.Interaction
         [SerializeField] private float maxRayDistance = 50f;
         [SerializeField] private LayerMask layerMask = ~0;
 
+        [Tooltip("Short controller vibration pulse on a successful selection - VR has no click sound/cursor feedback otherwise.")]
+        [SerializeField] private bool hapticsEnabled = true;
+        [SerializeField, Range(0f, 1f)] private float hapticAmplitude = 0.6f;
+        [SerializeField] private float hapticSeconds = 0.08f;
+
         private void Awake()
         {
             if (gazeProvider == null)
@@ -31,11 +36,9 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            bool triggerDown =
-                OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.RTouch) ||
-                OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.LTouch);
-
-            if (!triggerDown)
+            bool rightDown = OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.RTouch);
+            bool leftDown = OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.LTouch);
+            if (!rightDown && !leftDown)
             {
                 return;
             }
@@ -46,8 +49,26 @@ namespace NSFGrant.Interaction
                 if (interactable != null)
                 {
                     interactable.Activate("vr_trigger", hit.point);
+                    Pulse(rightDown ? OVRInput.Controller.RTouch : OVRInput.Controller.LTouch);
                 }
             }
+        }
+
+        private void Pulse(OVRInput.Controller controller)
+        {
+            if (!hapticsEnabled)
+            {
+                return;
+            }
+            StopAllCoroutines();
+            StartCoroutine(PulseRoutine(controller));
+        }
+
+        private System.Collections.IEnumerator PulseRoutine(OVRInput.Controller controller)
+        {
+            OVRInput.SetControllerVibration(1f, hapticAmplitude, controller);
+            yield return new WaitForSeconds(hapticSeconds);
+            OVRInput.SetControllerVibration(0f, 0f, controller);
         }
     }
 }

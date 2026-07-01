@@ -97,6 +97,16 @@ WASD or arrow keys to move; hold the **right mouse button** to look around;
 "Input Manager (Old)" or "Both" in Player settings (the scripts use the
 classic Input API).
 
+### VR (Quest) controls
+
+Gaze at content and pull **either trigger** to select (a short haptic pulse
+confirms the hit). Push the **right thumbstick forward** to aim a teleport
+arc from that controller and release to teleport onto the highlighted spot
+(green = valid, red = out of bounds); flick the **left thumbstick**
+left/right to snap-turn. Both fade briefly to black — the hall's hub-to-room
+distance is well past a typical Guardian space, so teleporting is the only
+way to reach the rooms without physically walking that far.
+
 ## How it works
 
 | Script | Responsibility |
@@ -108,7 +118,9 @@ classic Input API).
 | `SdgStation` | Trigger volume per SDG station; tracks visits, time inside, and first entry — the navigation-path backbone. |
 | `InteractableObject` | Clickable content; every activation logged with world (and on desktop, screen) coordinates. Content response suppressed in the Passive condition. |
 | `DesktopInteractor` / `DesktopPlayerController` | Laptop/WebGL input: WASD + mouse-look navigation, click logging with 2D screen coords, key-press logging. |
-| `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR. |
+| `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR; short haptic pulse on a successful selection. |
+| `VRLocomotion` | Hand-rolled VR teleport (arc + reticle) and snap-turn, since the hall spans well past any realistic Guardian space. Fades to black around both, and logs every teleport/turn. |
+| `TeleportSurface` | Marks a collider as a valid teleport destination (the hall's base floor plane). |
 | `StudyConditionManager` | Holds the active condition (Passive / Interactive / Guided). |
 | `DocentGuide` | Guided-condition route: beacon highlights the next suggested station; all guidance logged. |
 | `QuizDefinition` / `QuizRunner` | Pre/post knowledge quiz; responses logged as events (IMGUI panel for desktop, API for VR/world-space UI). |

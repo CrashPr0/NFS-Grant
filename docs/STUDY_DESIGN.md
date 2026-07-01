@@ -42,7 +42,7 @@ session, or programmatically (URL parameter / VERA assignment).
 | Object selection in VR | `VRInteractor` (gaze + trigger) → `object_activated` events |
 | Interactivity rates per object | `InteractableObject.ActivationCount` (summary CSV) |
 | Time spent per SDG station | `SdgStation` (`station_enter`/`station_exit` events + summary) |
-| Navigation path | Ordered `station_enter` events + continuous head positions |
+| Navigation path | Ordered `station_enter` events + continuous head positions. In VR, `teleport`/`vr_snap_turn` events mark discontinuous jumps in the head-position trace — filter them out (or treat as segment boundaries) before computing continuous-path metrics like path length. |
 | Use of help/avatar guidance | `docent_suggest` / `docent_target_reached` events |
 | Pre/post knowledge questions | `QuizDefinition` + `QuizRunner` (`quiz_response` events) — or VERA's survey tools |
 | Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). `RemoteDataUploader` ships the PNGs with the CSVs; connect it to Google Drive via `docs/GOOGLE_DRIVE_SETUP.md`. |
@@ -56,7 +56,10 @@ present, otherwise the **DesktopPlayer** (WASD + hold-right-mouse look,
 left-click to select). `PlatformDetector.PlatformTag` stamps every data file
 with `headset` or `desktop` so the groups separate cleanly in analysis.
 
-- Headset: eye gaze (Quest Pro) or head gaze (Quest 3) + controller-trigger selection.
+- Headset: eye gaze (Quest Pro) or head gaze (Quest 3) + controller-trigger
+  selection + `VRLocomotion` teleport/snap-turn (no XR Interaction Toolkit
+  or Meta Interaction SDK is installed, so this is hand-rolled — see
+  Packages/manifest.json).
 - Desktop/WebGL: camera-forward "head gaze" proxy + full pointer/keyboard stream.
 - Web data return: `RemoteDataUploader` POSTs the session CSVs to a
   configurable endpoint at session end (or hand off to VERA ingestion).
