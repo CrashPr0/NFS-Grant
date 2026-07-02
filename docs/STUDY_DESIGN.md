@@ -45,7 +45,7 @@ session, or programmatically (URL parameter / VERA assignment).
 | Navigation path | Ordered `station_enter` events + continuous head positions. In VR, `teleport`/`vr_snap_turn` events mark discontinuous jumps in the head-position trace — filter them out (or treat as segment boundaries) before computing continuous-path metrics like path length. |
 | Use of help/avatar guidance | `docent_suggest` / `docent_target_reached` events |
 | Pre/post knowledge questions | `QuizDefinition` + `QuizRunner` (`quiz_response` events) — or VERA's survey tools |
-| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). `RemoteDataUploader` ships the PNGs with the CSVs; connect it to Google Drive via `docs/GOOGLE_DRIVE_SETUP.md`. |
+| Low-rate screenshots (video too heavy) | `ScreenshotCapture` (enabled by the builder; 10 s interval, downscaled). Fully asynchronous — GPU downscale, async readback, worker-thread PNG encode — because the original synchronous version froze the headset for seconds per capture (perceived as tracking loss). `RemoteDataUploader` ships the PNGs with the CSVs; connect it to Google Drive via `docs/GOOGLE_DRIVE_SETUP.md`. |
 | Think-aloud recordings | Out of scope in-app — record via Zoom/room mic per protocol |
 | Biometrics (HRV, pupil dilation) | Not available on Quest hardware via public APIs; revisit with VERA team |
 

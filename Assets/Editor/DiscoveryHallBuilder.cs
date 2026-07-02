@@ -65,6 +65,12 @@ namespace NSFGrant.EditorTools
             locomotionSo.FindProperty("centerEye").objectReferenceValue = centerEye;
             locomotionSo.ApplyModifiedPropertiesWithoutUndo();
 
+            // Controller-tracked hand visuals - without a body
+            // representation, selection and the teleport arc fire from
+            // thin air, which reads as broken in the headset.
+            CreateHandVisual(ovrRigComponent.leftControllerAnchor, OVRInput.Controller.LTouch, "LeftHand");
+            CreateHandVisual(ovrRigComponent.rightControllerAnchor, OVRInput.Controller.RTouch, "RightHand");
+
             GameObject desktopRig = CreateDesktopRig();
 
             var rigs = new GameObject("Rigs");
@@ -196,6 +202,28 @@ namespace NSFGrant.EditorTools
             System.IO.Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, path);
             Debug.Log($"[DiscoveryHallBuilder] Discovery Hall saved to {path}");
+        }
+
+        /// <summary>
+        /// Adds a VRHandVisual host under a controller anchor. No-op if the
+        /// SDK didn't produce that anchor (the component's Awake builds the
+        /// actual hand geometry at runtime).
+        /// </summary>
+        private static void CreateHandVisual(Transform anchor,
+            OVRInput.Controller controller, string name)
+        {
+            if (anchor == null)
+            {
+                Debug.LogWarning($"[DiscoveryHallBuilder] No controller anchor for {name}; " +
+                                  "hand visual skipped.");
+                return;
+            }
+            var go = new GameObject(name);
+            go.transform.SetParent(anchor, false);
+            var hand = go.AddComponent<VRHandVisual>();
+            var so = new SerializedObject(hand);
+            so.FindProperty("controller").intValue = (int)controller;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static GameObject CreateDesktopRig()

@@ -105,7 +105,8 @@ forward** to aim a teleport arc and release to jump to the highlighted spot
 (green = valid, red = out of bounds); flick the **right thumbstick**
 left/right to snap-turn in place. Teleports and turns fade briefly to
 black. Gaze at content and pull **either trigger** to select (a short
-haptic pulse confirms the hit).
+haptic pulse confirms the hit). Your controllers appear as stylized hands
+that close as you squeeze the trigger.
 
 > **Rebuild the scene before every headset build.** The scene file is
 > generated output — `scripts/unity-tasks.sh build-quest` now regenerates
@@ -127,6 +128,7 @@ haptic pulse confirms the hit).
 | `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR; short haptic pulse on a successful selection. |
 | `VRLocomotion` | Hand-rolled VR locomotion: left-stick smooth walk (CharacterController collision), right-stick teleport arc + reticle, right-stick snap turn pivoting on the head. Fades to black around jumps; logs every teleport/turn. |
 | `ProceduralAmbience` | Runtime-synthesized spatial waterfall loop in the hub (no audio asset); fixed seed so every participant hears the same sound. |
+| `VRHandVisual` | Controller-tracked stylized hands (procedural primitives); fingers close and warm in color as the trigger squeezes, hidden when the controller disconnects. |
 | `TeleportSurface` | Marks a collider as a valid teleport destination (the hall's base floor plane). |
 | `StudyConditionManager` | Holds the active condition (Passive / Interactive / Guided). |
 | `DocentGuide` | Guided-condition route: beacon highlights the next suggested station; all guidance logged. |

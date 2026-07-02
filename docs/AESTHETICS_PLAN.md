@@ -166,6 +166,20 @@ today, with prefab visuals instead of primitives.
 > and equidistant from all rooms so it favors no condition), and the sky
 > bake bumped to 256/face with a half-LSB dither because 8-bit gradient
 > banding is clearly visible on a headset display.
+>
+> **Status (2026-07-02, tracking-freeze fix + hands):** on-device
+> reports of "6DoF drops out for a few seconds, then the view zooms and
+> tilts" were NOT tracking loss - `ScreenshotCapture` (builder-enabled,
+> 10 s interval) did a full-res eye-buffer readback + CPU downscale +
+> PNG encode + file write synchronously on the main thread, freezing
+> the app for seconds; a frozen VR app keeps compositing with
+> orientation-only reprojection, which looks exactly like that. Capture
+> is now fully async (GPU downscale -> AsyncGPUReadback -> worker-thread
+> `EncodeArrayToPNG` + write), with a cheap synchronous small-texture
+> fallback for WebGL. Also added `VRHandVisual`: procedural controller-
+> tracked hands (trigger squeeze closes/warms them) so selection and the
+> teleport arc no longer fire from thin air; colliderless and
+> AttentionTarget-free so they stay out of the gaze data.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +
