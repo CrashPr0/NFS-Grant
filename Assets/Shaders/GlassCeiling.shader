@@ -37,6 +37,7 @@ Shader "NSFGrant/GlassCeiling"
             {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -45,11 +46,14 @@ Shader "NSFGrant/GlassCeiling"
                 float3 worldNormal : TEXCOORD0;
                 float3 worldViewDir : TEXCOORD1;
                 float3 worldRefl : TEXCOORD2;
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
             v2f vert (appdata v)
             {
                 v2f o;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
                 float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 float3 worldNormal = UnityObjectToWorldNormal(v.normal);

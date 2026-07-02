@@ -224,6 +224,13 @@ namespace NSFGrant.EditorTools
             var so = new SerializedObject(hand);
             so.FindProperty("controller").intValue = (int)controller;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Laser pointer from the same controller (visual aim aid;
+            // selection stays on the gaze ray - see VRLaserPointer).
+            var laser = go.AddComponent<VRLaserPointer>();
+            var laserSo = new SerializedObject(laser);
+            laserSo.FindProperty("controller").intValue = (int)controller;
+            laserSo.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static GameObject CreateDesktopRig()

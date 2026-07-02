@@ -180,6 +180,26 @@ today, with prefab visuals instead of primitives.
 > tracked hands (trigger squeeze closes/warms them) so selection and the
 > teleport arc no longer fire from thin air; colliderless and
 > AttentionTarget-free so they stay out of the gaze data.
+>
+> **Status (2026-07-02, stereo fix + laser):** "each controller renders
+> differently to each eye" was the classic Single Pass Instanced
+> symptom - none of the custom `NSFGrant/*` CG shaders declared the
+> stereo-instancing macros (`UNITY_VERTEX_INPUT_INSTANCE_ID` /
+> `UNITY_VERTEX_OUTPUT_STEREO` / `UNITY_SETUP_INSTANCE_ID` +
+> `UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO`), so they rendered with one
+> eye's matrix for both eyes. Added the macros to all of them
+> (UnlitTransparentColor, TextOccluded, AnimatedWater, EmissivePulse,
+> LightShaft, RadialFloor, GlassCeiling) - most visible on near-face
+> geometry (the hands, the teleport arc/reticle, the laser), but it was
+> wrong scene-wide. The hands were the worst offender because
+> `CreatePrimitive` under URP can hand back a non-SPI Built-in Standard
+> material; they now use an explicit stereo-safe `NSFGrant/HandShaded`
+> (fixed-direction half-Lambert, pipeline-independent). Added
+> `VRLaserPointer`: a laser + endpoint dot from each controller, purely a
+> visual aim aid - selection stays on the gaze ray so the attention and
+> interaction signals remain in one coordinate frame per the study
+> design. If per-eye issues persist for any element, check that its
+> shader carries these macros.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

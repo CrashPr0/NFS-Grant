@@ -35,6 +35,15 @@ namespace NSFGrant.Interaction
             _root = new GameObject("HandModel");
             _root.transform.SetParent(transform, false);
 
+            // Explicit stereo-safe shader (see NSFGrant/HandShaded). The
+            // hands are ~30 cm from the eyes, so a non-single-pass-instanced
+            // material renders visibly wrong per eye - the reason each
+            // controller looked different in each eye.
+            var shader = Shader.Find("NSFGrant/HandShaded");
+            _material = new Material(shader != null ? shader : Shader.Find("Sprites/Default"));
+            _material.SetColor("_Color", RestColor);
+            _material.enableInstancing = true;
+
             // Palm: flattened capsule lying along the controller's forward.
             AddPart(PrimitiveType.Capsule, "Palm",
                 new Vector3(0f, -0.01f, -0.03f), new Vector3(90f, 0f, 0f),
@@ -77,14 +86,6 @@ namespace NSFGrant.Interaction
             part.transform.localScale = localScale;
 
             var renderer = part.GetComponent<MeshRenderer>();
-            // One lit material instance shared by the whole hand, cloned
-            // from the primitive's pipeline default so it works under both
-            // Built-in and URP (Material.color maps to the main color in
-            // either) and picks up the scene lighting.
-            if (_material == null)
-            {
-                _material = new Material(renderer.sharedMaterial) { color = RestColor };
-            }
             renderer.sharedMaterial = _material;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
@@ -103,7 +104,7 @@ namespace NSFGrant.Interaction
             }
 
             float squeeze = OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, controller);
-            _material.color = Color.Lerp(RestColor, GripColor, squeeze);
+            _material.SetColor("_Color", Color.Lerp(RestColor, GripColor, squeeze));
             _fingers.localRotation = Quaternion.Euler(squeeze * 40f, 0f, 0f);
         }
     }
