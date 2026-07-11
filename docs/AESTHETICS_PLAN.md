@@ -200,6 +200,23 @@ today, with prefab visuals instead of primitives.
 > interaction signals remain in one coordinate frame per the study
 > design. If per-eye issues persist for any element, check that its
 > shader carries these macros.
+>
+> **Status (2026-07-02, polish pass):** (1) rooms and corridors got
+> ceilings (dark neutral, with one identical warm light strip per room -
+> symmetric, so no attention bias), which both finishes the architecture
+> in the headset (open sky above a room read as unbuilt) and, because
+> the ceilings carry colliders, seals a real exploit: the teleport arc
+> could clear a 4-5 m wall and land the participant on the void floor
+> outside the hall with no way back. The hub ceiling gained a collider
+> and the hub walls were raised 4 -> 4.4 m to meet it (the old gap
+> showed a sky slice and was arc-threadable). (2) `NSFGrant/
+> ComfortVignette` + VRLocomotion: a soft peripheral vignette ramps in
+> during stick-walking (standard vection-discomfort mitigation; ~0.15 s
+> in, slower out; strength/disable in the Inspector). It masks only the
+> periphery, only during self-initiated smooth motion, identically in
+> all conditions - note it in the methods write-up. (3) VR sessions now
+> open on black and fade in (~0.8 s). (4) The teleport reticle is a
+> thin ring + center dot instead of an opaque disc.
 
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +

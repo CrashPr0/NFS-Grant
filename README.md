@@ -100,14 +100,16 @@ classic Input API).
 ### VR (Quest) controls
 
 Standard Quest scheme. **Left thumbstick** walks smoothly in the direction
-you're facing (with real wall collision). Push the **right thumbstick
-forward** to aim a teleport arc and release to jump to the highlighted spot
-(green = valid, red = out of bounds); flick the **right thumbstick**
-left/right to snap-turn in place. Teleports and turns fade briefly to
-black. Gaze at content and pull **either trigger** to select (a short
-haptic pulse confirms the hit). Your controllers appear as stylized hands
-that close as you squeeze the trigger, each projecting a laser pointer as
-an aim aid (selection stays on the gaze ray).
+you're facing (with real wall collision and a soft peripheral comfort
+vignette while moving). Push the **right thumbstick forward** to aim a
+teleport arc and release to jump to the ring reticle (green = valid,
+red = out of bounds); flick the **right thumbstick** left/right to
+snap-turn in place. Teleports and turns fade briefly to black, and the
+session itself fades in from black. Gaze at content and pull **either
+trigger** to select (a short haptic pulse confirms the hit). Your
+controllers appear as stylized hands that close as you squeeze the
+trigger, each projecting a laser pointer as an aim aid (selection stays
+on the gaze ray).
 
 > **Rebuild the scene before every headset build.** The scene file is
 > generated output — `scripts/unity-tasks.sh build-quest` now regenerates

@@ -311,6 +311,23 @@ namespace NSFGrant.EditorTools
             CreateWall(root.transform, "Corridor_R",
                 new Vector3(1.575f, 1.75f, 8f), new Vector3(0.15f, 3.5f, 4.2f), neutralWall);
 
+            // Ceilings over the room and corridor. Visually they finish the
+            // architecture (from inside a room the open sky above read as
+            // unbuilt in the headset); physically their colliders seal the
+            // space so the teleport arc cannot clear a wall and land the
+            // participant on the void floor outside the hall. Identical in
+            // every room, as is the warm ceiling light strip - symmetric,
+            // so neither biases the attention measures.
+            CreateWall(root.transform, "Ceiling",
+                new Vector3(0f, 5.02f, 2.4f), new Vector3(12.6f, 0.12f, 7.35f),
+                Color.Lerp(neutralWall, Color.black, 0.35f));
+            CreateWall(root.transform, "CorridorCeiling",
+                new Vector3(0f, 3.52f, 8f), new Vector3(3.3f, 0.12f, 4.2f),
+                Color.Lerp(neutralWall, Color.black, 0.35f));
+            CreateGlowBar(root.transform, "CeilingLight",
+                new Vector3(0f, 4.9f, 2.4f), new Vector3(6f, 0.06f, 0.5f),
+                new Color(1f, 0.97f, 0.9f));
+
             // Soft, faintly theme-tinted fill light so each room reads as its
             // own space. Realtime placeholder (range stays inside the room so
             // rooms don't cross-light); bake before Quest trials - see
@@ -894,14 +911,18 @@ namespace NSFGrant.EditorTools
 
                 if (isDoorway)
                 {
+                    // Walls run to 4.4 m so they meet the hub ceiling at
+                    // 4.3 m - the previous 4 m walls left an open ring gap
+                    // below the ceiling (visible sky slice, and a hole the
+                    // teleport arc could thread).
                     float segW = (wallWidth - DoorWidth) / 2f;
                     foreach (float x in new[] { -(DoorWidth + segW) / 2f, (DoorWidth + segW) / 2f })
                     {
                         CreateWall(holder.transform, "Side",
-                            new Vector3(x, 2f, 0f), new Vector3(segW, 4f, 0.2f), hubWallColor);
+                            new Vector3(x, 2.2f, 0f), new Vector3(segW, 4.4f, 0.2f), hubWallColor);
                     }
                     CreateWall(holder.transform, "Lintel",
-                        new Vector3(0f, 3.6f, 0f), new Vector3(DoorWidth, 0.8f, 0.2f),
+                        new Vector3(0f, 3.75f, 0f), new Vector3(DoorWidth, 1.3f, 0.2f),
                         hubWallColor);
 
                     // Steady warm wayfinding trim framing the opening, facing
@@ -922,7 +943,7 @@ namespace NSFGrant.EditorTools
                 else
                 {
                     CreateWall(holder.transform, "Wall",
-                        new Vector3(0f, 2f, 0f), new Vector3(wallWidth, 4f, 0.2f), hubWallColor);
+                        new Vector3(0f, 2.2f, 0f), new Vector3(wallWidth, 4.4f, 0.2f), hubWallColor);
                     // Wainscoting baseboard - a small architectural detail
                     // that reads as "designed" rather than blank gray panels.
                     CreateWall(holder.transform, "Baseboard",
@@ -1141,6 +1162,10 @@ namespace NSFGrant.EditorTools
             var ceiling = CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "HubCeiling",
                 new Vector3(0f, ceilingY, 0f), new Vector3(13.9f, 0.02f, 13.9f), Color.white);
             ceiling.GetComponent<Renderer>().sharedMaterial = GlassCeilingMaterial();
+            // Physical lid: with the room/corridor ceilings sealed, this
+            // stops the teleport arc from arcing up through the glass and
+            // landing the participant on the void floor outside the hall.
+            ceiling.AddComponent<BoxCollider>();
 
             var skylight = CreateVisualPrimitive(parent, PrimitiveType.Cylinder, "SkylightOculus",
                 new Vector3(0f, skylightY, 0f), new Vector3(3.4f, 0.02f, 3.4f), Color.white);

@@ -55,11 +55,13 @@ namespace NSFGrant.Interaction
         [Header("Comfort")]
         [SerializeField] private float fadeSeconds = 0.12f;
         [SerializeField] private float thumbstickDeadzone = 0.35f;
+        [Tooltip("Peripheral vignette strength while stick-walking (0 disables).")]
+        [SerializeField, Range(0f, 1f)] private float vignetteStrength = 0.75f;
 
         private CharacterController _body;
         private LineRenderer _arc;
         private Transform _reticle;
-        private Renderer _reticleRenderer;
+        private Renderer[] _reticleParts;
         private Material _arcValidMat;
         private Material _arcInvalidMat;
         private Material _reticleValidMat;
@@ -68,6 +70,10 @@ namespace NSFGrant.Interaction
         private Material _fadeMaterial;
         private float _fadeAlpha;
         private Coroutine _fadeRoutine;
+
+        private Material _vignetteMaterial;
+        private float _vignetteCurrent;
+        private bool _stickWalking;
 
         private bool _aiming;
         private bool _hasValidTarget;
@@ -109,6 +115,16 @@ namespace NSFGrant.Interaction
 
             BuildArcVisuals();
             BuildFadeQuad();
+            BuildVignette();
+        }
+
+        private void Start()
+        {
+            // Arrive gently: open on black and reveal the hall, instead of
+            // popping the participant into the world mid-frame.
+            _fadeAlpha = 1f;
+            ApplyFadeAlpha();
+            _fadeRoutine = StartCoroutine(Fade(0f, 0.8f));
         }
 
         private void Update()
@@ -116,6 +132,7 @@ namespace NSFGrant.Interaction
             HandleSmoothMove();
             HandleTeleportAim();
             HandleSnapTurn();
+            UpdateVignette();
         }
 
         /// <summary>Left stick: walk in the direction the head faces.</summary>
@@ -127,7 +144,8 @@ namespace NSFGrant.Interaction
             }
 
             Vector2 stick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
-            if (stick.magnitude < thumbstickDeadzone)
+            _stickWalking = stick.magnitude >= thumbstickDeadzone;
+            if (!_stickWalking)
             {
                 // Still apply gravity so the capsule stays settled on the floor.
                 _body.Move(Vector3.down * (3f * Time.deltaTime));
@@ -224,7 +242,11 @@ namespace NSFGrant.Interaction
             {
                 _reticle.position = _landingPoint + Vector3.up * 0.02f;
             }
-            _reticleRenderer.sharedMaterial = _hasValidTarget ? _reticleValidMat : _reticleInvalidMat;
+            Material reticleMat = _hasValidTarget ? _reticleValidMat : _reticleInvalidMat;
+            foreach (Renderer part in _reticleParts)
+            {
+                part.sharedMaterial = reticleMat;
+            }
         }
 
         /// <summary>Right stick left/right flick (not while aiming).</summary>
@@ -357,17 +379,100 @@ namespace NSFGrant.Interaction
             _arcInvalidMat = MakeUnlitMaterial(new Color(0.9f, 0.3f, 0.3f, 0.7f));
             _arc.material = _arcInvalidMat;
 
-            var reticleGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            reticleGo.name = "TeleportReticle";
-            Destroy(reticleGo.GetComponent<Collider>());
+            // Landing reticle: a thin ring with a small center dot reads as
+            // a "target" rather than the old opaque manhole-cover disc.
+            var reticleGo = new GameObject("TeleportReticle");
             reticleGo.transform.SetParent(transform, false);
-            reticleGo.transform.localScale = new Vector3(0.5f, 0.01f, 0.5f);
             _reticle = reticleGo.transform;
-            _reticleRenderer = reticleGo.GetComponent<Renderer>();
-            _reticleValidMat = MakeUnlitMaterial(new Color(0.3f, 0.9f, 0.5f, 0.55f));
-            _reticleInvalidMat = MakeUnlitMaterial(new Color(0.9f, 0.3f, 0.3f, 0.45f));
-            _reticleRenderer.sharedMaterial = _reticleValidMat;
+            _reticleValidMat = MakeUnlitMaterial(new Color(0.3f, 0.9f, 0.5f, 0.75f));
+            _reticleInvalidMat = MakeUnlitMaterial(new Color(0.9f, 0.3f, 0.3f, 0.6f));
+
+            var ringGo = new GameObject("Ring");
+            ringGo.transform.SetParent(reticleGo.transform, false);
+            var ring = ringGo.AddComponent<LineRenderer>();
+            ring.useWorldSpace = false;
+            ring.loop = true;
+            const int ringPoints = 28;
+            const float ringRadius = 0.24f;
+            ring.positionCount = ringPoints;
+            for (int i = 0; i < ringPoints; i++)
+            {
+                float a = i * Mathf.PI * 2f / ringPoints;
+                ring.SetPosition(i, new Vector3(Mathf.Cos(a) * ringRadius, 0f, Mathf.Sin(a) * ringRadius));
+            }
+            ring.startWidth = 0.02f;
+            ring.endWidth = 0.02f;
+            ring.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            ring.receiveShadows = false;
+
+            var dotGo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            dotGo.name = "Dot";
+            Destroy(dotGo.GetComponent<Collider>());
+            dotGo.transform.SetParent(reticleGo.transform, false);
+            dotGo.transform.localScale = new Vector3(0.07f, 0.006f, 0.07f);
+            var dotRenderer = dotGo.GetComponent<MeshRenderer>();
+            dotRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            dotRenderer.receiveShadows = false;
+
+            _reticleParts = new Renderer[] { ring, dotRenderer };
+            foreach (Renderer part in _reticleParts)
+            {
+                part.sharedMaterial = _reticleValidMat;
+            }
             reticleGo.SetActive(false);
+        }
+
+        /// <summary>
+        /// Small quad in front of the eye running NSFGrant/ComfortVignette;
+        /// UpdateVignette animates its strength with stick movement.
+        /// </summary>
+        private void BuildVignette()
+        {
+            if (centerEye == null || vignetteStrength <= 0f)
+            {
+                return;
+            }
+            var shader = Shader.Find("NSFGrant/ComfortVignette");
+            if (shader == null)
+            {
+                Debug.LogWarning("[VRLocomotion] NSFGrant/ComfortVignette shader not found; " +
+                                  "comfort vignette disabled.");
+                return;
+            }
+
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = "ComfortVignette";
+            Destroy(quad.GetComponent<Collider>());
+            quad.transform.SetParent(centerEye, false);
+            quad.transform.localPosition = new Vector3(0f, 0f, 0.35f);
+            quad.transform.localRotation = Quaternion.identity;
+            // Sized so the visible FOV maps to roughly uv-radius ~0.36 at
+            // 0.35 m - the ramp lives in the periphery, not center view.
+            quad.transform.localScale = new Vector3(1.6f, 1.6f, 1f);
+
+            var renderer = quad.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            _vignetteMaterial = new Material(shader);
+            _vignetteMaterial.SetFloat("_Strength", 0f);
+            renderer.sharedMaterial = _vignetteMaterial;
+        }
+
+        /// <summary>
+        /// Ramps the vignette in quickly when stick-walking starts and out
+        /// more slowly when it stops (an abrupt release flicker would be
+        /// more noticeable than the vignette itself).
+        /// </summary>
+        private void UpdateVignette()
+        {
+            if (_vignetteMaterial == null)
+            {
+                return;
+            }
+            float target = _stickWalking ? vignetteStrength : 0f;
+            float rate = target > _vignetteCurrent ? 6f : 2.5f;
+            _vignetteCurrent = Mathf.MoveTowards(_vignetteCurrent, target, rate * Time.deltaTime);
+            _vignetteMaterial.SetFloat("_Strength", _vignetteCurrent);
         }
 
         /// <summary>
