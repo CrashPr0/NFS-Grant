@@ -6,14 +6,33 @@ Content for the three "Surveys & Questionnaires" columns on the portal
 `docs/VERA_PLUGIN_REFERENCE.md` (phase semantics), `docs/VERA_PORTAL_PROGRESS.md`
 (live save status).
 
-## Before hand-entering anything
+## Import via VQF (use this — confirmed 2026-07-14)
 
 The Surveys & Questionnaires screen has a **"Custom Questionnaire
-Importer"** button. Try it first with the JSON specs in
-`tools/vera/questionnaires/` (or export one as CSV if the importer wants
-that) — if it accepts a bulk format, it saves rebuilding 3 cards by hand.
-If the importer expects a specific template, download/inspect it and we
-can regenerate the JSON to match.
+Importer"** supporting two formats: **VQF** (VERA's native YAML format)
+and **QSF** (Qualtrics export). VQF is the recommended path — ready-made
+files:
+
+| File | Column to import into | Content |
+|---|---|---|
+| `tools/vera/questionnaires/sdg_knowledge_quiz_pre.vqf` | Pre-VR | 7-question SDG knowledge quiz |
+| `tools/vera/questionnaires/sdg_knowledge_quiz_post.vqf` | Post-VR | Same 7 questions (separate `id`/card so it doesn't collide with the Pre-VR one) |
+| `tools/vera/questionnaires/comfort_check_in.vqf` | Mid-VR | **Draft** comfort self-report — needs team sign-off before real use, see below |
+
+Drag-drop each file into the importer, click **Import & Preview**, verify
+the preview matches the tables below, then confirm the import into the
+matching column.
+
+**⚠ Scoring caveat:** VQF's `multiple_choice` schema has no field for a
+correct answer — only `options`. VERA will record raw responses, not
+correctness. The answer key for the knowledge quiz (below, and in
+`Assets/Editor/DiscoveryHallBuilder.cs`) has to be applied **during
+analysis**, not on the portal.
+
+The original per-question JSON specs (`pre_post_knowledge_quiz.json`,
+`mid_vr_comfort_check.json`) are kept as the human-readable source the
+`.vqf` files were written from — edit those first if content changes,
+then regenerate the `.vqf` files to match.
 
 ## Pre-VR and Post-VR: SDG Knowledge Quiz
 

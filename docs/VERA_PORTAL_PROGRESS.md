@@ -43,13 +43,16 @@ See `docs/VERA_QUESTIONNAIRES.md` for full content and the JSON specs in
 
 | Survey | Column | Status |
 |---|---|---|
-| SDG Knowledge Quiz (7 questions) | Pre-VR | 🔲 Not yet created on portal — content ready (`pre_post_knowledge_quiz.json`) |
-| SDG Knowledge Quiz (same 7 questions) | Post-VR | 🔲 Not yet created on portal — same content, separate card |
-| Comfort Check-In | Mid-VR | 🔲 Not yet created — **content is a draft, needs team sign-off before real use** (`mid_vr_comfort_check.json`) |
+| SDG Knowledge Quiz (7 questions) | Pre-VR | 🔲 Ready to import — `tools/vera/questionnaires/sdg_knowledge_quiz_pre.vqf` |
+| SDG Knowledge Quiz (same 7 questions) | Post-VR | 🔲 Ready to import — `tools/vera/questionnaires/sdg_knowledge_quiz_post.vqf` |
+| Comfort Check-In | Mid-VR | 🔲 Ready to import, **but content is a draft needing team sign-off** — `tools/vera/questionnaires/comfort_check_in.vqf` |
 
-Open item: try the portal's **"Custom Questionnaire Importer"** button
-before hand-building the 3 cards — record here whether it worked and what
-format it expects.
+**Custom Questionnaire Importer confirmed to exist** (2026-07-14) — supports
+VQF (VERA's native YAML format, used here) and QSF (Qualtrics export). All
+3 questionnaires are authored as `.vqf` files and just need drag-drop +
+Import & Preview + confirm. See `docs/VERA_QUESTIONNAIRES.md` for exact
+column mapping and the scoring caveat (VQF has no correct-answer field —
+knowledge quiz scoring must happen during analysis, not on the portal).
 
 `QuizRunner` (existing in-project quiz) stays the fallback/self-contained
 path until these are confirmed live on the portal.
@@ -85,3 +88,6 @@ Do **not** switch this experiment to Collection Mode until:
   `DiscoveryHallBuilder.CreateQuizAsset()` and documented in
   `docs/VERA_QUESTIONNAIRES.md` + `tools/vera/questionnaires/*.json`.
   Flagged: `STUDY_DESIGN.md` claims an 8-question quiz, code has 7.
+- 2026-07-14 — Confirmed portal's Custom Questionnaire Importer supports
+  VQF/QSF. Authored `.vqf` files for all 3 cards (Pre-VR/Post-VR quiz,
+  Mid-VR comfort draft); ready to import, not yet confirmed saved.

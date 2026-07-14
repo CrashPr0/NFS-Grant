@@ -1,0 +1,38 @@
+meta:
+  id: comfort-check-in
+  name: Comfort Check-In
+  version: 0.1.0-draft
+  description: |
+    DRAFT, NOT TEAM-APPROVED. Placeholder mid-VR self-report triggered
+    manually from Unity after the first sustained stick-walk. No source
+    content exists elsewhere in this project for this survey (only the
+    ComfortVignette shader is related, and it is not a questionnaire).
+    Replace with a validated instrument (e.g. a licensed Simulator
+    Sickness Questionnaire short-form) if comfort/cybersickness needs to
+    be a reported outcome rather than just a self-pause affordance.
+    The 7-point Likert labels below are invented to fill out the scale
+    and have not been reviewed — confirm wording before real use.
+  shortName: ComfortCheckIn
+  tags: [comfort, mid-vr, draft]
+
+questions:
+  - id: comfort_q1
+    text: Right now, how comfortable do you feel physically (nausea, dizziness, eye strain)?
+    type: likert
+    config:
+      labels:
+        - Very uncomfortable
+        - Uncomfortable
+        - Slightly uncomfortable
+        - Neutral
+        - Slightly comfortable
+        - Comfortable
+        - Very comfortable
+
+  - id: comfort_q2
+    text: Do you want to pause or stop the session?
+    type: multiple_choice
+    config:
+      options:
+        - "Yes"
+        - "No"

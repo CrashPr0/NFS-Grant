@@ -1,0 +1,81 @@
+meta:
+  id: sdg-knowledge-quiz-post
+  name: SDG Knowledge Quiz (Post)
+  version: 1.0.0
+  description: |
+    7-question multiple-choice knowledge check on SDG 4, 11, and 13,
+    administered after the VR exploration. Identical content to the
+    Pre-VR card so pre/post recall can be compared.
+  shortName: SdgQuizPost
+  tags: [knowledge, sdg, post]
+
+questions:
+  - id: sdg4_q1
+    text: What is the aim of SDG 4?
+    type: multiple_choice
+    config:
+      options:
+        - Ensure inclusive, equitable quality education and lifelong learning for all
+        - End hunger and improve nutrition
+        - Make cities inclusive, safe, resilient and sustainable
+        - Conserve the oceans and marine resources
+
+  - id: sdg4_q2
+    text: According to the UN, accelerating progress on Goal 4 would have what effect?
+    type: multiple_choice
+    config:
+      options:
+        - A catalytic effect on the whole 2030 Agenda
+        - No effect on other goals
+        - It only affects high-income countries
+        - It would slow progress on climate action
+
+  - id: sdg11_q1
+    text: SDG 11 aims to make cities and human settlements...
+    type: multiple_choice
+    config:
+      options:
+        - inclusive, safe, resilient and sustainable
+        - larger and denser
+        - centers of industrial production
+        - car-free by 2030
+
+  - id: sdg11_q2
+    text: Helsinki's Oodi Central Library is notable as...
+    type: multiple_choice
+    config:
+      options:
+        - a nearly zero-energy public space co-designed with residents
+        - the world's largest book archive
+        - a private members-only library
+        - a university research library
+
+  - id: sdg13_q1
+    text: What does SDG 13 call for?
+    type: multiple_choice
+    config:
+      options:
+        - Urgent action to combat climate change and its impacts
+        - Universal access to clean water
+        - Gender equality in education
+        - Reduced inequality among countries
+
+  - id: sdg13_q2
+    text: Thammasat University Library's award-winning green program is built around...
+    type: multiple_choice
+    config:
+      options:
+        - the circular economy (From Waste to Wealth)
+        - banning printed books
+        - solar-powered bookmobiles only
+        - closing the library to save energy
+
+  - id: sdg13_q3
+    text: A seed library primarily helps a community by...
+    type: multiple_choice
+    config:
+      options:
+        - sharing and tracking seeds for local growing
+        - selling rare plants
+        - storing grain reserves
+        - replacing public gardens
