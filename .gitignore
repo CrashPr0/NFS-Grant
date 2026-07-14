@@ -56,6 +56,9 @@ crashlytics-build.properties
 StudyData/
 *.csv
 
+# VERA portal credentials (see docs/VERA_SETUP.md) — never commit
+vera_credentials.json
+
 # Study media assets are committed (Assets/StudyContent/Textures/) with
 # attribution in Assets/StudyContent/CONTENT_SOURCES.md; review licensing
 # before making this repository public.

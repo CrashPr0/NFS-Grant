@@ -98,6 +98,8 @@ namespace NSFGrant.EditorTools
             study.AddComponent<RemoteDataUploader>();
             study.AddComponent<StudyConditionManager>();
             study.AddComponent<VeraBridge>();
+            study.AddComponent<VeraConfig>();
+            study.AddComponent<VeraPluginAdapter>();
             var counterbalance = study.AddComponent<CounterbalanceManager>();
             var cbSo = new SerializedObject(counterbalance);
             cbSo.FindProperty("rigRoot").objectReferenceValue = rigs.transform;

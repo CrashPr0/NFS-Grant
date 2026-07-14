@@ -142,6 +142,7 @@ on the gaze ray).
 | `ScreenshotCapture` | Optional low-rate PNG stills (off by default). |
 | `RemoteDataUploader` | POSTs session CSVs to a configurable endpoint (web sample). |
 | `VeraBridge` | Integration seam for the VERA Unity plugin (session + event stream as C# events). |
+| `VeraConfig` / `VeraPluginAdapter` | VERA portal credentials loader (gitignored `vera_credentials.json`) and the single wiring point for the VERA plugin once installed — see [docs/VERA_SETUP.md](docs/VERA_SETUP.md). |
 | `SessionController` | Permission, participant ID, condition/platform stamping, session lifecycle, drives sampling and upload. |
 
 To instrument your own stimuli, add an `AttentionTarget` component to any

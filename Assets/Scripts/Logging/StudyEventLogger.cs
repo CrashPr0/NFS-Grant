@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 using NSFGrant.Core;
+using NSFGrant.Vera;
 
 namespace NSFGrant.Logging
 {
@@ -88,6 +89,10 @@ namespace NSFGrant.Logging
             {
                 return;
             }
+
+            // Re-publish on the VERA seam so the plugin (once installed)
+            // receives the identical event stream the CSV records.
+            VeraBridge.Instance?.NotifyEvent(eventType, targetId, detail);
 
             var inv = CultureInfo.InvariantCulture;
             var row = new StringBuilder(256);
