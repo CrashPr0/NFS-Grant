@@ -104,6 +104,46 @@ parameters, so route the VERA assignment through the same entry point.
 3. Confirm the local CSVs are unchanged — VERA upload is additive; the
    local logging pipeline stays the source of truth for analysis.
 
+## Troubleshooting the Unity 6 first open
+
+**"Cannot connect to 'npm.developer.oculus.com' (ETIMEDOUT)" + VERA
+`InputActionProperty` CS0246 errors (seen 2026-07-14).** One root cause:
+the manifest pulls `com.meta.xr.sdk.core` from Meta's npm scoped registry,
+and when that host is unreachable Unity aborts the whole package
+resolution — so VERA's own dependencies (`com.unity.inputsystem`,
+`com.unity.xr.interaction.toolkit 3.0.3`, both declared in VERA's
+package.json and referenced by its asmdef) never install, and VERA's
+telemetry logger fails to compile with `InputActionProperty` not found.
+The VERA errors are a symptom, not a separate problem.
+
+Fix, in order:
+
+1. **Rule out local network** — on campus Wi-Fi/VPN, try a personal
+   hotspot and click *Retry*. Note Meta has been migrating SDK
+   distribution off this npm registry to the Unity Asset Store, so the
+   timeout may be permanent no matter the network.
+2. **Switch to the Asset Store distribution (Meta's current official
+   path):**
+   - In a browser: Unity Asset Store → search **"Meta XR Core SDK"**
+     (free, publisher Meta) → *Add to My Assets*.
+   - In Unity: `Window > Package Manager` → registry dropdown →
+     **My Assets** → *Meta XR Core SDK* → Download/Install. This installs
+     from a local tarball and rewrites `Packages/manifest.json` itself —
+     no npm registry involved.
+   - Afterwards, delete the now-unused `scopedRegistries` block (the
+     Meta XR entry) from `Packages/manifest.json` — nothing else uses it.
+   - The Asset Store serves a newer SDK than the previously pinned
+     v71; the APIs this project uses (`OVRCameraRig`, `OVRInput`,
+     `OVREyeGaze`) are stable across those versions.
+3. **Reopen / Retry.** The rest of the graph (VERA's XRI + Input System
+   deps) comes from Unity's own registry and should now resolve; the
+   `InputActionProperty` errors disappear without any code change.
+4. **If duplicate-TextMeshPro type errors appear next:** VERA declares
+   `com.unity.textmeshpro 3.0.6`, but Unity 6 merged TMP into
+   `com.unity.ugui 2.0.0`. If Unity doesn't reconcile this on its own,
+   report it — a single manifest override addresses it (do not download
+   anything extra for this).
+
 ## Note for Claude Code sessions
 
 The remote environment's network policy currently **blocks
