@@ -218,6 +218,31 @@ today, with prefab visuals instead of primitives.
 > open on black and fade in (~0.8 s). (4) The teleport reticle is a
 > thin ring + center dot instead of an opaque disc.
 
+> **Status (2026-07-14, big-visual-delta pass, authored headless):** a
+> scene-wide upgrade written without editor verification (authored from a
+> remote session; run `NSF Grant > Build Discovery Hall Scene` in Unity 6
+> and walk it before demoing). (1) **Baked detail textures**: two CPU-baked,
+> deterministic, tileable grayscale multiplier textures
+> (`DiscoveryHallPlaster.asset`, `DiscoveryHallTerrazzo.asset`, same
+> -nographics-safe pattern as the skybox bake) now cover every structural
+> surface — every `CreateWall` surface gets plaster grain + seam lines,
+> the 60 m hall floor and each room platform get terrazzo tiles — killing
+> the flat-primitive look scene-wide. (2) **SDG color ring**: the official
+> 17-color UN SDG wheel as a slowly rotating ring of glowing segments
+> (new `SlowRotator`, one transform Rotate/frame) encircling the skylight
+> beam at hub center — colliderless, AttentionTarget-free, equidistant
+> from all rooms. (3) **Hub doorway signs**: room title + theme band above
+> each hub doorway, readable from spawn (wayfinding no longer requires
+> entering a corridor); identical placement/typography, per-room text and
+> color only. (4) **Room interior finish**: baseboards + crown trim,
+> theme-tinted corner pilasters with glowing capitals, a theme carpet
+> runner down each corridor, and planter pairs inside each door —
+> identical layout in all three rooms, format-zone panels untouched.
+> (5) **Greenery**: identical planter pairs flanking all hub doorways.
+> All additions are symmetric across rooms/conditions per the Part A
+> invariants. Texture caveat: `ApplySurfaceTexture` must only run after
+> `ApplyColor` (which clones the material); it mutates the clone.
+
 - **URP migration:** convert materials, set Quest-appropriate URP asset
   (single-pass instanced, MSAA 4×, fixed-foveated rendering, baked GI +
   light/reflection probes), update Meta XR settings. Verify the desktop/

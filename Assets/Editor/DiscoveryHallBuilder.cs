@@ -37,6 +37,12 @@ namespace NSFGrant.EditorTools
         [MenuItem("NSF Grant/Build Discovery Hall Scene")]
         public static void BuildDiscoveryHall()
         {
+            // The baked detail textures are deleted and recreated as assets
+            // each build; drop stale references so a rebuild in the same
+            // editor session re-bakes instead of pointing at dead assets.
+            _plasterTexture = null;
+            _terrazzoTexture = null;
+
             Scene scene = EditorSceneManager.NewScene(
                 NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
@@ -279,10 +285,11 @@ namespace NSFGrant.EditorTools
 
             // Room floor tint: thin and colliderless so it neither trips the
             // character controller nor catches gaze rays.
-            CreateVisualPrimitive(root.transform, PrimitiveType.Cylinder,
+            var platform = CreateVisualPrimitive(root.transform, PrimitiveType.Cylinder,
                 $"{content.StationId}_Platform",
                 new Vector3(0f, 0.02f, 2.4f), new Vector3(12.8f, 0.015f, 7.6f),
                 Color.Lerp(themeColor, FloorColor, 0.78f));
+            ApplySurfaceTexture(platform, TerrazzoTexture(), new Vector2(6f, 6f));
 
             // Room shell. The back wall carries the theme; sides and front
             // stay neutral so the color identifies the room without
@@ -346,6 +353,7 @@ namespace NSFGrant.EditorTools
             CreateLabel(root.transform, content.Title, new Vector3(0f, 2.85f, 0f), 0.05f, 26);
             CreateGoalIcon(root.transform, content, new Vector3(0f, 4.15f, 0f));
             CreatePhotoBoards(root.transform, content);
+            CreateRoomInterior(root.transform, themeColor, neutralWall);
 
             // --- Format zones (the study's comparison conditions). Slot
             // positions are authored here; the CounterbalanceManager permutes
@@ -397,6 +405,71 @@ namespace NSFGrant.EditorTools
             marker.SlotIndex = slotIndex;
         }
 
+        /// <summary>
+        /// Architectural finish for an exhibit room, so the rooms stop
+        /// reading as bare gray shells next to the polished hub: baseboards
+        /// and crown trim on the three solid walls, theme-tinted corner
+        /// pilasters with glowing capitals (echoing the hub colonnade), a
+        /// theme carpet runner guiding visitors down the corridor, and a
+        /// planter pair inside the door. Everything is laid out identically
+        /// in every room and symmetric about the room's centerline, and the
+        /// five format-zone panels are untouched - so the dressing is shared
+        /// context, not a positional-salience confound (docs/
+        /// AESTHETICS_PLAN.md, Part A invariants).
+        /// </summary>
+        private static void CreateRoomInterior(Transform root, Color themeColor, Color neutralWall)
+        {
+            Color trimDark = Color.Lerp(neutralWall, Color.black, 0.5f);
+            var stone = new Color(0.34f, 0.35f, 0.39f);
+
+            // Baseboards + crown trim, inset just in front of the wall faces.
+            CreateWall(root, "Baseboard_Back",
+                new Vector3(0f, 0.2f, -1.1f), new Vector3(12.6f, 0.4f, 0.1f), trimDark);
+            CreateWall(root, "Crown_Back",
+                new Vector3(0f, 4.78f, -1.1f), new Vector3(12.6f, 0.16f, 0.1f), trimDark);
+            foreach (float x in new[] { -6.2f, 6.2f })
+            {
+                CreateWall(root, x < 0f ? "Baseboard_L" : "Baseboard_R",
+                    new Vector3(x, 0.2f, 2.4f), new Vector3(0.1f, 0.4f, 7.5f), trimDark);
+                CreateWall(root, x < 0f ? "Crown_L" : "Crown_R",
+                    new Vector3(x, 4.78f, 2.4f), new Vector3(0.1f, 0.16f, 7.5f), trimDark);
+            }
+
+            // Corner pilasters with a theme-tinted glowing capital - the
+            // room-identity accent the hub colonnade's warm ring becomes
+            // inside a themed room. Four corners, symmetric.
+            foreach (float x in new[] { -6.0f, 6.0f })
+            {
+                foreach (float z in new[] { -0.9f, 5.7f })
+                {
+                    var pilaster = new GameObject("Pilaster");
+                    pilaster.transform.SetParent(root, false);
+                    pilaster.transform.localPosition = new Vector3(x, 0f, z);
+                    CreateWall(pilaster.transform, "Shaft",
+                        new Vector3(0f, 2.5f, 0f), new Vector3(0.28f, 5f, 0.28f), stone);
+                    CreateGlowBar(pilaster.transform, "Capital",
+                        new Vector3(0f, 4.55f, 0f), new Vector3(0.34f, 0.08f, 0.34f),
+                        Color.Lerp(new Color(1f, 0.93f, 0.78f), themeColor, 0.35f));
+                }
+            }
+
+            // Theme carpet runner down the corridor (the corridor floor is
+            // otherwise the bare hall terrazzo) - continues the doorway
+            // sign's color cue from the hub to the room.
+            // y clears the platform disc's top face (0.035) where the runner
+            // crosses onto it at the door, so the two never z-fight.
+            CreateVisualCube(root, "CarpetRunner",
+                new Vector3(0f, 0.05f, 8f), new Vector3(2.4f, 0.012f, 4.4f),
+                Color.Lerp(themeColor, FloorColor, 0.55f));
+
+            // Greenery just inside the door, clear of the doorway and of
+            // every zone panel.
+            foreach (float x in new[] { -2.2f, 2.2f })
+            {
+                CreatePlanter(root, new Vector3(x, 0f, 5.5f));
+            }
+        }
+
         // Front surface of a zone panel's face slab, in zone-local space.
         private const float PanelFaceZ = 0.04f;
         // Clear width of every doorway (hub exits and room doors).
@@ -415,7 +488,29 @@ namespace NSFGrant.EditorTools
             go.transform.localPosition = localPos;
             go.transform.localScale = localScale;
             ApplyColor(go, color);
+            // Every structural surface carries the baked plaster detail
+            // texture - the single biggest step away from the "flat
+            // primitive" look. It multiplies under the wall color, so each
+            // wall keeps its authored tint.
+            ApplySurfaceTexture(go, PlasterTexture(), new Vector2(3f, 1.5f));
             return go;
+        }
+
+        /// <summary>
+        /// Adds a tiling detail texture to an object's material. Only call
+        /// AFTER ApplyColor (which clones the material per object) -
+        /// mutating a still-shared primitive default material would texture
+        /// every primitive in the scene.
+        /// </summary>
+        private static void ApplySurfaceTexture(GameObject go, Texture2D texture, Vector2 tiling)
+        {
+            if (texture == null)
+            {
+                return;
+            }
+            var material = go.GetComponent<Renderer>().sharedMaterial;
+            material.mainTexture = texture;
+            material.mainTextureScale = tiling;
         }
 
         /// <summary>Shadowless realtime point light (bake before Quest trials).</summary>
@@ -707,6 +802,8 @@ namespace NSFGrant.EditorTools
             floor.name = "Floor";
             floor.transform.localScale = new Vector3(6f, 1f, 6f); // 60 x 60 m
             ApplyColor(floor, FloorColor);
+            // 26 repeats across 60 m ~= 2.3 m terrazzo tiles.
+            ApplySurfaceTexture(floor, TerrazzoTexture(), new Vector2(26f, 26f));
             // The one collider spanning the whole hub+rooms+corridors
             // footprint (decorative floor tints are colliderless), so it's
             // what VRLocomotion's teleport arc validates against.
@@ -941,6 +1038,43 @@ namespace NSFGrant.EditorTools
                     CreateGlowBar(holder.transform, "DoorTrimTop",
                         new Vector3(0f, 3.1f, -0.12f), new Vector3(DoorWidth + 0.1f, 0.1f, 0.06f),
                         trimColor);
+
+                    // Room title + theme band above the doorway, readable
+                    // from the hub interior - previously wayfinding required
+                    // walking a corridor to read the room's own lintel.
+                    // Identical typography/placement on all three doorways;
+                    // only the room's name and theme color differ (the same
+                    // per-room identity the door lintels already carry).
+                    // Doorway angles map onto BuildDiscoveryHall's station
+                    // angles: -120 -> station 0, 0 -> 1, +120 -> 2.
+                    int stationIndex = angle == -120f ? 0 : angle == 0f ? 1 : 2;
+                    if (stationIndex < SdgContentLibrary.Stations.Length)
+                    {
+                        var roomContent = SdgContentLibrary.Stations[stationIndex];
+                        ColorUtility.TryParseHtmlString(
+                            roomContent.ThemeColorHex, out Color roomColor);
+                        CreateVisualCube(holder.transform, "DoorwayBand",
+                            new Vector3(0f, 3.7f, -0.14f),
+                            new Vector3(DoorWidth + 0.1f, 0.5f, 0.06f),
+                            Color.Lerp(roomColor, Color.black, 0.25f));
+                        // Hub interior is the holder's local -Z; CreateText
+                        // renders readable from its parent's +Z, so the sign
+                        // pivot flips 180 to face the hub center.
+                        var signPivot = new GameObject("DoorwaySign");
+                        signPivot.transform.SetParent(holder.transform, false);
+                        signPivot.transform.localPosition = new Vector3(0f, 3.7f, -0.15f);
+                        signPivot.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                        CreateText(signPivot.transform, roomContent.Title,
+                            new Vector3(0f, 0f, 0.06f), 0.026f, 26,
+                            TextAnchor.MiddleCenter);
+                    }
+
+                    // Greenery flanking the opening on the hub side - same
+                    // pair at every doorway, so no room is privileged.
+                    foreach (float x in new[] { -(DoorWidth / 2f + 0.6f), DoorWidth / 2f + 0.6f })
+                    {
+                        CreatePlanter(holder.transform, new Vector3(x, 0f, -0.5f));
+                    }
                 }
                 else
                 {
@@ -959,6 +1093,7 @@ namespace NSFGrant.EditorTools
             // piece for "what Unity can do" in the hub.
             CreateRadialHubFloor(hub.transform);
             CreateHubSkylight(hub.transform);
+            CreateSdgColorRing(hub.transform);
             CreateReflectionProbe(hub.transform, new Vector3(0f, 1.6f, 0f), 7f);
             CreateAmbientMotes(hub.transform);
 
@@ -1246,6 +1381,78 @@ namespace NSFGrant.EditorTools
             probe.intensity = 0.6f;
         }
 
+        // The official UN SDG color wheel, goals 1-17 in order.
+        private static readonly string[] SdgWheelHex =
+        {
+            "#E5243B", "#DDA63A", "#4C9F38", "#C5192D", "#FF3A21", "#26BDE2",
+            "#FCC30B", "#A21942", "#FD6925", "#DD1367", "#FD9D24", "#BF8B2E",
+            "#3F7E44", "#0A97D9", "#56C02B", "#00689D", "#19486A"
+        };
+
+        /// <summary>
+        /// The UN SDG color wheel as a slowly rotating ring of 17 glowing
+        /// segments encircling the skylight beam above the welcome plinth -
+        /// the hall's thematic signature, visible from anywhere in the hub.
+        /// Colliderless, AttentionTarget-free, and centered in the hub
+        /// (equidistant from all three rooms), so like the waterfall it
+        /// cannot bias the attention measures; the rotation is a single
+        /// transform Rotate per frame (see SlowRotator).
+        /// </summary>
+        private static void CreateSdgColorRing(Transform parent)
+        {
+            var ring = new GameObject("SdgColorRing");
+            ring.transform.SetParent(parent, false);
+            ring.transform.localPosition = new Vector3(0f, 3.0f, 0f);
+            ring.AddComponent<SlowRotator>();
+
+            // Skylight beam radius is 1.3; the ring circles just outside it.
+            const float radius = 1.85f;
+            float step = 360f / SdgWheelHex.Length;
+            for (int i = 0; i < SdgWheelHex.Length; i++)
+            {
+                ColorUtility.TryParseHtmlString(SdgWheelHex[i], out Color goalColor);
+                var segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                segment.name = $"Goal{i + 1:00}";
+                Object.DestroyImmediate(segment.GetComponent<Collider>());
+                segment.transform.SetParent(ring.transform, false);
+                segment.transform.localRotation = Quaternion.Euler(0f, i * step, 0f);
+                segment.transform.localPosition =
+                    segment.transform.localRotation * (Vector3.forward * radius);
+                // Long axis tangent to the circle; short gaps read as joints.
+                segment.transform.localScale = new Vector3(0.6f, 0.07f, 0.12f);
+                segment.GetComponent<Renderer>().sharedMaterial =
+                    SteadyGlowMaterial(goalColor, 1.15f);
+            }
+        }
+
+        /// <summary>
+        /// Potted plant: dark pot, trunk, three offset leaf-sphere clusters.
+        /// Deterministic and identical at every placement; colliderless so
+        /// it can never trap the CharacterController or catch gaze rays.
+        /// </summary>
+        private static void CreatePlanter(Transform parent, Vector3 localPos)
+        {
+            var planter = new GameObject("Planter");
+            planter.transform.SetParent(parent, false);
+            planter.transform.localPosition = localPos;
+
+            var potColor = new Color(0.23f, 0.20f, 0.18f);
+            var leafDark = new Color(0.15f, 0.34f, 0.18f);
+            var leafLight = new Color(0.24f, 0.46f, 0.22f);
+
+            CreateVisualPrimitive(planter.transform, PrimitiveType.Cylinder, "Pot",
+                new Vector3(0f, 0.22f, 0f), new Vector3(0.5f, 0.22f, 0.5f), potColor);
+            CreateVisualPrimitive(planter.transform, PrimitiveType.Cylinder, "Trunk",
+                new Vector3(0f, 0.7f, 0f), new Vector3(0.07f, 0.35f, 0.07f),
+                new Color(0.32f, 0.24f, 0.16f));
+            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyLow",
+                new Vector3(0.12f, 1.15f, 0.06f), new Vector3(0.55f, 0.5f, 0.55f), leafDark);
+            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyHigh",
+                new Vector3(-0.09f, 1.45f, -0.04f), new Vector3(0.45f, 0.42f, 0.45f), leafLight);
+            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyTop",
+                new Vector3(0.03f, 1.68f, 0.02f), new Vector3(0.3f, 0.3f, 0.3f), leafDark);
+        }
+
         /// <summary>
         /// Six columns at the hexagon corners (30-degree offsets from the
         /// wall centers, so none stands in a doorway): base, shaft, warm
@@ -1399,6 +1606,159 @@ namespace NSFGrant.EditorTools
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.material = ParticleMaterial(additive: true);
+        }
+
+        private static Texture2D _plasterTexture;
+        private static Texture2D _terrazzoTexture;
+
+        /// <summary>
+        /// Subtle plaster/panel detail texture for walls: fine deterministic
+        /// grain, a soft low-frequency mottle, and faint horizontal seam
+        /// lines. Baked on the CPU (works under -nographics, same as the
+        /// skybox bake), saved as a project asset, tileable in both axes.
+        /// It's a near-white multiplier, so authored wall colors survive.
+        /// </summary>
+        private static Texture2D PlasterTexture()
+        {
+            if (_plasterTexture != null)
+            {
+                return _plasterTexture;
+            }
+
+            const int size = 256;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float grain = Hash01(x, y, 11);
+                    float mottle = TileableValueNoise(x, y, size, 32, 23);
+                    float v = 1f - 0.030f * grain - 0.045f * mottle;
+                    // Faint horizontal panel seams (two per tile).
+                    int seam = y % (size / 2);
+                    if (seam < 2)
+                    {
+                        v *= 0.93f;
+                    }
+                    byte b = (byte)Mathf.RoundToInt(Mathf.Clamp01(v) * 255f);
+                    pixels[y * size + x] = new Color32(b, b, b, 255);
+                }
+            }
+            _plasterTexture = SaveBakedTexture("DiscoveryHallPlaster", pixels, size);
+            return _plasterTexture;
+        }
+
+        /// <summary>
+        /// Terrazzo floor-tile texture: speckled stone chips over a light
+        /// ground with a grout border, so one texture repeat reads as one
+        /// floor tile. Deterministic, tileable (chip distances wrap), baked
+        /// on the CPU and saved as a project asset.
+        /// </summary>
+        private static Texture2D TerrazzoTexture()
+        {
+            if (_terrazzoTexture != null)
+            {
+                return _terrazzoTexture;
+            }
+
+            const int size = 256;
+            const int chipCount = 130;
+            // Deterministic chip field: position, radius and tone all come
+            // from the chip index, so every build bakes the same floor.
+            var chipX = new int[chipCount];
+            var chipY = new int[chipCount];
+            var chipR = new float[chipCount];
+            var chipTone = new float[chipCount];
+            for (int i = 0; i < chipCount; i++)
+            {
+                chipX[i] = (int)(Hash01(i, 71, 5) * size);
+                chipY[i] = (int)(Hash01(i, 137, 7) * size);
+                chipR[i] = 1.5f + Hash01(i, 211, 9) * 2.6f;
+                // Mostly darker chips, a few brighter quartz flecks.
+                chipTone[i] = Hash01(i, 307, 13) < 0.8f
+                    ? 0.74f + Hash01(i, 401, 17) * 0.14f
+                    : 1.04f + Hash01(i, 401, 17) * 0.05f;
+            }
+
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float v = 0.97f - 0.030f * Hash01(x, y, 31);
+
+                    for (int i = 0; i < chipCount; i++)
+                    {
+                        // Wrapped distances keep the tile seamless.
+                        float dx = Mathf.Abs(x - chipX[i]);
+                        float dy = Mathf.Abs(y - chipY[i]);
+                        dx = Mathf.Min(dx, size - dx);
+                        dy = Mathf.Min(dy, size - dy);
+                        if (dx * dx + dy * dy < chipR[i] * chipR[i])
+                        {
+                            v = chipTone[i];
+                            break;
+                        }
+                    }
+
+                    // Grout border - one line per tile edge (wraps).
+                    if (x < 2 || y < 2)
+                    {
+                        v = 0.80f;
+                    }
+                    byte b = (byte)Mathf.RoundToInt(Mathf.Clamp01(v) * 255f);
+                    pixels[y * size + x] = new Color32(b, b, b, 255);
+                }
+            }
+            _terrazzoTexture = SaveBakedTexture("DiscoveryHallTerrazzo", pixels, size);
+            return _terrazzoTexture;
+        }
+
+        /// <summary>Deterministic per-coordinate hash in [0, 1] (same mixing as the sky dither).</summary>
+        private static float Hash01(int x, int y, int seed)
+        {
+            uint h = (uint)(x * 374761393 + y * 668265263 + seed * 2246822519);
+            h = (h ^ (h >> 13)) * 1274126177u;
+            return ((h >> 8) & 0xFFFF) / 65535f;
+        }
+
+        /// <summary>
+        /// Smooth tileable value noise: hash values on a coarse grid,
+        /// bilinearly interpolated, grid indices wrapped so the result
+        /// tiles. cellCount must divide size.
+        /// </summary>
+        private static float TileableValueNoise(int x, int y, int size, int cellCount, int seed)
+        {
+            float cell = (float)size / cellCount;
+            float fx = x / cell;
+            float fy = y / cell;
+            int x0 = Mathf.FloorToInt(fx);
+            int y0 = Mathf.FloorToInt(fy);
+            float tx = Mathf.SmoothStep(0f, 1f, fx - x0);
+            float ty = Mathf.SmoothStep(0f, 1f, fy - y0);
+            int x1 = (x0 + 1) % cellCount;
+            int y1 = (y0 + 1) % cellCount;
+            x0 %= cellCount;
+            y0 %= cellCount;
+            float a = Mathf.Lerp(Hash01(x0, y0, seed), Hash01(x1, y0, seed), tx);
+            float b = Mathf.Lerp(Hash01(x0, y1, seed), Hash01(x1, y1, seed), tx);
+            return Mathf.Lerp(a, b, ty);
+        }
+
+        /// <summary>Writes a baked grayscale texture to Assets/StudyContent and returns it.</summary>
+        private static Texture2D SaveBakedTexture(string name, Color32[] pixels, int size)
+        {
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = name };
+            tex.SetPixels32(pixels);
+            tex.wrapMode = TextureWrapMode.Repeat;
+            tex.filterMode = FilterMode.Trilinear;
+            tex.Apply();
+
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            string path = $"Assets/StudyContent/{name}.asset";
+            AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(tex, path);
+            return tex;
         }
 
         private static Texture2D _softDotTexture;
