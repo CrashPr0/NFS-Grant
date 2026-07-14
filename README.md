@@ -25,9 +25,11 @@ study measure and meeting decision to its implementation.
 
 ## Requirements
 
-- **Unity 2022.3 LTS** (project was created with 2022.3.55f1) with the
-  **Android Build Support** module (including OpenJDK and Android SDK/NDK)
-  installed via Unity Hub.
+- **Unity 6000.3.9f1** (Unity 6) with the **Android Build Support** module
+  (including OpenJDK and Android SDK/NDK) and **Web Build Support**
+  installed via Unity Hub. (The project started on 2022.3 LTS and was
+  moved to Unity 6 for the VERA plugin, which requires 6000.0+; the first
+  open in Unity 6 runs the automatic asset/API migration — accept it.)
 - **Meta Quest 3 or Quest Pro** with [developer mode enabled](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/).
 - A [Meta developer account](https://developers.meta.com/) (required for
   device builds and for the eye-tracking permission).

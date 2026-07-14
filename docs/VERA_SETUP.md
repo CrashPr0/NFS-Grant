@@ -55,17 +55,25 @@ field or scene — scenes are committed.
 
 ## Step 3 — Install the Unity plugin
 
-VERA distributes the plugin through the portal after login (there is no
-public package registry as of July 2026). Once downloaded:
+The plugin is a public UPM package (already added to
+`Packages/manifest.json` in this project):
 
-- If it ships as a UPM package: add it to `Packages/manifest.json`
-  (git URL or local tarball path).
-- If it ships as a `.unitypackage`: import via
-  `Assets > Import Package > Custom Package`.
+```
+https://github.com/ucf-research/vera-package.git
+```
+
+It requires **Unity 6000.0+** — this project targets **6000.3.9f1**
+(see `ProjectSettings/ProjectVersion.txt`). Authentication is interactive:
+open `VERA > Settings` in the menu bar, click **Authenticate**, log in on
+the portal page that opens, then pick the experiment from the
+**Your Experiment** dropdown (this generates the typed `VERAIV_*` /
+`VERAFile_*` classes under `Assets/VERA/`).
 
 Then add `VERA_PLUGIN_PRESENT` to
 `Project Settings > Player > Scripting Define Symbols` for **every build
-target** (Android, WebGL, Standalone).
+target** (Android, Web, Standalone) to activate our adapter.
+
+See `docs/VERA_PLUGIN_REFERENCE.md` for the full plugin API.
 
 ## Step 4 — Fill in the adapter
 

@@ -106,10 +106,14 @@ Session statuses: `Created` → `In Progress` → `Completed` /
 
 ## Impact on this project (action items)
 
-1. **Unity version conflict.** Sandbox targets Unity 6000.3.9f1; we're on
-   2022.3 LTS. Confirm the `vera-package` supports 2022.3, or plan an
-   engine upgrade (large — touches Meta XR SDK, all builds). **Blocker to
-   resolve before wiring.**
+1. **Unity version — RESOLVED 2026-07-14: migrating to Unity 6000.3.9f1.**
+   The package.json at ucf-research/vera-package declares `"unity": "6000.0"`
+   (hard minimum), so 2022.3 was never an option. ProjectVersion.txt and
+   Packages/manifest.json are updated (URP 17.x, test-framework 1.4.x,
+   timeline 1.8.x, ugui 2.0.0 with TMP merged in, VERA git package added);
+   the first open in the Unity 6 editor runs the asset/API migration.
+   Meta XR SDK v71 supports Unity 6. Expect deprecation warnings from
+   `FindObjectOfType` (17 uses, 9 files) — warnings only, not errors.
 2. **Auth model differs from the scaffold.** The real plugin authenticates
    interactively via the VERA Settings window, not a `vera_credentials.json`
    API key. `VeraConfig.cs` (key loader) is **not** how the real plugin
