@@ -195,6 +195,28 @@ Note: `session_time_s` and `condition` from the original `events_*.csv`
 header are dropped here because VERA's auto `ts` and `conditions` already
 cover them — don't duplicate.
 
+### File type: `Experiment_Telemetry` (auto-created by VERA, read-only)
+
+Discovered on the portal 2026-07-14 — this file type is **created
+automatically for every experiment and cannot be edited or removed**. No
+action needed to define it; documenting its columns here so nobody
+duplicates them.
+
+Logged automatically every frame: `headsetDetected` (Boolean),
+`headsetPosX/Y/Z` (Float), `headsetRot` (Transform: yaw/pitch/roll), then
+the same 8-field set (`Detected`/`PosX/Y/Z`/`Rot`) plus
+`Trigger`/`Grip`/`PrimaryButton`/`SecondaryButton`/`Primary2DAxisClick`/
+`ThumbstickX/Y` for **both** `left` and `right` controllers — 29 custom
+columns after the auto `pID`/`conditions`/`ts`.
+
+**Overlap with `GazeSamples`:** `head_pos_x/y/z` and `head_rot_x/y/z/w` in
+our `GazeSamples` file type duplicate `headsetPosX/Y/Z`/`headsetRot` here.
+This is intentional redundancy, not a bug — `GazeSamples` keeps head pose
+alongside the gaze ray so a single row has everything needed for gaze
+analysis without joining two files; `Experiment_Telemetry` is the
+lower-level per-frame input/pose stream VERA provides regardless. No
+change needed to `tools/vera/columns/gaze_samples.json`.
+
 ### File type: `Summary` (extension `csv`, optional)
 The per-session rollup (`summary_*.csv`) is the one file that's naturally
 computed **once at session end**, not streamed. Either keep it purely
