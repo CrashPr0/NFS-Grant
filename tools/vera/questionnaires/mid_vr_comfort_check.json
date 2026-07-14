@@ -1,0 +1,20 @@
+{
+  "surveyName": "Comfort Check-In",
+  "usedInColumns": ["Mid-VR"],
+  "status": "DRAFT — not sourced from any existing repo content. No cybersickness/comfort questionnaire exists anywhere in this project yet, only the ComfortVignette shader/vignette behavior in VRLocomotion.cs. This is a placeholder for the research team to approve, edit, or replace with a validated instrument (e.g. a licensed SSQ short-form) before use. Do not treat this as IRB-ready language.",
+  "displayMode": "inVR",
+  "trigger": "Call VERASurveyHelper.StartSurvey(..., inVR: true) once after the participant's first sustained stick-walk (see docs/VERA_PLUGIN_REFERENCE.md). Can be triggered multiple times per session per VERA's Mid-VR model if the team wants repeated check-ins.",
+  "questions": [
+    {
+      "questionId": "comfort_q1",
+      "type": "likert_1_7",
+      "prompt": "Right now, how comfortable do you feel physically (nausea, dizziness, eye strain)?",
+      "anchors": { "1": "Very uncomfortable", "7": "Very comfortable" }
+    },
+    {
+      "questionId": "comfort_q2",
+      "type": "yes_no",
+      "prompt": "Do you want to pause or stop the session?"
+    }
+  ]
+}

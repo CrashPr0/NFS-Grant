@@ -31,23 +31,28 @@ actually saved (not just corrected on screen) before assuming this is done.
 
 | IV | Status | Levels |
 |---|---|---|
-| `Condition` | 🔲 Not yet saved as of 2026-07-14 (screen open, empty) | Passive / Interactive / Guided |
+| `Condition` | ✅ Saved 2026-07-14 | Passive (Ps) / Interactive (Int) / Guided (Guid) |
 
-Screenshot from 2026-07-14 shows the "Experimental Design" tab with
-**"Independent Variables for this experiment are not set"** — this is the
-current known state. Once the user adds `Condition` with the 3 levels and
-clicks **Save Changes**, update this row to ✅ and note the date.
+Confirmed via screenshot: "Conditions (3)" panel showing all three levels,
+navigation advanced to the Surveys & Questionnaires screen afterward.
 
 ## Questionnaires / surveys
 
-| Survey | Phase | Status |
-|---|---|---|
-| Pre-experiment knowledge quiz | Pre-experiment (auto, browser) | 🔲 Not yet created on portal |
-| Post-experiment knowledge quiz | Post-experiment (auto, browser) | 🔲 Not yet created on portal |
-| Cybersickness / comfort survey | Mid-experiment (manual `VERASurveyHelper.StartSurvey`, in-VR) or post-experiment | 🔲 Not yet decided — recommend mid-experiment in-VR, triggered after first sustained stick-walk |
+See `docs/VERA_QUESTIONNAIRES.md` for full content and the JSON specs in
+`tools/vera/questionnaires/`.
 
-`QuizRunner` (existing in-project quiz) is the source of truth for
-pre/post question content until these are ported to VERA surveys.
+| Survey | Column | Status |
+|---|---|---|
+| SDG Knowledge Quiz (7 questions) | Pre-VR | 🔲 Not yet created on portal — content ready (`pre_post_knowledge_quiz.json`) |
+| SDG Knowledge Quiz (same 7 questions) | Post-VR | 🔲 Not yet created on portal — same content, separate card |
+| Comfort Check-In | Mid-VR | 🔲 Not yet created — **content is a draft, needs team sign-off before real use** (`mid_vr_comfort_check.json`) |
+
+Open item: try the portal's **"Custom Questionnaire Importer"** button
+before hand-building the 3 cards — record here whether it worked and what
+format it expects.
+
+`QuizRunner` (existing in-project quiz) stays the fallback/self-contained
+path until these are confirmed live on the portal.
 
 ## Draft → Collection Mode gate
 
@@ -75,3 +80,8 @@ Do **not** switch this experiment to Collection Mode until:
 - 2026-07-14 — Portal column entry for `GazeSamples`/`StudyEvents` reviewed
   twice; last known outstanding issue was row 19 `gaze_source` type.
   Experimental Design tab confirmed empty (no IVs set) via screenshot.
+- 2026-07-14 — `Condition` IV (Passive/Interactive/Guided) saved. Moved to
+  Surveys & Questionnaires screen; quiz content pulled from
+  `DiscoveryHallBuilder.CreateQuizAsset()` and documented in
+  `docs/VERA_QUESTIONNAIRES.md` + `tools/vera/questionnaires/*.json`.
+  Flagged: `STUDY_DESIGN.md` claims an 8-question quiz, code has 7.

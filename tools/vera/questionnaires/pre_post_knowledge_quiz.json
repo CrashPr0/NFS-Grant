@@ -1,0 +1,92 @@
+{
+  "surveyName": "SDG Knowledge Quiz",
+  "usedInColumns": ["Pre-VR", "Post-VR"],
+  "note": "Same 7 questions administered twice (identical card/content in both columns per VERA's model — Pre-VR and Post-VR are separate cards you create from the same content). Source: Assets/Editor/DiscoveryHallBuilder.cs CreateQuizAsset(), which also writes Assets/StudyContent/SdgKnowledgeQuiz.asset in Unity.",
+  "discrepancy": "docs/STUDY_DESIGN.md (line 103) says '8-question knowledge quiz' but the generator only defines 7. Flagged 2026-07-14 — team should decide whether to add an 8th question or correct the doc; do not invent a question to force the count.",
+  "questions": [
+    {
+      "questionId": "sdg4_q1",
+      "type": "multiple_choice",
+      "prompt": "What is the aim of SDG 4?",
+      "options": [
+        "Ensure inclusive, equitable quality education and lifelong learning for all",
+        "End hunger and improve nutrition",
+        "Make cities inclusive, safe, resilient and sustainable",
+        "Conserve the oceans and marine resources"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg4_q2",
+      "type": "multiple_choice",
+      "prompt": "According to the UN, accelerating progress on Goal 4 would have what effect?",
+      "options": [
+        "A catalytic effect on the whole 2030 Agenda",
+        "No effect on other goals",
+        "It only affects high-income countries",
+        "It would slow progress on climate action"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg11_q1",
+      "type": "multiple_choice",
+      "prompt": "SDG 11 aims to make cities and human settlements...",
+      "options": [
+        "inclusive, safe, resilient and sustainable",
+        "larger and denser",
+        "centers of industrial production",
+        "car-free by 2030"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg11_q2",
+      "type": "multiple_choice",
+      "prompt": "Helsinki's Oodi Central Library is notable as...",
+      "options": [
+        "a nearly zero-energy public space co-designed with residents",
+        "the world's largest book archive",
+        "a private members-only library",
+        "a university research library"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg13_q1",
+      "type": "multiple_choice",
+      "prompt": "What does SDG 13 call for?",
+      "options": [
+        "Urgent action to combat climate change and its impacts",
+        "Universal access to clean water",
+        "Gender equality in education",
+        "Reduced inequality among countries"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg13_q2",
+      "type": "multiple_choice",
+      "prompt": "Thammasat University Library's award-winning green program is built around...",
+      "options": [
+        "the circular economy (From Waste to Wealth)",
+        "banning printed books",
+        "solar-powered bookmobiles only",
+        "closing the library to save energy"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "questionId": "sdg13_q3",
+      "type": "multiple_choice",
+      "prompt": "A seed library primarily helps a community by...",
+      "options": [
+        "sharing and tracking seeds for local growing",
+        "selling rare plants",
+        "storing grain reserves",
+        "replacing public gardens"
+      ],
+      "correctIndex": 0
+    }
+  ]
+}
