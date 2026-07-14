@@ -70,13 +70,43 @@ to those columns, **in the order defined**.
 
 ### Questionnaires → `VERASurveyHelper`
 ```csharp
+using VERA;
+
+VERASurveyHelper.StartSurvey(VERASurveyHelper.VERASurveyReference.S_MySurvey);
+
 VERASurveyHelper.StartSurvey(
-    VERASurveyHelper.VERASurveyReference.S_CybersicknessQuestionnaire,
+    VERASurveyHelper.VERASurveyReference.S_MySurvey,
     onSurveyComplete: () => { /* continue experiment */ });
+
+// In-VR (immersive world-space UI) vs. on the participant's web browser:
+VERASurveyHelper.StartSurvey(VERASurveyHelper.VERASurveyReference.S_MySurvey, inVR: true);
+VERASurveyHelper.StartSurvey(VERASurveyHelper.VERASurveyReference.S_MySurvey, inVR: false);
 ```
-Optional params: `runInWeb` (browser vs immersive world-space UI; default
-false = VR), `transportToLobby`, `dimEnvironment`, `heightOffset`,
-`distanceOffset`. VERA handles display, navigation, and response recording.
+Other optional params seen in the docs: `transportToLobby`, `dimEnvironment`,
+`heightOffset`, `distanceOffset` (position the world-space UI relative to
+the head). One doc page names the VR/web switch `runInWeb` (inverse sense,
+default false = VR) and another names it `inVR` (default unspecified) —
+**verify the actual parameter name against the generated
+`VERASurveyHelper` code once authenticated** rather than trusting either
+snippet blindly. VERA handles display, navigation, and response recording
+either way.
+
+#### Questionnaire phases (set per-survey on the portal, not in code)
+- **Pre-experiment** — auto-administered in the participant's **web
+  browser before** they enter VR. No Unity call needed.
+- **Post-experiment** — auto-administered in the **web browser after**
+  the VR portion ends. No Unity call needed.
+- **Mid-experiment** — **not** automatic. You must call
+  `VERASurveyHelper.StartSurvey(...)` yourself at the right point in the
+  VR session, choosing `inVR`/`runInWeb` for how it displays.
+
+**Fit for this project:** the existing pre/post knowledge quiz
+(`QuizRunner`) is a pre- and post-experiment questionnaire pair — a direct
+port to VERA's phase system, freeing `QuizRunner` entirely. A
+cybersickness/comfort questionnaire (relevant to the comfort-vignette
+work) fits well as **either** a post-experiment survey or a mid-experiment
+one triggered right after the first sustained stick-walk, run **in VR**
+so it doesn't break presence.
 
 ### Sessions → `VERASessionManager` (static)
 ```csharp
@@ -103,6 +133,84 @@ Session statuses: `Created` → `In Progress` → `Completed` /
   joins) → `Active` (recruiting + collecting) → `Paused` (blocks new joins,
   keeps cycle). In-progress sessions always finish. Activate on the
   Experiment Results page; Pause/Deactivate on the Edit Experiment page.
+
+## Portal setup: recommended CSV file types & columns
+
+The portal's "CSV Column Metadata Configuration" always pre-fills three
+columns you can't remove — `pID` (Integer), `conditions` (String, JSON of
+active IVs), `ts` (Float, seconds since app start) — then lets you
+`+ Add a column` for the rest. Below are the columns to add, in order,
+mirroring our two existing CSV schemas 1:1 so nothing gets lost (see the
+gaze schema in `AttentionDataLogger.cs` and the events schema in
+`StudyEventLogger.cs`). Portal data types are limited to roughly
+Integer / Float / String (confirm Boolean is available; if not, encode
+booleans as Integer 0/1, as our own CSVs already do).
+
+**Caveat on `timestamp_utc_ms`:** it's a 13-digit Unix millisecond epoch
+(~1.78 × 10¹²), which overflows a 32-bit `Integer` column. Use `Float`
+(and confirm it's double-precision on the portal, not `float32`, which
+starts losing whole milliseconds above ~2²⁴ ≈ 16.7M) — or, safer, add it
+as a `String` and cast on export. `ts` (auto-provided) already covers
+relative timing for most analyses; keep `timestamp_utc_ms` only for
+cross-device / cross-session wall-clock alignment.
+
+### File type: `GazeSamples` (extension `csv`)
+One row per rendered frame — the `gaze_*.csv` replacement.
+
+| Order | Column | Type | Notes |
+|---|---|---|---|
+| — | `pID` | Integer | auto |
+| — | `conditions` | String | auto |
+| — | `ts` | Float | auto |
+| 1 | `timestamp_utc_ms` | Float or String | see caveat above |
+| 2 | `frame` | Integer | `Time.frameCount` |
+| 3–5 | `head_pos_x/y/z` | Float | world space, meters |
+| 6–9 | `head_rot_x/y/z/w` | Float | quaternion, world space |
+| 10–12 | `gaze_origin_x/y/z` | Float | world space |
+| 13–15 | `gaze_dir_x/y/z` | Float | normalized, world space |
+| 16 | `gaze_source` | String | `EyeTracking` / `HeadGaze` |
+| 17 | `gaze_confidence` | Float | 1.0 for head gaze |
+| 18 | `angular_velocity_deg_s` | Float | I-VT classifier input |
+| 19 | `is_fixating` | Integer | 0/1 |
+| 20 | `fixation_id` | Integer | monotonically increasing |
+| 21 | `hit_target` | String | `AttentionTarget` id, empty if none |
+| 22–24 | `hit_point_x/y/z` | Float | empty if no hit |
+| 25 | `hit_distance` | Float | empty if no hit |
+
+### File type: `StudyEvents` (extension `csv`)
+One row per discrete event — the `events_*.csv` replacement.
+
+| Order | Column | Type | Notes |
+|---|---|---|---|
+| — | `pID` / `conditions` / `ts` | — | auto |
+| 1 | `timestamp_utc_ms` | Float or String | see caveat above |
+| 2 | `platform` | String | `VR` / `Desktop` / `WebGL` — not an IV, so not covered by `conditions` |
+| 3 | `event_type` | String | click, key_press, station_enter, station_exit, teleport, docent_guidance, quiz_response, session_start, session_end, … |
+| 4 | `target_id` | String | AttentionTarget / station / object id |
+| 5 | `detail` | String | free-text payload |
+| 6–8 | `world_x/y/z` | Float | empty when not applicable |
+| 9–10 | `screen_x/y` | Float | desktop/WebGL clicks only; empty in VR |
+
+Note: `session_time_s` and `condition` from the original `events_*.csv`
+header are dropped here because VERA's auto `ts` and `conditions` already
+cover them — don't duplicate.
+
+### File type: `Summary` (extension `csv`, optional)
+The per-session rollup (`summary_*.csv`) is the one file that's naturally
+computed **once at session end**, not streamed. Either keep it purely
+local (simplest — it's a derived/redundant view of `GazeSamples` +
+`StudyEvents`, reconstructable from them on the portal side), or define
+it on the portal with one row per session summarizing per-AOI dwell time,
+look count, and time-to-first-look. Recommend **skip defining this on
+VERA** initially — derive it from the two streams above during analysis,
+and revisit only if the research team wants it live on the dashboard.
+
+### Independent variables to define
+- `Condition` — String/enum, 3 levels: `Passive`, `Interactive`, `Guided`
+  (mirrors `StudyConditionManager`).
+- Optionally, once `CounterbalanceManager` output should be visible on the
+  portal: additional IVs for zone-position assignment / spawn heading —
+  design these after Part A (counterbalancing) is finalized, not now.
 
 ## Impact on this project (action items)
 
