@@ -5,7 +5,10 @@ early-access platform: a web portal at **https://vera-xr.io** plus a Unity
 plugin. Together they handle experiment definition, participant
 recruitment/assignment, WebXR deployment, and remote data collection.
 This document covers what is already wired in this project and the exact
-steps to finish the hookup once you have portal access.
+steps to finish the hookup once you have portal access. For the current
+live status of portal-side configuration (which columns/IVs/surveys are
+actually saved), see `docs/VERA_PORTAL_PROGRESS.md` — keep that file
+updated as you go, since portal state isn't visible from the repo.
 
 ## What is already in place (no portal needed)
 
