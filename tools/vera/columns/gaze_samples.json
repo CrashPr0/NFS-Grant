@@ -1,0 +1,33 @@
+{
+  "fileType": "GazeSamples",
+  "extension": "csv",
+  "description": "One row per rendered frame: head pose, gaze ray, fixation state, and gaze-hit AOI. Mirrors gaze_*.csv from AttentionDataLogger.",
+  "note": "pID / conditions / ts are auto-added by VERA — do NOT list them here.",
+  "columns": [
+    { "name": "timestamp_utc_ms", "type": "Float",   "description": "Unix epoch milliseconds (UTC). 13-digit value; use Float (double) or String — overflows a 32-bit Integer." },
+    { "name": "frame",            "type": "Integer", "description": "Unity frame count at sample time." },
+    { "name": "head_pos_x",       "type": "Float",   "description": "Head position X, world space, meters." },
+    { "name": "head_pos_y",       "type": "Float",   "description": "Head position Y, world space, meters." },
+    { "name": "head_pos_z",       "type": "Float",   "description": "Head position Z, world space, meters." },
+    { "name": "head_rot_x",       "type": "Float",   "description": "Head rotation quaternion X, world space." },
+    { "name": "head_rot_y",       "type": "Float",   "description": "Head rotation quaternion Y, world space." },
+    { "name": "head_rot_z",       "type": "Float",   "description": "Head rotation quaternion Z, world space." },
+    { "name": "head_rot_w",       "type": "Float",   "description": "Head rotation quaternion W, world space." },
+    { "name": "gaze_origin_x",    "type": "Float",   "description": "Gaze ray origin X, world space." },
+    { "name": "gaze_origin_y",    "type": "Float",   "description": "Gaze ray origin Y, world space." },
+    { "name": "gaze_origin_z",    "type": "Float",   "description": "Gaze ray origin Z, world space." },
+    { "name": "gaze_dir_x",       "type": "Float",   "description": "Gaze ray direction X, normalized, world space." },
+    { "name": "gaze_dir_y",       "type": "Float",   "description": "Gaze ray direction Y, normalized, world space." },
+    { "name": "gaze_dir_z",       "type": "Float",   "description": "Gaze ray direction Z, normalized, world space." },
+    { "name": "gaze_source",      "type": "String",  "description": "EyeTracking (Quest Pro) or HeadGaze (fallback)." },
+    { "name": "gaze_confidence",  "type": "Float",   "description": "Eye-tracker confidence; 1.0 for head gaze." },
+    { "name": "angular_velocity_deg_s", "type": "Float", "description": "Gaze angular velocity (deg/s) used by the I-VT classifier." },
+    { "name": "is_fixating",      "type": "Integer", "description": "Fixation state, 0/1 (Boolean encoded as int, matching our CSV)." },
+    { "name": "fixation_id",      "type": "Integer", "description": "Monotonically increasing fixation ID." },
+    { "name": "hit_target",       "type": "String",  "description": "AttentionTarget ID under the gaze ray; empty if none." },
+    { "name": "hit_point_x",      "type": "Float",   "description": "Gaze-hit world point X; empty if no hit." },
+    { "name": "hit_point_y",      "type": "Float",   "description": "Gaze-hit world point Y; empty if no hit." },
+    { "name": "hit_point_z",      "type": "Float",   "description": "Gaze-hit world point Z; empty if no hit." },
+    { "name": "hit_distance",     "type": "Float",   "description": "Distance from gaze origin to hit point; empty if no hit." }
+  ]
+}

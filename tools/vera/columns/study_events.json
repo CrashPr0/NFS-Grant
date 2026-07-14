@@ -1,0 +1,18 @@
+{
+  "fileType": "StudyEvents",
+  "extension": "csv",
+  "description": "One row per discrete event: clicks, key presses, station enter/exit, teleports, docent guidance, quiz responses, session lifecycle. Mirrors events_*.csv from StudyEventLogger.",
+  "note": "pID / conditions / ts are auto-added by VERA. session_time_s and condition from the original header are intentionally dropped — VERA's ts and conditions already cover them.",
+  "columns": [
+    { "name": "timestamp_utc_ms", "type": "Float",   "description": "Unix epoch milliseconds (UTC). Use Float (double) or String — overflows a 32-bit Integer." },
+    { "name": "platform",         "type": "String",  "description": "VR / Desktop / WebGL. Not an IV, so not captured by the conditions column." },
+    { "name": "event_type",       "type": "String",  "description": "click, key_press, station_enter, station_exit, teleport, docent_guidance, quiz_response, session_start, session_end, ..." },
+    { "name": "target_id",        "type": "String",  "description": "AttentionTarget / station / object ID this event refers to; empty if none." },
+    { "name": "detail",           "type": "String",  "description": "Free-text payload for the event." },
+    { "name": "world_x",          "type": "Float",   "description": "World-space X of the event; empty when not applicable." },
+    { "name": "world_y",          "type": "Float",   "description": "World-space Y of the event; empty when not applicable." },
+    { "name": "world_z",          "type": "Float",   "description": "World-space Z of the event; empty when not applicable." },
+    { "name": "screen_x",         "type": "Float",   "description": "2D screen X for desktop/WebGL clicks; empty in VR." },
+    { "name": "screen_y",         "type": "Float",   "description": "2D screen Y for desktop/WebGL clicks; empty in VR." }
+  ]
+}
