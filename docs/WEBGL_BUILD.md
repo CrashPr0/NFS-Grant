@@ -14,6 +14,41 @@ If you're still seeing the Meta XR / `InputActionProperty` / package
 errors, fix those first — see **docs/VERA_SETUP.md → "Troubleshooting the
 Unity 6 first open"**. Nothing below matters until the Console is green.
 
+Note on those errors: the `InputActionProperty` CS0246 errors are inside
+**VERA's own package code**, not ours. They appear because
+`com.unity.inputsystem` never installed, because Unity's package resolve
+**aborts as a whole** when the Meta SDK's npm registry
+(`npm.developer.oculus.com`) is unreachable. It's one failure with three
+symptoms — fixing the Meta source fixes all of it. Our own scripts don't
+even import Input System / TextMeshPro / XR Interaction Toolkit; those are
+VERA's transitive dependencies.
+
+## Meta won't install? The Meta-free escape hatch (fastest for a web demo)
+
+If the Meta SDK simply can't be installed on your network (the npm host
+times out no matter what), you don't need it for a browser build at all —
+it's never in a WebGL binary. This switch lets the whole project compile
+with **no Meta SDK present**, so the Editor goes green and WebGL builds:
+
+1. **Remove the Meta package.** In `Packages/manifest.json` delete the
+   `com.meta.xr.sdk.core` dependency line **and** the `scopedRegistries`
+   block that points at `npm.developer.oculus.com`. Now the resolve has
+   nothing unreachable to choke on — Input System, XRI, TMP and VERA all
+   install, and VERA's `InputActionProperty` errors vanish.
+2. **Add the scripting define.** `Project Settings > Player > Scripting
+   Define Symbols` → add `NSFGRANT_NO_META` (do it for the WebGL target;
+   adding it to all targets is fine too). This activates the OVR shim
+   (`Assets/Scripts/Compat/OVRWebGLStub.cs`) for the Editor as well, so our
+   gaze/interaction scripts compile against the stubs instead of the
+   missing SDK.
+3. **Build WebGL** as below. The VR rig is stubbed/inert; the desktop rig
+   carries the browser demo.
+
+This is opt-in and reversible: with the define unset and the Meta package
+present, nothing changes — the shim stays inert and the Quest build works
+exactly as before. **Re-add the Meta package and clear the define before
+building for Quest again** (the stubs are not a real headset runtime).
+
 You also need the **WebGL Build Support** module installed for this Editor
 version (Unity Hub → your 6000.3.9f1 install → Add Modules → WebGL Build
 Support). Without it, WebGL won't appear as a build target.
