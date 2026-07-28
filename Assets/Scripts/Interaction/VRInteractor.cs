@@ -36,8 +36,8 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            bool rightDown = OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.RTouch);
-            bool leftDown = OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.LTouch);
+            bool rightDown = XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Right);
+            bool leftDown = XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Left);
             if (!rightDown && !leftDown)
             {
                 return;
@@ -49,26 +49,29 @@ namespace NSFGrant.Interaction
                 if (interactable != null)
                 {
                     interactable.Activate("vr_trigger", hit.point);
-                    Pulse(rightDown ? OVRInput.Controller.RTouch : OVRInput.Controller.LTouch);
+                    Pulse(rightDown ? XRInputBridge.Hand.Right : XRInputBridge.Hand.Left);
                 }
             }
         }
 
-        private void Pulse(OVRInput.Controller controller)
+        private void Pulse(XRInputBridge.Hand hand)
         {
             if (!hapticsEnabled)
             {
                 return;
             }
             StopAllCoroutines();
-            StartCoroutine(PulseRoutine(controller));
+            StartCoroutine(PulseRoutine(hand));
         }
 
-        private System.Collections.IEnumerator PulseRoutine(OVRInput.Controller controller)
+        private System.Collections.IEnumerator PulseRoutine(XRInputBridge.Hand hand)
         {
-            OVRInput.SetControllerVibration(1f, hapticAmplitude, controller);
+            // On the Unity XR / WebXR path the impulse carries its own
+            // duration and the stop call is a no-op; on the OVR path the
+            // vibration runs until stopped, so the wait still matters.
+            XRInputBridge.SendHaptic(hand, hapticAmplitude, hapticSeconds);
             yield return new WaitForSeconds(hapticSeconds);
-            OVRInput.SetControllerVibration(0f, 0f, controller);
+            XRInputBridge.StopHaptic(hand);
         }
     }
 }

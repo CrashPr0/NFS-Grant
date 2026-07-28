@@ -143,7 +143,7 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            Vector2 stick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
+            Vector2 stick = XRInputBridge.GetThumbstick(XRInputBridge.Hand.Left);
             _stickWalking = stick.magnitude >= thumbstickDeadzone;
             if (!_stickWalking)
             {
@@ -175,7 +175,7 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            Vector2 stick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch);
+            Vector2 stick = XRInputBridge.GetThumbstick(XRInputBridge.Hand.Right);
             bool wantsAim = _aiming
                 ? stick.y > thumbstickDeadzone * 0.6f            // hysteresis while held
                 : stick.y > thumbstickDeadzone && stick.y >= Mathf.Abs(stick.x);
@@ -252,7 +252,7 @@ namespace NSFGrant.Interaction
         /// <summary>Right stick left/right flick (not while aiming).</summary>
         private void HandleSnapTurn()
         {
-            Vector2 stick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch);
+            Vector2 stick = XRInputBridge.GetThumbstick(XRInputBridge.Hand.Right);
 
             if (Mathf.Abs(stick.x) < thumbstickDeadzone)
             {

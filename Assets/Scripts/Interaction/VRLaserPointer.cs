@@ -18,7 +18,7 @@ namespace NSFGrant.Interaction
     /// </summary>
     public class VRLaserPointer : MonoBehaviour
     {
-        [SerializeField] private OVRInput.Controller controller = OVRInput.Controller.RTouch;
+        [SerializeField] private XRInputBridge.Hand hand = XRInputBridge.Hand.Right;
         [SerializeField] private float maxDistance = 30f;
         [SerializeField] private float startOffset = 0.08f;
         [SerializeField] private Color beamColor = new Color(0.45f, 0.85f, 1f, 0.7f);
@@ -54,7 +54,7 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
-            bool connected = OVRInput.IsControllerConnected(controller);
+            bool connected = XRInputBridge.IsConnected(hand);
             if (_line.enabled != connected)
             {
                 _line.enabled = connected;

@@ -21,7 +21,7 @@ namespace NSFGrant.Interaction
     /// </summary>
     public class VRHandVisual : MonoBehaviour
     {
-        [SerializeField] private OVRInput.Controller controller = OVRInput.Controller.RTouch;
+        [SerializeField] private XRInputBridge.Hand hand = XRInputBridge.Hand.Right;
 
         private static readonly Color RestColor = new Color(0.80f, 0.83f, 0.90f);
         private static readonly Color GripColor = new Color(1.00f, 0.82f, 0.55f);
@@ -60,7 +60,7 @@ namespace NSFGrant.Interaction
                 new Vector3(0.05f, 0.028f, 0.035f), _fingers);
 
             // Thumb nub on the inner side (mirrored for the left hand).
-            float thumbSide = controller == OVRInput.Controller.LTouch ? 1f : -1f;
+            float thumbSide = hand == XRInputBridge.Hand.Left ? 1f : -1f;
             AddPart(PrimitiveType.Capsule, "Thumb",
                 new Vector3(thumbSide * 0.035f, 0.005f, 0.005f),
                 new Vector3(90f, thumbSide * -30f, 0f),
@@ -93,7 +93,7 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
-            bool connected = OVRInput.IsControllerConnected(controller);
+            bool connected = XRInputBridge.IsConnected(hand);
             if (_root.activeSelf != connected)
             {
                 _root.SetActive(connected);
@@ -103,7 +103,7 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            float squeeze = OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, controller);
+            float squeeze = XRInputBridge.GetTrigger(hand);
             _material.SetColor("_Color", Color.Lerp(RestColor, GripColor, squeeze));
             _fingers.localRotation = Quaternion.Euler(squeeze * 40f, 0f, 0f);
         }

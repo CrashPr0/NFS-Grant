@@ -74,8 +74,22 @@ namespace NSFGrant.EditorTools
             // Controller-tracked hand visuals - without a body
             // representation, selection and the teleport arc fire from
             // thin air, which reads as broken in the headset.
-            CreateHandVisual(ovrRigComponent.leftControllerAnchor, OVRInput.Controller.LTouch, "LeftHand");
-            CreateHandVisual(ovrRigComponent.rightControllerAnchor, OVRInput.Controller.RTouch, "RightHand");
+            CreateHandVisual(ovrRigComponent.leftControllerAnchor,
+                XRInputBridge.Hand.Left, "LeftHand");
+            CreateHandVisual(ovrRigComponent.rightControllerAnchor,
+                XRInputBridge.Hand.Right, "RightHand");
+
+            // Pose drivers on the rig anchors. Inert on the native Quest
+            // build (OVRCameraRig drives its own anchors, so they disable
+            // themselves), but in a WebXR build Meta's SDK is absent and
+            // these are what make the head and hands track at all - see
+            // XRPoseDriver. Added here so ONE generated scene serves both
+            // build targets.
+            AddPoseDriver(centerEye, XRPoseDriver.TrackedNode.Head);
+            AddPoseDriver(ovrRigComponent.leftControllerAnchor,
+                XRPoseDriver.TrackedNode.LeftHand);
+            AddPoseDriver(ovrRigComponent.rightControllerAnchor,
+                XRPoseDriver.TrackedNode.RightHand);
 
             GameObject desktopRig = CreateDesktopRig();
 
@@ -218,7 +232,7 @@ namespace NSFGrant.EditorTools
         /// actual hand geometry at runtime).
         /// </summary>
         private static void CreateHandVisual(Transform anchor,
-            OVRInput.Controller controller, string name)
+            XRInputBridge.Hand hand, string name)
         {
             if (anchor == null)
             {
@@ -228,17 +242,37 @@ namespace NSFGrant.EditorTools
             }
             var go = new GameObject(name);
             go.transform.SetParent(anchor, false);
-            var hand = go.AddComponent<VRHandVisual>();
-            var so = new SerializedObject(hand);
-            so.FindProperty("controller").intValue = (int)controller;
+            var handVisual = go.AddComponent<VRHandVisual>();
+            var so = new SerializedObject(handVisual);
+            so.FindProperty("hand").intValue = (int)hand;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             // Laser pointer from the same controller (visual aim aid;
             // selection stays on the gaze ray - see VRLaserPointer).
             var laser = go.AddComponent<VRLaserPointer>();
             var laserSo = new SerializedObject(laser);
-            laserSo.FindProperty("controller").intValue = (int)controller;
+            laserSo.FindProperty("hand").intValue = (int)hand;
             laserSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// Attaches an <see cref="XRPoseDriver"/> to a rig anchor. Harmless on
+        /// the Meta path (the component disables itself when OVRCameraRig is
+        /// driving); essential on WebXR, where nothing else moves the anchors.
+        /// </summary>
+        private static void AddPoseDriver(Transform anchor, XRPoseDriver.TrackedNode node)
+        {
+            if (anchor == null)
+            {
+                return;
+            }
+            var driver = anchor.gameObject.AddComponent<XRPoseDriver>();
+            var so = new SerializedObject(driver);
+            so.FindProperty("node").intValue = (int)node;
+            // Hands should vanish with their controller; the head must not.
+            so.FindProperty("hideWhenUntracked").boolValue =
+                node != XRPoseDriver.TrackedNode.Head;
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         private static GameObject CreateDesktopRig()

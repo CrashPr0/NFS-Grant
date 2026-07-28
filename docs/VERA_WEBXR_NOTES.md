@@ -44,7 +44,10 @@ back to **head gaze** (which it already does gracefully). Consequences:
 - Haptics (`OVRInput.SetControllerVibration` in `VRInteractor`) also
   won't fire over WebXR — cosmetic, not a blocker.
 
-### 2. Our controls are Meta-native (OVRInput) — dead in WebXR until ported
+### 2. Our controls were Meta-native (OVRInput) — PORTED 2026-07-14
+
+**Status: done, but unverified — needs one in-headset browser test.**
+See "The OVR → Unity XR port" below for what changed and how to check it.
 
 Confirmed in-repo: the rig is `OVRCameraRig` + `OVRManager`, **no Unity
 `XROrigin` / `TrackedPoseDriver`**, and all input goes through `OVRInput`
@@ -61,6 +64,52 @@ So in a WebXR build:
   buttons/thumbsticks via the Input System / XRI actions VERA already
   depends on). This is the same 5 files we mapped for the WebGL shim
   (GazeProvider + the 4 interaction scripts).
+
+## The OVR → Unity XR port (2026-07-14)
+
+Goal: the same generated scene works as a native Quest APK **and** as a
+VERA WebXR link with working head/hand tracking and controls.
+
+**Design:** one facade, `Assets/Scripts/Interaction/XRInputBridge.cs`.
+It routes to `OVRInput` on the native Meta path and to Unity's built-in
+`UnityEngine.XR.InputDevices` on the WebXR / Meta-free path, chosen by the
+same `#if (UNITY_WEBGL && !UNITY_EDITOR) || NSFGRANT_NO_META` switch as the
+OVR shim, so the two can't disagree. `UnityEngine.XR` is a core module
+(already in the manifest) — the port adds **no package dependency**, which
+is why it's used instead of XRI or Input System actions.
+
+Both branches always compile (OVR calls resolve against the shim on WebGL;
+Unity XR calls are core API everywhere), so a mistake shows up as a
+compile error rather than a silently dead control path.
+
+| File | Change |
+|---|---|
+| `Interaction/XRInputBridge.cs` | **New.** Facade: `IsConnected`, `GetThumbstick`, `GetTrigger`, `GetTriggerDown`, `SendHaptic`/`StopHaptic`. Derives trigger *edges* for Unity XR (which reports level only), cached per frame so several callers see one consistent edge. |
+| `Interaction/XRPoseDriver.cs` | **New.** Drives a transform from `XRNode.CenterEye/LeftHand/RightHand`. This is what makes head + hands actually track in WebXR, where the stubbed `OVRCameraRig` moves nothing. Self-disables on the Meta path so it can never fight the real rig. Equivalent to the "Tracked Pose Driver" VERA's guide recommends, written against `UnityEngine.XR` so no extra package is needed. |
+| `VRInteractor` | Trigger-down + haptics now via the bridge. |
+| `VRHandVisual`, `VRLaserPointer` | Serialized `OVRInput.Controller controller` → `XRInputBridge.Hand hand`; connection + squeeze via the bridge. |
+| `VRLocomotion` | All three thumbstick reads (walk, teleport aim, snap turn) via the bridge. |
+| `Core/PlatformRigSwitcher` | **Behaviour fix for WebXR:** a browser page loads *flat* and the participant clicks "Enter VR" later, so startup-only rig switching would strand them in the desktop rig inside the headset. On the Unity XR path it now re-evaluates while running and swaps rigs live. Quest keeps startup-only behaviour. |
+| `Editor/DiscoveryHallBuilder` | Writes the renamed `hand` field, and attaches `XRPoseDriver` to the head + both controller anchors so **one** generated scene serves both targets. |
+
+**Native Quest behaviour is intentionally unchanged** — on that path every
+call still lands on `OVRInput` exactly as before, and the pose drivers
+disable themselves.
+
+### What still does NOT work in WebXR (platform limits, not fixable here)
+- **Eye tracking** — finding #1 above. Still head-gaze only in a browser.
+- **Haptics** — the bridge sends an impulse where supported and silently
+  skips where not; browsers commonly don't support it.
+
+### How to verify (the test I could not run)
+1. Native regression first: build/run the Quest APK — locomotion, teleport,
+   snap turn, hands, laser, trigger select should behave exactly as before.
+2. `VERA > Settings > Build and Upload Experiment`, open the link on a
+   desktop browser: flat mouse/keyboard tour works.
+3. Open the same link in the **Quest browser** → "Enter VR": head and hands
+   should track, left stick walks, right stick teleports/snap-turns,
+   trigger selects. If controllers don't track, apply the guide's fix —
+   switch the XR provider from OpenXR to **Oculus**.
 
 ## Pre-empt the guide's known gotchas (checklist for the first WebXR build)
 
