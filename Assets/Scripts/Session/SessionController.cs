@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using UnityEngine;
 using NSFGrant.Core;
 using NSFGrant.Gaze;
@@ -46,10 +48,26 @@ namespace NSFGrant.Session
         public bool SessionRunning { get; private set; }
         public float SessionTime { get; private set; }
 
+        private DateTime _sessionStartUtc;
+
         public string ParticipantId
         {
             get => participantId;
             set => participantId = value;
+        }
+
+        /// <summary>
+        /// Pins number formatting to the invariant culture before any scene
+        /// code runs. Event details are built with interpolation such as
+        /// $"duration_s={t:F1}"; on a comma-decimal OS locale that yields
+        /// "3,5", which the CSV sanitizer turns into "3;5" - corrupting the
+        /// value in the research data.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void UseInvariantCulture()
+        {
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         }
 
         private void Awake()
@@ -86,15 +104,16 @@ namespace NSFGrant.Session
             StudyPaths.OverrideRoot = customDataFolder;
 
             SessionTime = 0f;
-            foreach (var target in FindObjectsOfType<AttentionTarget>())
+            _sessionStartUtc = DateTime.UtcNow;
+            foreach (var target in FindObjectsByType<AttentionTarget>(FindObjectsSortMode.None))
             {
                 target.ResetStats();
             }
-            foreach (var station in FindObjectsOfType<SdgStation>())
+            foreach (var station in FindObjectsByType<SdgStation>(FindObjectsSortMode.None))
             {
                 station.ResetStats();
             }
-            foreach (var interactable in FindObjectsOfType<InteractableObject>())
+            foreach (var interactable in FindObjectsByType<InteractableObject>(FindObjectsSortMode.None))
             {
                 interactable.ResetStats();
             }
@@ -134,13 +153,13 @@ namespace NSFGrant.Session
                 PlatformDetector.PlatformTag,
                 CurrentConditionName(),
                 SessionTime,
-                FindObjectsOfType<AttentionTarget>(),
+                FindObjectsByType<AttentionTarget>(FindObjectsSortMode.None),
                 fixationDetector != null ? fixationDetector.FixationCount : 0,
-                FindObjectsOfType<SdgStation>(),
-                FindObjectsOfType<InteractableObject>());
+                FindObjectsByType<SdgStation>(FindObjectsSortMode.None),
+                FindObjectsByType<InteractableObject>(FindObjectsSortMode.None));
 
             VeraBridge.Instance?.NotifySessionEnded(participantId, SessionTime);
-            uploader?.UploadSessionFiles();
+            uploader?.UploadSessionFiles(_sessionStartUtc);
 
             Debug.Log($"[SessionController] Session stopped after {SessionTime:F1}s.");
         }

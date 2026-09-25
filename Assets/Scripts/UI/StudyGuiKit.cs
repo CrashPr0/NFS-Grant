@@ -117,9 +117,20 @@ namespace NSFGrant.UI
             };
         }
 
+        private static int _lastOverlayFrame = -10;
+
+        /// <summary>
+        /// True while a full-screen panel (intake, quiz, ranking, done) is
+        /// showing. OnGUI runs after Update, so a panel drawn last frame
+        /// counts. Scene input (world clicks, walking) must check this, or a
+        /// click on a panel button also activates the exhibit behind it.
+        /// </summary>
+        public static bool ModalVisible => Time.frameCount - _lastOverlayFrame <= 1;
+
         /// <summary>Full-screen dark scrim behind a panel.</summary>
         public static void DrawOverlay()
         {
+            _lastOverlayFrame = Time.frameCount;
             EnsureBuilt();
             var prev = GUI.color;
             GUI.color = new Color(0f, 0f, 0f, 0.70f);

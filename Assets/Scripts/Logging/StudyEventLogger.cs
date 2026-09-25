@@ -52,7 +52,7 @@ namespace NSFGrant.Logging
             string dir = StudyPaths.Root;
             Directory.CreateDirectory(dir);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-            string path = Path.Combine(dir, $"events_{Sanitize(participantId)}_{stamp}.csv");
+            string path = Path.Combine(dir, $"events_{StudyPaths.FileToken(participantId)}_{stamp}.csv");
 
             _writer = new StreamWriter(path, false, Encoding.UTF8);
             _writer.WriteLine(Header);

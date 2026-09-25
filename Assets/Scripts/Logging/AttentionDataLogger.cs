@@ -48,7 +48,7 @@ namespace NSFGrant.Logging
 
             Directory.CreateDirectory(DataDirectory);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
-            string safeId = Sanitize(participantId);
+            string safeId = StudyPaths.FileToken(participantId);
             CurrentFilePath = Path.Combine(DataDirectory, $"gaze_{safeId}_{stamp}.csv");
 
             _writer = new StreamWriter(CurrentFilePath, false, Encoding.UTF8);
@@ -115,7 +115,7 @@ namespace NSFGrant.Logging
             Directory.CreateDirectory(DataDirectory);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
             string path = Path.Combine(DataDirectory,
-                $"summary_{Sanitize(participantId)}_{stamp}.csv");
+                $"summary_{StudyPaths.FileToken(participantId)}_{stamp}.csv");
 
             var inv = CultureInfo.InvariantCulture;
             using var summary = new StreamWriter(path, false, Encoding.UTF8);

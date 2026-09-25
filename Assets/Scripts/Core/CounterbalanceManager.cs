@@ -49,7 +49,7 @@ namespace NSFGrant.Core
             var parts = new List<string> { $"seed={seed}" };
 
             // Stations sorted by ID so the procedure is deterministic.
-            var stations = FindObjectsOfType<SdgStation>()
+            var stations = FindObjectsByType<SdgStation>(FindObjectsSortMode.None)
                 .OrderBy(s => s.StationId).ToArray();
 
             PermuteStationPositions(stations, seed, parts);

@@ -1,4 +1,5 @@
 using UnityEngine;
+using NSFGrant.UI;
 
 namespace NSFGrant.Interaction
 {
@@ -34,6 +35,12 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
+            // No walking/looking while a panel is open, e.g. typing the
+            // participant ID or answering the quiz.
+            if (StudyGuiKit.ModalVisible)
+            {
+                return;
+            }
             HandleLook();
             HandleMove();
         }

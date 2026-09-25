@@ -31,5 +31,30 @@ namespace NSFGrant.Logging
 
         /// <summary>Subfolder for the low-rate screenshot stills.</summary>
         public static string ScreenshotsDir => Path.Combine(Root, "screenshots");
+
+        /// <summary>
+        /// Makes a value (e.g. a participant ID from the intake field or a
+        /// ?pid= URL parameter) safe to embed in a file name: anything other
+        /// than letters, digits, '-' and '_' becomes '_'. Without this an ID
+        /// containing '/' or '..' would make the loggers throw or write
+        /// outside the data folder.
+        /// </summary>
+        public static string FileToken(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "unknown";
+            }
+            var chars = value.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                char c = chars[i];
+                if (!char.IsLetterOrDigit(c) && c != '-' && c != '_')
+                {
+                    chars[i] = '_';
+                }
+            }
+            return new string(chars);
+        }
     }
 }

@@ -42,6 +42,8 @@ namespace NSFGrant.Interaction
                  "(hands shouldn't float in space when a controller is off).")]
         [SerializeField] private bool hideWhenUntracked = false;
 
+        private bool? _lastTracked;
+
         private void Awake()
         {
             // On the native Meta path OVRCameraRig owns these anchors.
@@ -73,8 +75,13 @@ namespace NSFGrant.Interaction
                 transform.localRotation = rotation;
             }
 
-            if (hideWhenUntracked)
+            // Only touch renderers when tracking actually changes: the old
+            // every-frame GetComponentsInChildren allocated garbage each
+            // frame (GC hitches in a headset) and fought other scripts that
+            // toggle their own renderers (e.g. the laser dot).
+            if (hideWhenUntracked && tracked != _lastTracked)
             {
+                _lastTracked = tracked;
                 foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
                 {
                     r.enabled = tracked;

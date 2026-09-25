@@ -1,5 +1,6 @@
 using UnityEngine;
 using NSFGrant.Logging;
+using NSFGrant.UI;
 
 namespace NSFGrant.Interaction
 {
@@ -28,7 +29,8 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
-            if (rigCamera == null)
+            // Clicks/keys aimed at an on-screen panel belong to that panel.
+            if (rigCamera == null || StudyGuiKit.ModalVisible)
             {
                 return;
             }

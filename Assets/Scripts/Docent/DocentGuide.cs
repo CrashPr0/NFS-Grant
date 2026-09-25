@@ -29,17 +29,35 @@ namespace NSFGrant.Docent
         [SerializeField] private float beaconHeight = 3f;
 
         private int _routeIndex = -1;
+        private bool _conditionChecked;
 
         private void Start()
         {
+            if (beacon != null)
+            {
+                beacon.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// The condition is only final once the session starts: StudyIntake
+        /// applies ?cond= in its own Start (order vs. this one is undefined)
+        /// or later from the intake panel. Deciding in Start would leave a
+        /// Guided participant with no docent while the logs say Guided.
+        /// </summary>
+        private void TryActivate()
+        {
+            var logger = StudyEventLogger.Instance;
+            if (logger != null && !logger.IsLogging)
+            {
+                return; // session not started yet
+            }
+            _conditionChecked = true;
+
             bool enabledByCondition = StudyConditionManager.Instance != null &&
                                       StudyConditionManager.Instance.DocentEnabled;
             if (!enabledByCondition)
             {
-                if (beacon != null)
-                {
-                    beacon.SetActive(false);
-                }
                 enabled = false;
                 return;
             }
@@ -49,6 +67,12 @@ namespace NSFGrant.Docent
 
         private void Update()
         {
+            if (!_conditionChecked)
+            {
+                TryActivate();
+                return;
+            }
+
             if (_routeIndex < 0 || _routeIndex >= route.Count)
             {
                 return;

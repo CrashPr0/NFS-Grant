@@ -21,7 +21,7 @@ namespace NSFGrant.EditorTools
         {
             get
             {
-                var controller = Object.FindObjectOfType<SessionController>();
+                var controller = Object.FindAnyObjectByType<SessionController>();
                 if (controller != null)
                 {
                     var prop = new SerializedObject(controller)

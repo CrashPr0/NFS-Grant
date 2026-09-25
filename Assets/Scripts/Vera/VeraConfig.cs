@@ -32,10 +32,10 @@ namespace NSFGrant.Vera
         [Tooltip("VERA experiment ID (safe to serialize; it is not a secret).")]
         [SerializeField] private string experimentId = "";
 
-        public string PortalBaseUrl => _loaded?.portalBaseUrl ?? portalBaseUrl;
+        public string PortalBaseUrl => Loaded?.portalBaseUrl ?? portalBaseUrl;
         public string ExperimentId =>
-            string.IsNullOrEmpty(_loaded?.experimentId) ? experimentId : _loaded.experimentId;
-        public string ApiKey => _loaded?.apiKey ?? "";
+            string.IsNullOrEmpty(Loaded?.experimentId) ? experimentId : Loaded.experimentId;
+        public string ApiKey => Loaded?.apiKey ?? "";
 
         /// <summary>True once an API key has been found on disk.</summary>
         public bool IsConfigured =>
@@ -50,8 +50,28 @@ namespace NSFGrant.Vera
         }
 
         private Credentials _loaded;
+        private bool _loadAttempted;
 
-        private void Awake()
+        /// <summary>
+        /// Loaded on first use rather than in Awake: StudyPaths.Root only
+        /// reflects SessionController's customDataFolder once StartSession
+        /// has run, so an Awake-time lookup would miss a credentials file
+        /// placed in the custom data folder.
+        /// </summary>
+        private Credentials Loaded
+        {
+            get
+            {
+                if (!_loadAttempted)
+                {
+                    _loadAttempted = true;
+                    Load();
+                }
+                return _loaded;
+            }
+        }
+
+        private void Load()
         {
             foreach (string dir in CandidateDirectories())
             {
@@ -64,7 +84,7 @@ namespace NSFGrant.Vera
                 {
                     _loaded = JsonUtility.FromJson<Credentials>(File.ReadAllText(path));
                     Debug.Log($"[VeraConfig] Loaded credentials from {path} " +
-                              $"(experiment '{ExperimentId}').");
+                              $"(experiment '{_loaded?.experimentId ?? experimentId}').");
                     return;
                 }
                 catch (Exception e)

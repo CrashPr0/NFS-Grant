@@ -25,7 +25,7 @@ namespace NSFGrant.Interaction
         {
             if (gazeProvider == null)
             {
-                gazeProvider = FindObjectOfType<GazeProvider>();
+                gazeProvider = FindAnyObjectByType<GazeProvider>();
             }
         }
 

@@ -38,17 +38,23 @@ namespace NSFGrant.Logging
 
         public bool UploadEnabled => !string.IsNullOrEmpty(endpointUrl);
 
-        /// <summary>Uploads every CSV (and, if enabled, screenshot) in StudyData.</summary>
-        public void UploadSessionFiles()
+        /// <summary>
+        /// Uploads the CSVs (and, if enabled, screenshots) in StudyData that
+        /// were written during the session starting at <paramref name="sessionStartUtc"/>.
+        /// Older files (earlier sessions, other participants on a shared
+        /// machine or browser profile) are left alone so they aren't
+        /// re-uploaded as duplicates every session.
+        /// </summary>
+        public void UploadSessionFiles(DateTime sessionStartUtc)
         {
             if (!UploadEnabled)
             {
                 return;
             }
-            StartCoroutine(UploadAll());
+            StartCoroutine(UploadAll(sessionStartUtc.AddSeconds(-1)));
         }
 
-        private IEnumerator UploadAll()
+        private IEnumerator UploadAll(DateTime sinceUtc)
         {
             string dir = StudyPaths.Root;
             if (!Directory.Exists(dir))
@@ -58,7 +64,10 @@ namespace NSFGrant.Logging
 
             foreach (string path in Directory.GetFiles(dir, "*.csv"))
             {
-                yield return UploadFile(path, "text/csv");
+                if (File.GetLastWriteTimeUtc(path) >= sinceUtc)
+                {
+                    yield return UploadFile(path, "text/csv");
+                }
             }
 
             string shotDir = StudyPaths.ScreenshotsDir;
@@ -66,7 +75,10 @@ namespace NSFGrant.Logging
             {
                 foreach (string path in Directory.GetFiles(shotDir, "*.png"))
                 {
-                    yield return UploadFile(path, "image/png");
+                    if (File.GetLastWriteTimeUtc(path) >= sinceUtc)
+                    {
+                        yield return UploadFile(path, "image/png");
+                    }
                 }
             }
         }

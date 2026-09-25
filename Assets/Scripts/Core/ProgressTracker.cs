@@ -36,7 +36,7 @@ namespace NSFGrant.Core
 
         private void Start()
         {
-            _stations = FindObjectsOfType<SdgStation>();
+            _stations = FindObjectsByType<SdgStation>(FindObjectsSortMode.None);
         }
 
         private void Update()
@@ -44,10 +44,9 @@ namespace NSFGrant.Core
             // Only count while a session is live; reset cleanly if it restarts.
             if (session != null && !session.SessionRunning)
             {
-                if (_visited.Count > 0 && !_complete)
-                {
-                    _visited.Clear();
-                }
+                _visited.Clear();
+                _complete = false;
+                _completeTime = -1f;
                 return;
             }
             if (_stations == null || _stations.Length == 0 || _complete)

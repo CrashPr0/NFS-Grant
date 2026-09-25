@@ -50,7 +50,7 @@ namespace NSFGrant.Logging
                 return;
             }
 
-            _participantId = participantId;
+            _participantId = StudyPaths.FileToken(participantId);
             _directory = StudyPaths.ScreenshotsDir;
             Directory.CreateDirectory(_directory);
             _loop = StartCoroutine(CaptureLoop());
@@ -102,7 +102,9 @@ namespace NSFGrant.Logging
             RenderTexture.ReleaseTemporary(full);
 
             string path = Path.Combine(_directory,
-                $"shot_{_participantId}_{Time.unscaledTime:F1}s.png");
+                $"shot_{_participantId}_" +
+                Time.unscaledTime.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) +
+                "s.png");
 
             if (SystemInfo.supportsAsyncGPUReadback)
             {
