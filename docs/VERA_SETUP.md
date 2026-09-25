@@ -138,7 +138,30 @@ Fix, in order:
 3. **Reopen / Retry.** The rest of the graph (VERA's XRI + Input System
    deps) comes from Unity's own registry and should now resolve; the
    `InputActionProperty` errors disappear without any code change.
-4. **If duplicate-TextMeshPro type errors appear next:** VERA declares
+4. **Still `InputActionProperty` CS0246 with every package installed
+   (seen 2026-09-24)?** Then it's the input backend, not the network.
+   VERA's `VERABaselineDataLogger.cs` imports `UnityEngine.InputSystem`
+   only under `#if ENABLE_INPUT_SYSTEM`, but uses `InputActionProperty`
+   outside that guard. Unity defines `ENABLE_INPUT_SYSTEM` only when
+   `Project Settings > Player > Other Settings > Active Input Handling` is
+   **Input System Package** or **Both**. Set it to **Both** (our scripts
+   use the legacy `Input` class, so not "Input System Package" alone) and
+   let the editor restart. `ProjectSettings.asset` isn't committed, so a
+   fresh clone starts on "Input Manager (Old)" again;
+   `CiTools.SetupProject` now sets Both automatically.
+
+   **VERA is now embedded and patched** at `Packages/com.vera.vera`
+   (v0.4.2, copied from the git package minus the 404 MB `Samples~`
+   demo). The three methods taking `InputActionProperty`
+   (`GetFloatInputState`, `GetInputState`, `GetVector2InputState`) are
+   wrapped whole in `#if ENABLE_INPUT_SYSTEM`; they are only called from
+   code already under that guard, so it compiles with any input setting.
+   An embedded package overrides the git URL still in `manifest.json`.
+   **To update VERA:** delete `Packages/com.vera.vera`, let Unity fetch
+   the new git version, and if upstream hasn't fixed the guard yet,
+   re-embed and re-apply the patch (search for `NSF-Grant patch`). Worth
+   reporting upstream so the patch can be dropped.
+5. **If duplicate-TextMeshPro type errors appear next:** VERA declares
    `com.unity.textmeshpro 3.0.6`, but Unity 6 merged TMP into
    `com.unity.ugui 2.0.0`. If Unity doesn't reconcile this on its own,
    report it — a single manifest override addresses it (do not download

@@ -48,6 +48,7 @@ namespace NSFGrant.EditorTools
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
             EnableXrLoader(BuildTargetGroup.Android, "Unity.XR.Oculus.OculusLoader");
+            EnableBothInputBackends();
 
             AssetDatabase.SaveAssets();
             Debug.Log("[CiTools] Setup complete. Note: run the Meta Project Setup Tool " +
@@ -116,6 +117,30 @@ namespace NSFGrant.EditorTools
         /// Programmatic equivalent of ticking the loader checkbox in
         /// Project Settings &gt; XR Plug-in Management.
         /// </summary>
+        /// <summary>
+        /// Sets Player > Active Input Handling to "Both". The VERA package
+        /// imports UnityEngine.InputSystem only under ENABLE_INPUT_SYSTEM but
+        /// uses InputActionProperty unguarded, so with "Input Manager (Old)"
+        /// it fails with CS0246. Our own scripts use the legacy Input class,
+        /// so "Input System Package" alone would break them - it must be Both.
+        /// There is no public PlayerSettings API for this, hence the
+        /// SerializedObject route. Takes effect after an editor restart.
+        /// </summary>
+        private static void EnableBothInputBackends()
+        {
+            const int Both = 2;
+            var playerSettings = AssetDatabase.LoadAllAssetsAtPath(
+                "ProjectSettings/ProjectSettings.asset")[0];
+            var so = new SerializedObject(playerSettings);
+            var prop = so.FindProperty("activeInputHandler");
+            if (prop != null && prop.intValue != Both)
+            {
+                prop.intValue = Both;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log("[CiTools] Active Input Handling set to Both (restart the editor to apply).");
+            }
+        }
+
         private static void EnableXrLoader(BuildTargetGroup group, string loaderTypeName)
         {
             try

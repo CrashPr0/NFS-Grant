@@ -1,0 +1,109 @@
+# Changelog
+
+## [0.4.2] - 2026-08-13
+
+### Fixed
+* Fixed / made controller and input tracking more robust (https://github.com/ucf-research/vera-package/pull/38)
+
+## [0.4.1] - 2026-07-27
+
+### Adjusted
+* Minor adjustments to support the VLAT toolkit (https://github.com/ucf-research/vera-package/pull/36)
+* Various adjustments to match AWS WAF policy restrictions (https://github.com/ucf-research/vera-package/pull/37)
+
+## [0.4.0] - 2026-07-02 (OPEN BETA RELEASE)
+
+### Adjusted
+* Update nomenclature of "surveys" to "questionnaires" to adhere with terminology guide (https://github.com/ucf-research/vera-package/pull/35)
+
+## [0.3.4] - 2026-06-24
+
+### Adjusted
+* Adjusted structure to meet activation flow requirements (https://github.com/ucf-research/vera-package/pull/33)
+* Adjusted structure to meet new pilot/draft flow requirements (https://github.com/ucf-research/vera-package/pull/32
+
+### Added
+* Sessions now record participant preview metrics (https://github.com/ucf-research/vera-package/pull/31)
+
+### Removed
+* Temporarily removed the VLAT locomotion tools for open beta release (https://github.com/ucf-research/vera-package/pull/34)
+
+## [0.3.3] - 2026-05-27
+
+### Adjusted
+* Preview accounts may now upload WebXR builds (https://github.com/ucf-research/vera-package/pull/30)
+
+### Fixed
+* Defunct 404 debug logs relating to conditions, trials, and active participants (https://github.com/ucf-research/vera-package/pull/30)
+* Survey vertical scaling issue on spawn (https://github.com/ucf-research/vera-package/pull/30)
+
+## [0.3.2] - 2026-05-08
+
+### Added
+- Replaced simple demo scene with the VERA Sandbox Demo (https://github.com/ucf-research/vera-package/pull/29)
+
+### Fixed
+- Automatic code recompile optimizations (https://github.com/ucf-research/vera-package/pull/27)
+- Fix WebXR build interruptions (https://github.com/ucf-research/vera-package/pull/28)
+
+## [0.3.1] - 2026-05-01
+
+### Added
+- Step-by-step progress bar for WebXR builds (https://github.com/ucf-research/vera-package/pull/26)
+
+### Adjusted
+- Adjusted survey visual display and backend structure (https://github.com/ucf-research/vera-package/pull/25)
+
+## [0.3.0] - 2026-04-27
+
+### Added
+- New lobby for taking surveys (https://github.com/ucf-research/vera-package/pull/16)
+- New "preview account" functionality which disables WebXR uploads (https://github.com/ucf-research/vera-package/pull/19)
+- Additional participant states (https://github.com/ucf-research/vera-package/pull/22)
+- Run web-based surveys mid-experiment (https://github.com/ucf-research/vera-package/pull/23)
+- Upload to arbitrary file types (non-CSV) mid-experiment (https://github.com/ucf-research/vera-package/pull/24)
+
+### Adjusted
+- Removed eventId as a required column (https://github.com/ucf-research/vera-package/pull/17)
+- Made VERA settings window scrollable (https://github.com/ucf-research/vera-package/pull/18)
+
+
+### Fixed
+- Handling for locale differences (https://github.com/ucf-research/vera-package/pull/20)
+- Additional handling for locale differences (https://github.com/ucf-research/vera-package/pull/21)
+
+## [0.2.1] - 2026-02-27
+
+### Fixed
+
+- Prevent surveys from being fetched before initialization.
+- Set participant status to COMPLETE after all files upload successfully. ​
+- Track file uploads separately for each survey instance.
+
+## [0.2.0] - 2026-2-26
+
+### Added
+
+- Running surveys (#8)
+- Managing trials and participant flow (#3)
+- Help guide (#13)
+
+### Adjusted
+
+- Telemetry files log every frame (#1)
+- General updates to the telemetry file (#5)
+- Adjustments to rotation formatting (#14)
+- Quality of life updates (#4)
+- General cleanup (#9)
+- Live site points to new host (#11)
+- Condition / IV values log using short encoding (#10)
+
+### Fixed
+
+- Define symbols copy to all build profiles (#12)
+
+## [0.1.0] - 2025-12-9
+
+### Added
+
+- Initial development package release (#1)
