@@ -5,6 +5,7 @@
 #   ./scripts/unity-tasks.sh setup        # URP + media download + build scene + XR config
 #   ./scripts/unity-tasks.sh build-quest  # Android APK -> Builds/SDGDiscoveryHall.apk
 #   ./scripts/unity-tasks.sh build-webgl  # WebGL player -> Builds/WebGL/
+#   ./scripts/unity-tasks.sh screenshots  # 1920x1080 PNGs -> Screenshots/ (needs a GPU)
 #
 # Unity is located via $UNITY_PATH, or auto-detected from the Unity Hub
 # default install locations for the project's editor version.
@@ -47,12 +48,26 @@ run_unity() {
     -logFile -
 }
 
+# Screenshot capture renders cameras, so it must NOT pass -nographics.
+run_unity_graphics() {
+  local method="$1"
+  local unity
+  unity="$(find_unity)"
+  echo ">> Unity: $unity"
+  echo ">> Method: $method  (graphics on; first run imports packages and can take a while)"
+  "$unity" -batchmode -quit \
+    -projectPath "$PROJECT_ROOT" \
+    -executeMethod "$method" \
+    -logFile -
+}
+
 case "${1:-}" in
   setup)        run_unity NSFGrant.EditorTools.CiTools.SetupProject ;;
   build-quest)  run_unity NSFGrant.EditorTools.CiTools.BuildQuest ;;
   build-webgl)  run_unity NSFGrant.EditorTools.CiTools.BuildWebGL ;;
+  screenshots)  run_unity_graphics NSFGrant.EditorTools.SceneScreenshotCapture.CaptureAll ;;
   *)
-    echo "Usage: $0 {setup|build-quest|build-webgl}" >&2
+    echo "Usage: $0 {setup|build-quest|build-webgl|screenshots}" >&2
     exit 64
     ;;
 esac
