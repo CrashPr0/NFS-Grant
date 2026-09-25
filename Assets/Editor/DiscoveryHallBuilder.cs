@@ -2049,7 +2049,22 @@ namespace NSFGrant.EditorTools
         private static void ApplyColor(GameObject go, Color color)
         {
             var renderer = go.GetComponent<Renderer>();
-            var material = new Material(renderer.sharedMaterial) { color = color };
+            var material = new Material(renderer.sharedMaterial);
+            // If the scene is built before URP is picked up, primitives come
+            // with the Built-in "Standard" shader, which renders magenta under
+            // URP. Force URP Lit whenever a pipeline is active. Set the shader
+            // before the color: .color/.mainTexture map to _BaseColor/_BaseMap
+            // on URP Lit.
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline != null &&
+                material.shader.name == "Standard")
+            {
+                var urpLit = Shader.Find("Universal Render Pipeline/Lit");
+                if (urpLit != null)
+                {
+                    material.shader = urpLit;
+                }
+            }
+            material.color = color;
             renderer.sharedMaterial = material;
         }
 
