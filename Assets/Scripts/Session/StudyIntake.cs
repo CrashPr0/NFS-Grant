@@ -263,6 +263,28 @@ namespace NSFGrant.Session
             GUI.color = prevColor;
         }
 
+        /// <summary>
+        /// Completion text that reflects the web upload: participants must
+        /// not close the page until their data has actually reached the
+        /// study's Drive. Shared with the in-headset panel.
+        /// </summary>
+        public static string CompletionMessage()
+        {
+            switch (RemoteDataUploader.FinalStatus)
+            {
+                case RemoteDataUploader.UploadStatus.Uploading:
+                case RemoteDataUploader.UploadStatus.Idle:
+                    return "Thank you for participating! Saving your responses... " +
+                           "please keep this page open.";
+                case RemoteDataUploader.UploadStatus.Failed:
+                    return "Thank you! We couldn't save your responses yet and are retrying. " +
+                           "Please keep this page open and let the study team know.";
+                default: // Done, or Disabled (lab builds keep data on the device)
+                    return "Thank you for participating! Your responses have been recorded. " +
+                           "You may close this window.";
+            }
+        }
+
         private void DrawDonePanel()
         {
             float baseUnit = StudyGuiKit.BaseUnit();
@@ -284,8 +306,7 @@ namespace NSFGrant.Session
 
             var bodyStyle = StudyGuiKit.BodyStyle(baseUnit);
             GUI.Label(new Rect(cardX + pad, cardY + headerH + pad, cardW - pad * 2f, bodyH),
-                      "Thank you for participating! Your responses have been recorded. " +
-                      "You may close this window.", bodyStyle);
+                      CompletionMessage(), bodyStyle);
         }
     }
 }

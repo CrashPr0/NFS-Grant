@@ -1,0 +1,5 @@
+{
+  "endpointUrl": "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+  "sharedToken": "any-random-string-matching-TOKEN-in-Code.gs",
+  "checkpointSeconds": 120
+}

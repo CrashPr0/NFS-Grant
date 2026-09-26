@@ -139,6 +139,12 @@ namespace NSFGrant.EditorTools
             }
             AssetDatabase.SaveAssets();
             Debug.Log("[CiTools] WebXR configured (template WebXR2020, compression off, WebXR loader on).");
+            if (!UploadConfig.IsConfigured())
+            {
+                Debug.LogWarning("[CiTools] *** This WebXR build will NOT upload participant data: " +
+                                 "no upload.config.json / NSF_UPLOAD_URL. Fine for demos; " +
+                                 "required before collecting data on GitHub Pages. ***");
+            }
         }
 
         /// <summary>

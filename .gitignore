@@ -63,3 +63,6 @@ vera_credentials.json
 # Study media assets are committed (Assets/StudyContent/Textures/) with
 # attribution in Assets/StudyContent/CONTENT_SOURCES.md; review licensing
 # before making this repository public.
+
+# Web upload endpoint (see upload.config.example.json, docs/GOOGLE_DRIVE_SETUP.md)
+upload.config.json

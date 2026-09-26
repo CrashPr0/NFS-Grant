@@ -122,6 +122,8 @@ namespace NSFGrant.Session
             string condition = CurrentConditionName();
 
             dataLogger.StartSession(participantId);
+            // Starts in-session checkpoint uploads (web build).
+            uploader?.BeginSession(_sessionStartUtc, participantId);
             eventLogger?.StartSession(participantId, platform, condition);
             eventLogger?.LogEvent("session_start", participantId,
                 $"platform={platform};condition={condition};gaze={gazeProvider.Source}");

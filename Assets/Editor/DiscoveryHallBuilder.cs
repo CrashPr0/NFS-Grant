@@ -131,7 +131,9 @@ namespace NSFGrant.EditorTools
             var shotSo = new SerializedObject(screenshots);
             shotSo.FindProperty("captureEnabled").boolValue = true;
             shotSo.ApplyModifiedPropertiesWithoutUndo();
-            study.AddComponent<RemoteDataUploader>();
+            // Endpoint comes from upload.config.json (gitignored) because
+            // this scene is regenerated for every build.
+            UploadConfig.ApplyTo(study.AddComponent<RemoteDataUploader>());
             study.AddComponent<StudyConditionManager>();
             study.AddComponent<VeraBridge>();
             study.AddComponent<VeraConfig>();

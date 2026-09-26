@@ -35,7 +35,8 @@ namespace NSFGrant.Logging
         /// <summary>
         /// Makes a value (e.g. a participant ID from the intake field or a
         /// ?pid= URL parameter) safe to embed in a file name: anything other
-        /// than letters, digits, '-' and '_' becomes '_'. Without this an ID
+        /// than ASCII letters, digits, '-' and '_' becomes '_' (ASCII-only so
+        /// the upload endpoint can validate names with a simple pattern). Without this an ID
         /// containing '/' or '..' would make the loggers throw or write
         /// outside the data folder.
         /// </summary>
@@ -49,7 +50,8 @@ namespace NSFGrant.Logging
             for (int i = 0; i < chars.Length; i++)
             {
                 char c = chars[i];
-                if (!char.IsLetterOrDigit(c) && c != '-' && c != '_')
+                bool asciiAlnum = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+                if (!asciiAlnum && c != '-' && c != '_')
                 {
                     chars[i] = '_';
                 }

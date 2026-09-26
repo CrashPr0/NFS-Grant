@@ -188,8 +188,9 @@ namespace NSFGrant.Interaction
             else if (intake != null && intake.IsDone)
             {
                 c.Header = "SESSION COMPLETE";
-                c.Body = "Thank you for participating! Your responses have been recorded. " +
-                         "You may remove the headset.";
+                c.Body = StudyIntake.CompletionMessage()
+                    .Replace("close this window", "remove the headset")
+                    .Replace("keep this page open", "keep the headset on");
             }
             else
             {
