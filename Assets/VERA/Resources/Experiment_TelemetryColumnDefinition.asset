@@ -1,0 +1,318 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e490875681dccfc47bd4db3813ef95b7, type: 3}
+  m_Name: Experiment_TelemetryColumnDefinition
+  m_EditorClassIdentifier: VERA::VERA.VERAColumnDefinition
+  fileType:
+    fileTypeId: Experiment_Telemetry
+    name: Experiment_Telemetry
+    description: Baseline VR tracking and input data
+    extension: 
+    skipUpload: 0
+  skipAutoColumns: 0
+  columns:
+  - name: pID
+    description: Participant ID (auto-added by VERA)
+    type: 1
+  - name: conditions
+    description: Experiment conditions (auto-added by VERA)
+    type: 3
+  - name: ts
+    description: Time since the event occurred (auto-added by VERA)
+    type: 6
+  - name: headsetDetected
+    description: Whether VR headset is connected and tracking
+    type: 5
+  - name: headsetVirtualPosX
+    description: VR headset virtual horizontal position in the virtual environment
+      (left-right)
+    type: 6
+  - name: headsetVirtualPosY
+    description: VR headset virtual vertical position in the virtual environment
+      (up-down)
+    type: 6
+  - name: headsetVirtualPosZ
+    description: VR headset virtual depth position in the virtual environment (forward-back)
+    type: 6
+  - name: headsetVirtualRotEulerX
+    description: VR headset virtual rotation Euler X angle in the virtual environment
+      (pitch)
+    type: 6
+  - name: headsetVirtualRotEulerY
+    description: VR headset virtual rotation Euler Y angle in the virtual environment
+      (yaw)
+    type: 6
+  - name: headsetVirtualRotEulerZ
+    description: VR headset virtual rotation Euler Z angle in the virtual environment
+      (roll)
+    type: 6
+  - name: headsetVirtualRotQuatX
+    description: VR headset virtual rotation quaternion X component in the virtual
+      environment
+    type: 6
+  - name: headsetVirtualRotQuatY
+    description: VR headset virtual rotation quaternion Y component in the virtual
+      environment
+    type: 6
+  - name: headsetVirtualRotQuatZ
+    description: VR headset virtual rotation quaternion Z component in the virtual
+      environment
+    type: 6
+  - name: headsetVirtualRotQuatW
+    description: VR headset virtual rotation quaternion W component in the virtual
+      environment
+    type: 6
+  - name: headsetTrackingPosX
+    description: VR headset real tracked horizontal position in physical space (left-right)
+    type: 6
+  - name: headsetTrackingPosY
+    description: VR headset real tracked vertical position in physical space (up-down)
+    type: 6
+  - name: headsetTrackingPosZ
+    description: VR headset real tracked depth position in physical space (forward-back)
+    type: 6
+  - name: headsetTrackingRotEulerX
+    description: VR headset real tracked rotation Euler X angle in physical space
+      (pitch)
+    type: 6
+  - name: headsetTrackingRotEulerY
+    description: VR headset real tracked rotation Euler Y angle in physical space
+      (yaw)
+    type: 6
+  - name: headsetTrackingRotEulerZ
+    description: VR headset real tracked rotation Euler Z angle in physical space
+      (roll)
+    type: 6
+  - name: headsetTrackingRotQuatX
+    description: VR headset real tracked rotation quaternion X component in physical
+      space
+    type: 6
+  - name: headsetTrackingRotQuatY
+    description: VR headset real tracked rotation quaternion Y component in physical
+      space
+    type: 6
+  - name: headsetTrackingRotQuatZ
+    description: VR headset real tracked rotation quaternion Z component in physical
+      space
+    type: 6
+  - name: headsetTrackingRotQuatW
+    description: VR headset real tracked rotation quaternion W component in physical
+      space
+    type: 6
+  - name: leftDetected
+    description: Whether left hand controller is connected and tracking
+    type: 5
+  - name: leftControllerVirtualPosX
+    description: Left hand controller virtual horizontal position in the virtual
+      environment (left-right)
+    type: 6
+  - name: leftControllerVirtualPosY
+    description: Left hand controller virtual vertical position in the virtual environment
+      (up-down)
+    type: 6
+  - name: leftControllerVirtualPosZ
+    description: Left hand controller virtual depth position in the virtual environment
+      (forward-back)
+    type: 6
+  - name: leftControllerVirtualRotEulerX
+    description: Left hand controller virtual rotation Euler X angle in the virtual
+      environment (pitch)
+    type: 6
+  - name: leftControllerVirtualRotEulerY
+    description: Left hand controller virtual rotation Euler Y angle in the virtual
+      environment (yaw)
+    type: 6
+  - name: leftControllerVirtualRotEulerZ
+    description: Left hand controller virtual rotation Euler Z angle in the virtual
+      environment (roll)
+    type: 6
+  - name: leftControllerVirtualRotQuatX
+    description: Left hand controller virtual rotation quaternion X component in
+      the virtual environment
+    type: 6
+  - name: leftControllerVirtualRotQuatY
+    description: Left hand controller virtual rotation quaternion Y component in
+      the virtual environment
+    type: 6
+  - name: leftControllerVirtualRotQuatZ
+    description: Left hand controller virtual rotation quaternion Z component in
+      the virtual environment
+    type: 6
+  - name: leftControllerVirtualRotQuatW
+    description: Left hand controller virtual rotation quaternion W component in
+      the virtual environment
+    type: 6
+  - name: leftControllerTrackingPosX
+    description: Left hand controller real tracked horizontal position in physical
+      space (left-right)
+    type: 6
+  - name: leftControllerTrackingPosY
+    description: Left hand controller real tracked vertical position in physical
+      space (up-down)
+    type: 6
+  - name: leftControllerTrackingPosZ
+    description: Left hand controller real tracked depth position in physical space
+      (forward-back)
+    type: 6
+  - name: leftControllerTrackingRotEulerX
+    description: Left hand controller real tracked rotation Euler X angle in physical
+      space (pitch)
+    type: 6
+  - name: leftControllerTrackingRotEulerY
+    description: Left hand controller real tracked rotation Euler Y angle in physical
+      space (yaw)
+    type: 6
+  - name: leftControllerTrackingRotEulerZ
+    description: Left hand controller real tracked rotation Euler Z angle in physical
+      space (roll)
+    type: 6
+  - name: leftControllerTrackingRotQuatX
+    description: Left hand controller real tracked rotation quaternion X component
+      in physical space
+    type: 6
+  - name: leftControllerTrackingRotQuatY
+    description: Left hand controller real tracked rotation quaternion Y component
+      in physical space
+    type: 6
+  - name: leftControllerTrackingRotQuatZ
+    description: Left hand controller real tracked rotation quaternion Z component
+      in physical space
+    type: 6
+  - name: leftControllerTrackingRotQuatW
+    description: Left hand controller real tracked rotation quaternion W component
+      in physical space
+    type: 6
+  - name: leftTrigger
+    description: Left controller trigger pressure (0=not pressed, 1=fully pressed)
+    type: 6
+  - name: leftGrip
+    description: Left controller grip pressure (0=not gripped, 1=fully gripped)
+    type: 6
+  - name: leftPrimaryButton
+    description: Left controller main button (1=pressed, 0=not pressed)
+    type: 1
+  - name: leftSecondaryButton
+    description: Left controller secondary button (1=pressed, 0=not pressed)
+    type: 1
+  - name: leftPrimary2DAxisClick
+    description: Left controller thumbstick click (1=clicked, 0=not clicked)
+    type: 1
+  - name: leftThumbstickX
+    description: Left controller thumbstick horizontal axis (-1=left, 1=right)
+    type: 6
+  - name: leftThumbstickY
+    description: Left controller thumbstick vertical axis (-1=down, 1=up)
+    type: 6
+  - name: rightDetected
+    description: Whether right hand controller is connected and tracking
+    type: 5
+  - name: rightControllerVirtualPosX
+    description: Right hand controller virtual horizontal position in the virtual
+      environment (left-right)
+    type: 6
+  - name: rightControllerVirtualPosY
+    description: Right hand controller virtual vertical position in the virtual environment
+      (up-down)
+    type: 6
+  - name: rightControllerVirtualPosZ
+    description: Right hand controller virtual depth position in the virtual environment
+      (forward-back)
+    type: 6
+  - name: rightControllerVirtualRotEulerX
+    description: Right hand controller virtual rotation Euler X angle in the virtual
+      environment (pitch)
+    type: 6
+  - name: rightControllerVirtualRotEulerY
+    description: Right hand controller virtual rotation Euler Y angle in the virtual
+      environment (yaw)
+    type: 6
+  - name: rightControllerVirtualRotEulerZ
+    description: Right hand controller virtual rotation Euler Z angle in the virtual
+      environment (roll)
+    type: 6
+  - name: rightControllerVirtualRotQuatX
+    description: Right hand controller virtual rotation quaternion X component in
+      the virtual environment
+    type: 6
+  - name: rightControllerVirtualRotQuatY
+    description: Right hand controller virtual rotation quaternion Y component in
+      the virtual environment
+    type: 6
+  - name: rightControllerVirtualRotQuatZ
+    description: Right hand controller virtual rotation quaternion Z component in
+      the virtual environment
+    type: 6
+  - name: rightControllerVirtualRotQuatW
+    description: Right hand controller virtual rotation quaternion W component in
+      the virtual environment
+    type: 6
+  - name: rightControllerTrackingPosX
+    description: Right hand controller real tracked horizontal position in physical
+      space (left-right)
+    type: 6
+  - name: rightControllerTrackingPosY
+    description: Right hand controller real tracked vertical position in physical
+      space (up-down)
+    type: 6
+  - name: rightControllerTrackingPosZ
+    description: Right hand controller real tracked depth position in physical space
+      (forward-back)
+    type: 6
+  - name: rightControllerTrackingRotEulerX
+    description: Right hand controller real tracked rotation Euler X angle in physical
+      space (pitch)
+    type: 6
+  - name: rightControllerTrackingRotEulerY
+    description: Right hand controller real tracked rotation Euler Y angle in physical
+      space (yaw)
+    type: 6
+  - name: rightControllerTrackingRotEulerZ
+    description: Right hand controller real tracked rotation Euler Z angle in physical
+      space (roll)
+    type: 6
+  - name: rightControllerTrackingRotQuatX
+    description: Right hand controller real tracked rotation quaternion X component
+      in physical space
+    type: 6
+  - name: rightControllerTrackingRotQuatY
+    description: Right hand controller real tracked rotation quaternion Y component
+      in physical space
+    type: 6
+  - name: rightControllerTrackingRotQuatZ
+    description: Right hand controller real tracked rotation quaternion Z component
+      in physical space
+    type: 6
+  - name: rightControllerTrackingRotQuatW
+    description: Right hand controller real tracked rotation quaternion W component
+      in physical space
+    type: 6
+  - name: rightTrigger
+    description: Right controller trigger pressure (0=not pressed, 1=fully pressed)
+    type: 6
+  - name: rightGrip
+    description: Right controller grip pressure (0=not gripped, 1=fully gripped)
+    type: 6
+  - name: rightPrimaryButton
+    description: Right controller main button (1=pressed, 0=not pressed)
+    type: 1
+  - name: rightSecondaryButton
+    description: Right controller secondary button (1=pressed, 0=not pressed)
+    type: 1
+  - name: rightPrimary2DAxisClick
+    description: Right controller thumbstick click (1=clicked, 0=not clicked)
+    type: 1
+  - name: rightThumbstickX
+    description: Right controller thumbstick horizontal axis (-1=left, 1=right)
+    type: 6
+  - name: rightThumbstickY
+    description: Right controller thumbstick vertical axis (-1=down, 1=up)
+    type: 6
