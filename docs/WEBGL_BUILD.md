@@ -131,3 +131,31 @@ The build folder is static files; any static host works. Fastest:
   collection run. Real sessions use the Quest APK or a VERA-hosted WebXR
   deployment.
 - First load downloads the whole build (tens of MB); give it a moment.
+
+## Browser VR (WebXR) on GitHub Pages
+
+Live: **https://crashpr0.github.io/NFS-Grant/** (open in the Quest browser
+and press **VR**; on desktop it runs as the flat mouse/keyboard tour).
+
+```bash
+./scripts/unity-tasks.sh build-webxr   # -> Builds/WebXR (editor must be closed)
+./scripts/deploy-pages.sh              # publish Builds/WebXR to the gh-pages branch
+```
+
+- Uses De-Panther **WebXR Export** (`com.de-panther.webxr`, OpenUPM).
+  It exposes the headset as a Unity XR device but **not the
+  controllers**; those go through `NSFGrant.WebXRAdapter.WebXRInput`
+  (see `XRInputBridge`). The Quest APK path is unaffected.
+- `CiTools.ConfigureWebXR` sets the WebXR2020 template, the WebXR loader,
+  **registers WebXR's settings** (without that, "Enter VR" crashes with
+  `VRRequiredReferenceSpace of undefined`) and turns compression off,
+  because Pages can't serve Unity's pre-compressed files.
+- URL parameters: `?pid=P123&cond=guided` (skip intake / set condition),
+  `&debug=1` (once-a-second `[XRDiag]` log of XR state, head/rig pose,
+  controller connection, sticks and trigger in the browser console).
+- Testing without a headset: serve the build on `localhost` and inject
+  Meta's IWER emulator (`new XRDevice(metaQuest3).installRuntime({ forceInstall: true })`)
+  before Unity starts; drive `xrDevice.controllers.left/right`
+  (`updateAxes('thumbstick', x, y)`, `updateButtonValue('trigger', v)`).
+- Eye tracking is not available in WebXR (head-gaze only) - see
+  docs/VERA_WEBXR_NOTES.md.

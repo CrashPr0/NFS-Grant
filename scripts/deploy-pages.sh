@@ -49,7 +49,8 @@ else
 fi
 
 # Replace the published site with the new build.
-git -C "$WT" rm -rq --ignore-unmatch . >/dev/null
+# (--cached -f: a fresh orphan branch starts with the source tree staged.)
+git -C "$WT" rm -rqf --cached --ignore-unmatch . >/dev/null
 find "$WT" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 cp -R "$BUILD"/. "$WT"/
 touch "$WT/.nojekyll"   # serve files/folders as-is (no Jekyll processing)
