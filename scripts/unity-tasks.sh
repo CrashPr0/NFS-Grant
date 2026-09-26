@@ -5,6 +5,7 @@
 #   ./scripts/unity-tasks.sh setup        # URP + media download + build scene + XR config
 #   ./scripts/unity-tasks.sh build-quest  # Android APK -> Builds/SDGDiscoveryHall.apk
 #   ./scripts/unity-tasks.sh build-webgl  # WebGL player -> Builds/WebGL/
+#   ./scripts/unity-tasks.sh build-webxr  # Browser VR (WebXR) -> Builds/WebXR/ (see scripts/deploy-pages.sh)
 #   ./scripts/unity-tasks.sh screenshots  # 1920x1080 PNGs -> Screenshots/ (needs a GPU)
 #
 # Unity is located via $UNITY_PATH, or auto-detected from the Unity Hub
@@ -65,9 +66,10 @@ case "${1:-}" in
   setup)        run_unity NSFGrant.EditorTools.CiTools.SetupProject ;;
   build-quest)  run_unity NSFGrant.EditorTools.CiTools.BuildQuest ;;
   build-webgl)  run_unity NSFGrant.EditorTools.CiTools.BuildWebGL ;;
+  build-webxr)  run_unity NSFGrant.EditorTools.CiTools.BuildWebXR ;;
   screenshots)  run_unity_graphics NSFGrant.EditorTools.SceneScreenshotCapture.CaptureAll ;;
   *)
-    echo "Usage: $0 {setup|build-quest|build-webgl|screenshots}" >&2
+    echo "Usage: $0 {setup|build-quest|build-webgl|build-webxr|screenshots}" >&2
     exit 64
     ;;
 esac

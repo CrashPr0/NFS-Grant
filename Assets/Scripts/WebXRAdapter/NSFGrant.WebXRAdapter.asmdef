@@ -1,0 +1,16 @@
+{
+    "name": "NSFGrant.WebXRAdapter",
+    "rootNamespace": "NSFGrant.WebXRAdapter",
+    "references": [
+        "WebXR"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

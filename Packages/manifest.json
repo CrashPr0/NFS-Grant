@@ -6,6 +6,13 @@
       "scopes": [
         "com.meta.xr"
       ]
+    },
+    {
+      "name": "OpenUPM (WebXR Export)",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.de-panther"
+      ]
     }
   ],
   "dependencies": {
@@ -51,6 +58,7 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0",
-    "com.unity.pipeline": "0.8.0-exp.1"
+    "com.unity.pipeline": "0.8.0-exp.1",
+    "com.de-panther.webxr": "0.25.0"
   }
 }

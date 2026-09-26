@@ -51,6 +51,15 @@ namespace NSFGrant.Interaction
             {
                 enabled = false;
             }
+            // In a WebXR player the controllers are posed by WebXRController
+            // (WebXR Export doesn't publish them as Unity XR devices, so this
+            // driver would find nothing and, with hideWhenUntracked, hide the
+            // hands). The headset IS a Unity XR device there, so the head
+            // driver stays on.
+            if (XRInputBridge.UsesWebXR && node != TrackedNode.Head)
+            {
+                enabled = false;
+            }
         }
 
         private void Update()

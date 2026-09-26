@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR;
+using NSFGrant.WebXRAdapter;
 
 namespace NSFGrant.Interaction
 {
@@ -43,6 +44,17 @@ namespace NSFGrant.Interaction
         public static readonly bool UsesUnityXR = false;
 #endif
 
+        // In a WebGL player the browser's WebXR API is the source. WebXR
+        // Export exposes the headset as a Unity XR device but NOT the
+        // controllers, so controller queries go through its WebXRController
+        // component (see NSFGrant.WebXRAdapter.WebXRInput). The Meta-free
+        // editor path (NSFGRANT_NO_META) keeps plain Unity XR.
+#if UNITY_WEBGL && !UNITY_EDITOR
+        public static readonly bool UsesWebXR = true;
+#else
+        public static readonly bool UsesWebXR = false;
+#endif
+
         public enum Hand
         {
             Left,
@@ -52,6 +64,10 @@ namespace NSFGrant.Interaction
         /// <summary>Is this hand's controller present and tracking?</summary>
         public static bool IsConnected(Hand hand)
         {
+            if (UsesWebXR)
+            {
+                return WebXRInput.IsConnected(hand == Hand.Left);
+            }
             if (UsesUnityXR)
             {
                 return GetDevice(hand).isValid;
@@ -62,6 +78,10 @@ namespace NSFGrant.Interaction
         /// <summary>Thumbstick, x = right, y = forward, each in [-1, 1].</summary>
         public static Vector2 GetThumbstick(Hand hand)
         {
+            if (UsesWebXR)
+            {
+                return WebXRInput.GetThumbstick(hand == Hand.Left);
+            }
             if (UsesUnityXR)
             {
                 InputDevice device = GetDevice(hand);
@@ -78,6 +98,10 @@ namespace NSFGrant.Interaction
         /// <summary>Analog index-trigger squeeze in [0, 1].</summary>
         public static float GetTrigger(Hand hand)
         {
+            if (UsesWebXR)
+            {
+                return WebXRInput.GetTrigger(hand == Hand.Left);
+            }
             if (UsesUnityXR)
             {
                 InputDevice device = GetDevice(hand);
@@ -99,6 +123,10 @@ namespace NSFGrant.Interaction
         /// </summary>
         public static bool GetTriggerDown(Hand hand)
         {
+            if (UsesWebXR)
+            {
+                return WebXRInput.GetTriggerDown(hand == Hand.Left);
+            }
             if (!UsesUnityXR)
             {
                 return OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, ToOvr(hand));
@@ -112,6 +140,11 @@ namespace NSFGrant.Interaction
         /// <summary>Short haptic pulse; silently ignored where unsupported (WebXR often is).</summary>
         public static void SendHaptic(Hand hand, float amplitude, float duration)
         {
+            if (UsesWebXR)
+            {
+                WebXRInput.Pulse(hand == Hand.Left, amplitude, duration);
+                return;
+            }
             if (!UsesUnityXR)
             {
                 // Frequency 1 matches the previous OVRInput call; OVR runs

@@ -90,6 +90,20 @@ namespace NSFGrant.EditorTools
                 XRPoseDriver.TrackedNode.LeftHand);
             AddPoseDriver(ovrRigComponent.rightControllerAnchor,
                 XRPoseDriver.TrackedNode.RightHand);
+            // WebXR Export poses + reads the controllers only through its
+            // WebXRController component (it doesn't publish them as Unity XR
+            // devices). Added disabled; WebXRControllerGate enables it only
+            // in a WebGL player, so the Quest APK is unaffected.
+            if (ovrRigComponent.leftControllerAnchor != null)
+            {
+                NSFGrant.WebXRAdapter.WebXRInput.AddControllerTo(
+                    ovrRigComponent.leftControllerAnchor.gameObject, left: true);
+            }
+            if (ovrRigComponent.rightControllerAnchor != null)
+            {
+                NSFGrant.WebXRAdapter.WebXRInput.AddControllerTo(
+                    ovrRigComponent.rightControllerAnchor.gameObject, left: false);
+            }
 
             GameObject desktopRig = CreateDesktopRig();
 
@@ -101,6 +115,8 @@ namespace NSFGrant.EditorTools
             switcherSo.FindProperty("vrRig").objectReferenceValue = vrRig;
             switcherSo.FindProperty("desktopRig").objectReferenceValue = desktopRig;
             switcherSo.ApplyModifiedPropertiesWithoutUndo();
+            // Opt-in (?debug=1) XR telemetry for build testing; inert otherwise.
+            rigs.AddComponent<XRDiagnostics>().Configure(vrRig.transform);
 
             // --- Study stack.
             var study = new GameObject("AttentionStudy");

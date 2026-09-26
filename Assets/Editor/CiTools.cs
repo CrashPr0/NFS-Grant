@@ -81,6 +81,107 @@ namespace NSFGrant.EditorTools
             });
         }
 
+        /// <summary>
+        /// Browser VR build (WebXR, via the De-Panther WebXR Export package)
+        /// to Builds/WebXR, ready for GitHub Pages - see scripts/deploy-pages.sh.
+        /// </summary>
+        public static void BuildWebXR()
+        {
+            ConfigureWebXR();
+            PrepareScene();
+            Run(new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                target = BuildTarget.WebGL,
+                targetGroup = BuildTargetGroup.WebGL,
+                locationPathName = "Builds/WebXR"
+            });
+        }
+
+        /// <summary>
+        /// Idempotent WebXR player setup: WebXR page template, WebXR XR
+        /// loader for WebGL, and compression off. GitHub Pages can't send
+        /// the Content-Encoding headers Unity's gzip/brotli builds need,
+        /// and the JS decompression fallback is slow, so ship uncompressed
+        /// (Pages still gzips on the wire).
+        /// </summary>
+        public static void ConfigureWebXR()
+        {
+            var pkg = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(
+                "Packages/com.de-panther.webxr");
+            if (pkg == null)
+            {
+                Debug.LogError("[CiTools] com.de-panther.webxr is not installed.");
+                EditorApplication.Exit(1);
+                return;
+            }
+            // Non-interactive equivalent of Window > WebXR > Copy WebGLTemplates.
+            string src = Path.Combine(pkg.resolvedPath, "Hidden~", "WebGLTemplates");
+            CopyDirectory(src, Path.Combine("Assets", "WebGLTemplates"));
+            AssetDatabase.Refresh();
+
+            PlayerSettings.WebGL.template = "PROJECT:WebXR2020";
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.decompressionFallback = false;
+            PlayerSettings.WebGL.dataCaching = true;
+
+            EnableXrLoader(BuildTargetGroup.WebGL, "WebXR.WebXRLoader");
+            RegisterWebXRSettings();
+            if (EditorBuildSettings.TryGetConfigObject(XRGeneralSettings.k_SettingsKey,
+                    out XRGeneralSettingsPerBuildTarget perTarget) && perTarget != null)
+            {
+                var webgl = perTarget.SettingsForBuildTarget(BuildTargetGroup.WebGL);
+                if (webgl != null)
+                {
+                    webgl.InitManagerOnStart = true;
+                    EditorUtility.SetDirty(webgl);
+                }
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log("[CiTools] WebXR configured (template WebXR2020, compression off, WebXR loader on).");
+        }
+
+        /// <summary>
+        /// WebXR Export's build step only ships its settings if they are
+        /// registered under the "WebXR.Settings" config key - which the
+        /// Project Settings UI does, but enabling the loader from code does
+        /// not. Unregistered, the page's JS gets no settings and "Enter VR"
+        /// crashes (reading 'VRRequiredReferenceSpace' of undefined) - found
+        /// with the IWER emulator. Created by type name so this editor
+        /// assembly needs no reference to the (non-auto-referenced) package.
+        /// </summary>
+        private static void RegisterWebXRSettings()
+        {
+            const string path = "Assets/XR/Settings/WebXRSettings.asset";
+            var settings = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
+            if (settings == null)
+            {
+                settings = ScriptableObject.CreateInstance("WebXR.WebXRSettings");
+                if (settings == null)
+                {
+                    Debug.LogError("[CiTools] WebXR.WebXRSettings type not found - is the package installed?");
+                    return;
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                AssetDatabase.CreateAsset(settings, path);
+            }
+            EditorBuildSettings.AddConfigObject("WebXR.Settings", settings, true);
+            Debug.Log("[CiTools] WebXR settings registered (" + path + ").");
+        }
+
+        private static void CopyDirectory(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+            foreach (string file in Directory.GetFiles(from))
+            {
+                File.Copy(file, Path.Combine(to, Path.GetFileName(file)), true);
+            }
+            foreach (string dir in Directory.GetDirectories(from))
+            {
+                CopyDirectory(dir, Path.Combine(to, Path.GetFileName(dir)));
+            }
+        }
+
         private static void PrepareScene()
         {
             if (!File.Exists(ScenePath))
