@@ -26,6 +26,7 @@ Shader "NSFGrant/GlassCeiling"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
 
             fixed4 _Color;
@@ -46,6 +47,7 @@ Shader "NSFGrant/GlassCeiling"
                 float3 worldNormal : TEXCOORD0;
                 float3 worldViewDir : TEXCOORD1;
                 float3 worldRefl : TEXCOORD2;
+                UNITY_FOG_COORDS(3)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -55,6 +57,7 @@ Shader "NSFGrant/GlassCeiling"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
+                UNITY_TRANSFER_FOG(o, o.pos);
                 float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 float3 worldNormal = UnityObjectToWorldNormal(v.normal);
                 float3 worldViewDir = normalize(_WorldSpaceCameraPos - worldPos);
@@ -75,7 +78,9 @@ Shader "NSFGrant/GlassCeiling"
                 col = lerp(col, _FresnelColor.rgb, fresnel * 0.5);
 
                 float alpha = saturate(_Color.a + fresnel * 0.5);
-                return fixed4(col, alpha);
+                fixed4 fogged = fixed4(col, alpha);
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return fogged;
             }
             ENDCG
         }

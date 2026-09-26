@@ -23,6 +23,7 @@ Shader "NSFGrant/TextOccluded"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
 
             sampler2D _MainTex;
@@ -41,6 +42,7 @@ Shader "NSFGrant/TextOccluded"
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 fixed4 color : COLOR;
+                UNITY_FOG_COORDS(1)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -50,6 +52,7 @@ Shader "NSFGrant/TextOccluded"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
+                UNITY_TRANSFER_FOG(o, o.pos);
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 o.color = v.color;
                 return o;
@@ -61,7 +64,9 @@ Shader "NSFGrant/TextOccluded"
                 // tint comes from the TextMesh vertex color.
                 fixed4 col = i.color;
                 col.a *= tex2D(_MainTex, i.uv).a;
-                return col;
+                fixed4 fogged = col;
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return fogged;
             }
             ENDCG
         }

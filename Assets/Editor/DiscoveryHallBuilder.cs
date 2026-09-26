@@ -290,6 +290,11 @@ namespace NSFGrant.EditorTools
             camGo.tag = "MainCamera";
             camGo.AddComponent<Camera>();
             camGo.AddComponent<AudioListener>();
+            // Post-processing (tonemapping/grade) on the desktop/WebGL camera
+            // only; the Quest rig stays without it to protect the 72 Hz budget.
+            var camData = camGo.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>()
+                          ?? camGo.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            camData.renderPostProcessing = true;
 
             player.AddComponent<DesktopPlayerController>();
             player.AddComponent<DesktopInteractor>();
@@ -851,15 +856,19 @@ namespace NSFGrant.EditorTools
             {
                 var light = lightGo.GetComponent<Light>();
                 light.color = new Color(1f, 0.96f, 0.88f);
-                light.intensity = 1.05f;
+                light.intensity = 0.9f;
                 light.shadows = LightShadows.Soft;
                 lightGo.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
             }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.62f, 0.68f, 0.78f);
-            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.44f, 0.50f);
-            RenderSettings.ambientGroundColor = new Color(0.22f, 0.22f, 0.24f);
+            // Kept moderate: in Linear space with HDR off (Quest budget) the
+            // old 0.62-0.78 sky ambient + key + fill lights clipped walls to
+            // near-white. The desktop post stack (CreatePostProcessing) adds
+            // tonemapping on top.
+            RenderSettings.ambientSkyColor = new Color(0.54f, 0.58f, 0.66f);
+            RenderSettings.ambientEquatorColor = new Color(0.38f, 0.39f, 0.43f);
+            RenderSettings.ambientGroundColor = new Color(0.19f, 0.19f, 0.21f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = 30f;
@@ -867,8 +876,58 @@ namespace NSFGrant.EditorTools
             RenderSettings.fogColor = new Color(0.72f, 0.79f, 0.87f);
 
             ApplyGradientSky();
+            CreatePostProcessing();
 
             CreateHub();
+        }
+
+        /// <summary>
+        /// Global URP Volume with a gentle grade: tonemapping to roll off the
+        /// highlights that used to clip to white, slightly lower exposure,
+        /// a touch more contrast/saturation, soft bloom on the emissive trim
+        /// and skylight, and a light vignette. Only cameras with
+        /// renderPostProcessing on use it (the desktop camera), so the Quest
+        /// rig pays nothing. Environment-wide and symmetric, so it can't bias
+        /// attention toward any room or condition.
+        /// </summary>
+        private static void CreatePostProcessing()
+        {
+            System.IO.Directory.CreateDirectory("Assets/StudyContent");
+            const string profilePath = "Assets/StudyContent/DiscoveryHallPost.asset";
+            AssetDatabase.DeleteAsset(profilePath);
+
+            var profile = ScriptableObject.CreateInstance<UnityEngine.Rendering.VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, profilePath);
+
+            var tonemap = profile.Add<UnityEngine.Rendering.Universal.Tonemapping>(true);
+            tonemap.mode.Override(UnityEngine.Rendering.Universal.TonemappingMode.Neutral);
+
+            var grade = profile.Add<UnityEngine.Rendering.Universal.ColorAdjustments>(true);
+            grade.postExposure.Override(0.15f);
+            grade.contrast.Override(14f);
+            grade.saturation.Override(12f);
+
+            var bloom = profile.Add<UnityEngine.Rendering.Universal.Bloom>(true);
+            bloom.threshold.Override(0.9f);
+            bloom.intensity.Override(0.25f);
+            bloom.scatter.Override(0.6f);
+
+            var vignette = profile.Add<UnityEngine.Rendering.Universal.Vignette>(true);
+            vignette.intensity.Override(0.18f);
+            vignette.smoothness.Override(0.45f);
+
+            // Volume components are sub-assets of the profile.
+            foreach (var component in profile.components)
+            {
+                component.hideFlags = HideFlags.HideInInspector | HideFlags.HideInHierarchy;
+                AssetDatabase.AddObjectToAsset(component, profile);
+            }
+            AssetDatabase.SaveAssets();
+
+            var go = new GameObject("PostProcessVolume");
+            var volume = go.AddComponent<UnityEngine.Rendering.Volume>();
+            volume.isGlobal = true;
+            volume.sharedProfile = profile;
         }
 
         /// <summary>
@@ -1152,16 +1211,19 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 2f, -5.55f), new Vector3(2.4f, 4f, 0.5f), stone);
             CreateWaterQuad(hub.transform, "WaterSheet",
                 new Vector3(0f, 2.05f, -5.28f), new Vector2(1.9f, 3.7f),
-                new Color(0.5f, 0.75f, 0.95f, 0.45f), new Vector2(0f, -0.55f), 2.2f);
+                new Color(0.5f, 0.75f, 0.95f, 0.45f), new Vector2(0f, -0.55f), 2.2f, seed: 0f);
             CreateWaterQuad(hub.transform, "WaterSheetInner",
                 new Vector3(0f, 1.9f, -5.24f), new Vector2(1.5f, 3.3f),
-                new Color(0.65f, 0.85f, 1f, 0.3f), new Vector2(0f, -0.95f), 3.1f);
+                new Color(0.65f, 0.85f, 1f, 0.3f), new Vector2(0f, -0.95f), 3.1f, seed: 1f);
+            // Rim top is at y = 0.36 (cylinder height 2 * 0.18); the water
+            // disc below must sit above that or the solid rim hides it.
             CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "BasinRim",
                 new Vector3(0f, 0.18f, -4.7f), new Vector3(3.4f, 0.18f, 2.4f), stone);
             var pond = CreateVisualPrimitive(hub.transform, PrimitiveType.Cylinder, "BasinWater",
-                new Vector3(0f, 0.3f, -4.7f), new Vector3(3.1f, 0.03f, 2.1f), Color.white);
+                new Vector3(0f, 0.35f, -4.7f), new Vector3(3.1f, 0.03f, 2.1f), Color.white);
             pond.GetComponent<Renderer>().sharedMaterial = AnimatedWaterMaterial(
-                new Color(0.5f, 0.75f, 0.95f, 0.55f), new Vector2(0.04f, 0.05f), 1.1f);
+                new Color(0.5f, 0.75f, 0.95f, 0.55f), new Vector2(0.04f, 0.05f), 1.1f,
+                seed: 2f, fallingSheet: false);
             CreateWaterfallMist(hub.transform, new Vector3(0f, 0.35f, -4.7f));
 
             // Spatialized waterfall sound, synthesized at runtime (no audio
@@ -1218,7 +1280,8 @@ namespace NSFGrant.EditorTools
 
         /// <summary>Animated translucent water sheet facing the hub center (+Z).</summary>
         private static void CreateWaterQuad(Transform parent, string name,
-            Vector3 localPos, Vector2 size, Color color, Vector2 scrollSpeed, float waveSpeed)
+            Vector3 localPos, Vector2 size, Color color, Vector2 scrollSpeed, float waveSpeed,
+            float seed)
         {
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = name;
@@ -1228,7 +1291,7 @@ namespace NSFGrant.EditorTools
             quad.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             quad.transform.localScale = new Vector3(size.x, size.y, 1f);
             quad.GetComponent<Renderer>().sharedMaterial =
-                AnimatedWaterMaterial(color, scrollSpeed, waveSpeed);
+                AnimatedWaterMaterial(color, scrollSpeed, waveSpeed, seed);
         }
 
         /// <summary>
@@ -1237,7 +1300,7 @@ namespace NSFGrant.EditorTools
         /// the build never breaks.
         /// </summary>
         private static Material AnimatedWaterMaterial(Color color, Vector2 scrollSpeed,
-            float waveSpeed)
+            float waveSpeed, float seed, bool fallingSheet = true)
         {
             var shader = Shader.Find("NSFGrant/AnimatedWater");
             if (shader == null)
@@ -1250,6 +1313,10 @@ namespace NSFGrant.EditorTools
             material.SetColor("_Color", color);
             material.SetVector("_ScrollSpeed", new Vector4(scrollSpeed.x, scrollSpeed.y, 0f, 0f));
             material.SetFloat("_WaveSpeed", waveSpeed);
+            // Distinct seeds keep the overlapping sheets from lining up
+            // into moire; the basin uses the still-pool mode (no streaks).
+            material.SetFloat("_Seed", seed);
+            material.SetFloat("_Streaks", fallingSheet ? 1f : 0f);
             return material;
         }
 
@@ -1371,6 +1438,8 @@ namespace NSFGrant.EditorTools
             }
             var material = new Material(shader);
             material.SetColor("_Color", new Color(1f, 0.95f, 0.82f));
+            // The desktop post stack blooms it, so keep the source gentle.
+            material.SetFloat("_Intensity", 0.9f);
             return material;
         }
 
@@ -1588,7 +1657,7 @@ namespace NSFGrant.EditorTools
 
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
-            renderer.material = ParticleMaterial(additive: true);
+            renderer.sharedMaterial = ParticleMaterial(additive: true);
         }
 
         /// <summary>
@@ -1639,7 +1708,7 @@ namespace NSFGrant.EditorTools
 
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
-            renderer.material = ParticleMaterial(additive: true);
+            renderer.sharedMaterial = ParticleMaterial(additive: true);
         }
 
         private static Texture2D _plasterTexture;
@@ -1828,16 +1897,22 @@ namespace NSFGrant.EditorTools
         /// <summary>Soft circular particle material; additive glow or alpha-blended.</summary>
         private static Material ParticleMaterial(bool additive)
         {
-            var shader = Shader.Find(additive ? "Particles/Additive" : "Particles/Alpha Blended");
-            if (shader == null)
-            {
-                shader = Shader.Find("Mobile/Particles/Additive");
-            }
+            // NOT the legacy "Particles/Additive" / "Mobile/Particles/Additive":
+            // those are Built-in-pipeline only and render as magenta squares
+            // under URP. NSFGrant/ParticleSoft is pipeline-independent.
+            var shader = Shader.Find("NSFGrant/ParticleSoft");
             if (shader == null)
             {
                 shader = Shader.Find("Sprites/Default");
             }
             var material = new Material(shader);
+            if (material.HasProperty("_SrcBlend"))
+            {
+                material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetFloat("_DstBlend", (float)(additive
+                    ? UnityEngine.Rendering.BlendMode.One
+                    : UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha));
+            }
             if (material.HasProperty("_MainTex"))
             {
                 material.mainTexture = SoftDotTexture();
@@ -2065,6 +2140,12 @@ namespace NSFGrant.EditorTools
                 }
             }
             material.color = color;
+            if (material.HasProperty("_Smoothness"))
+            {
+                // URP Lit defaults to 0.5, which put glossy highlights on
+                // plaster and stone. Keep surfaces matte.
+                material.SetFloat("_Smoothness", 0.15f);
+            }
             renderer.sharedMaterial = material;
         }
 

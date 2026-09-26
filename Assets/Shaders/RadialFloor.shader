@@ -37,6 +37,7 @@ Shader "NSFGrant/RadialFloor"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
 
             fixed4 _BaseColor;
@@ -59,6 +60,7 @@ Shader "NSFGrant/RadialFloor"
             {
                 float4 pos : SV_POSITION;
                 float3 localPos : TEXCOORD0;
+                UNITY_FOG_COORDS(1)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -68,6 +70,7 @@ Shader "NSFGrant/RadialFloor"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
+                UNITY_TRANSFER_FOG(o, o.pos);
                 o.localPos = v.vertex.xyz;
                 return o;
             }
@@ -100,7 +103,9 @@ Shader "NSFGrant/RadialFloor"
                 float shade = lerp(_CenterBrightness, _RimBrightness, radialFade);
                 col *= shade;
 
-                return fixed4(col, 1.0);
+                fixed4 fogged = fixed4(col, 1.0);
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return fogged;
             }
             ENDCG
         }

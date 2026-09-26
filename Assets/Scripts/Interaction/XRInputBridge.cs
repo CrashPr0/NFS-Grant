@@ -156,11 +156,15 @@ namespace NSFGrant.Interaction
             {
                 return;
             }
+            // Callers skip frames (VRInteractor returns early while there is
+            // no gaze), so the cached state can be many frames old. Treat a
+            // gap as "no edge": a trigger held through the gap must not read
+            // as a fresh press when polling resumes.
+            bool stale = _edgeFrame != Time.frameCount - 1;
             _edgeFrame = Time.frameCount;
 
             for (int i = 0; i < 2; i++)
             {
-                _pressedLastFrame[i] = _pressed[i];
                 InputDevice device = GetDevice((Hand)i);
                 bool down = false;
                 if (device.isValid &&
@@ -170,6 +174,7 @@ namespace NSFGrant.Interaction
                     down = device.TryGetFeatureValue(CommonUsages.trigger, out float v)
                            && v > 0.6f;
                 }
+                _pressedLastFrame[i] = stale ? down : _pressed[i];
                 _pressed[i] = down;
             }
         }

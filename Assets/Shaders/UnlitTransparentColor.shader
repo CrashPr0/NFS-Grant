@@ -19,6 +19,7 @@ Shader "NSFGrant/UnlitTransparentColor"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
 
             fixed4 _Color;
@@ -32,6 +33,7 @@ Shader "NSFGrant/UnlitTransparentColor"
             struct v2f
             {
                 float4 pos : SV_POSITION;
+                UNITY_FOG_COORDS(0)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -41,12 +43,15 @@ Shader "NSFGrant/UnlitTransparentColor"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
+                UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return _Color;
+                fixed4 fogged = _Color;
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return fogged;
             }
             ENDCG
         }

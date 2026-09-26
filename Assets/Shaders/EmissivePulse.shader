@@ -20,6 +20,7 @@ Shader "NSFGrant/EmissivePulse"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile_fog
             #include "UnityCG.cginc"
 
             fixed4 _Color;
@@ -35,6 +36,7 @@ Shader "NSFGrant/EmissivePulse"
             struct v2f
             {
                 float4 pos : SV_POSITION;
+                UNITY_FOG_COORDS(0)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -44,6 +46,7 @@ Shader "NSFGrant/EmissivePulse"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.pos = UnityObjectToClipPos(v.vertex);
+                UNITY_TRANSFER_FOG(o, o.pos);
                 return o;
             }
 
@@ -51,7 +54,9 @@ Shader "NSFGrant/EmissivePulse"
             {
                 float pulse = sin(_Time.y * _PulseSpeed) * 0.5 + 0.5;
                 float intensity = lerp(_MinIntensity, _MaxIntensity, pulse);
-                return fixed4(_Color.rgb * intensity, 1.0);
+                fixed4 fogged = fixed4(_Color.rgb * intensity, 1.0);
+                UNITY_APPLY_FOG(i.fogCoord, fogged);
+                return fogged;
             }
             ENDCG
         }

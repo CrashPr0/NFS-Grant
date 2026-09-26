@@ -41,10 +41,10 @@ namespace NSFGrant.EditorTools
             PlayerSettings.companyName = "SJSU LTI Lab";
             PlayerSettings.productName = "UN SDG Discovery Hall";
             PlayerSettings.SetApplicationIdentifier(
-                BuildTargetGroup.Android, "edu.sjsu.ltilab.sdghall");
+                UnityEditor.Build.NamedBuildTarget.Android, "edu.sjsu.ltilab.sdghall");
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
             PlayerSettings.SetScriptingBackend(
-                BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+                UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
             EnableXrLoader(BuildTargetGroup.Android, "Unity.XR.Oculus.OculusLoader");

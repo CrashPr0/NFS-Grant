@@ -37,6 +37,15 @@ namespace NSFGrant.Core
         /// <summary>Human-readable assignment string, logged at session start.</summary>
         public string AssignmentDescription { get; private set; } = "disabled";
 
+        // Authored layout, captured on the first Apply. Every Apply permutes
+        // from these, so calling it again (a restarted session in the same
+        // scene) re-derives the same assignment instead of permuting an
+        // already-permuted layout and logging the wrong slots.
+        private readonly Dictionary<Transform, (Vector3 position, Quaternion rotation)> _authoredStationPoses =
+            new Dictionary<Transform, (Vector3, Quaternion)>();
+        private readonly Dictionary<Transform, Vector3> _authoredZonePositions =
+            new Dictionary<Transform, Vector3>();
+
         public void Apply(string participantId)
         {
             if (!counterbalancingEnabled)
@@ -70,8 +79,15 @@ namespace NSFGrant.Core
             }
 
             // The arc slots are wherever the builder placed the stations.
-            var slots = stations
-                .Select(s => (s.transform.position, s.transform.rotation)).ToArray();
+            foreach (var station in stations)
+            {
+                if (!_authoredStationPoses.ContainsKey(station.transform))
+                {
+                    _authoredStationPoses[station.transform] =
+                        (station.transform.position, station.transform.rotation);
+                }
+            }
+            var slots = stations.Select(s => _authoredStationPoses[s.transform]).ToArray();
             int[] order = Permutation(stations.Length, seed);
 
             for (int i = 0; i < stations.Length; i++)
@@ -95,7 +111,14 @@ namespace NSFGrant.Core
                     continue;
                 }
 
-                Vector3[] slotPositions = zones.Select(z => z.transform.localPosition).ToArray();
+                foreach (var zone in zones)
+                {
+                    if (!_authoredZonePositions.ContainsKey(zone.transform))
+                    {
+                        _authoredZonePositions[zone.transform] = zone.transform.localPosition;
+                    }
+                }
+                Vector3[] slotPositions = zones.Select(z => _authoredZonePositions[z.transform]).ToArray();
 
                 // Cyclic Latin-square row, offset per station so a participant
                 // does not see the same arrangement at every station.
