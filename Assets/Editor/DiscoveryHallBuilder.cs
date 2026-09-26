@@ -303,8 +303,7 @@ namespace NSFGrant.EditorTools
 
         private static SdgStation BuildStation(SdgStationContent content, Vector3 center)
         {
-            Color themeColor = Color.gray;
-            ColorUtility.TryParseHtmlString(content.ThemeColorHex, out themeColor);
+            Color themeColor = ThemeColor(content);
 
             var root = new GameObject(content.StationId);
             root.transform.position = center;
@@ -349,15 +348,22 @@ namespace NSFGrant.EditorTools
                 new Vector3((DoorWidth + segW) / 2f, 2.5f, 6f),
                 new Vector3(segW, 5f, 0.15f), neutralWall);
             CreateWall(root.transform, "DoorLintel",
-                new Vector3(0f, 4.1f, 6f), new Vector3(DoorWidth, 1.8f, 0.15f),
-                Color.Lerp(themeColor, Color.black, 0.35f));
+                new Vector3(0f, (DoorHeight + 5f) / 2f, 6f),
+                new Vector3(DoorWidth, 5f - DoorHeight, 0.15f), neutralWall);
+            // Same portal + plaque as the hub doorways, facing the corridor
+            // (room +Z). The pivot's -Z is the viewer side.
+            var roomDoor = new GameObject("RoomDoorPortal");
+            roomDoor.transform.SetParent(root.transform, false);
+            roomDoor.transform.localPosition = new Vector3(0f, 0f, 6f);
+            roomDoor.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            CreateDoorPortal(roomDoor.transform, content, 0.15f);
 
             // Corridor to the hub (room front at 10 m from center, hub wall
             // at 6 m; the hub doorway gap lines up with these walls).
             CreateWall(root.transform, "Corridor_L",
-                new Vector3(-1.575f, 1.75f, 8f), new Vector3(0.15f, 3.5f, 4.2f), neutralWall);
+                new Vector3(-1.575f, 2.2f, 8f), new Vector3(0.15f, 4.4f, 4.2f), neutralWall);
             CreateWall(root.transform, "Corridor_R",
-                new Vector3(1.575f, 1.75f, 8f), new Vector3(0.15f, 3.5f, 4.2f), neutralWall);
+                new Vector3(1.575f, 2.2f, 8f), new Vector3(0.15f, 4.4f, 4.2f), neutralWall);
 
             // Ceilings over the room and corridor. Visually they finish the
             // architecture (from inside a room the open sky above read as
@@ -370,7 +376,10 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 5.02f, 2.4f), new Vector3(12.6f, 0.12f, 7.35f),
                 Color.Lerp(neutralWall, Color.black, 0.35f));
             CreateWall(root.transform, "CorridorCeiling",
-                new Vector3(0f, 3.52f, 8f), new Vector3(3.3f, 0.12f, 4.2f),
+                // 4.20-4.32: clears the door plaques (top 4.14) and encloses
+                // the hub glass ceiling's rim (4.28-4.32, it overhangs the hub
+                // walls by ~0.9 m), which a higher corridor ceiling exposed.
+                new Vector3(0f, 4.26f, 8f), new Vector3(3.3f, 0.12f, 4.2f),
                 Color.Lerp(neutralWall, Color.black, 0.35f));
             CreateGlowBar(root.transform, "CeilingLight",
                 new Vector3(0f, 4.9f, 2.4f), new Vector3(6f, 0.06f, 0.5f),
@@ -384,9 +393,6 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 4.2f, 2.4f),
                 Color.Lerp(Color.white, themeColor, 0.25f), 0.9f, 12f);
 
-            // Room name on the door lintel, readable from the hub side.
-            CreateText(root.transform, content.Title,
-                new Vector3(0f, 3.5f, 6.1f), 0.035f, 30, TextAnchor.LowerCenter);
 
             // Icon spans y 3.35-4.95; a two-line title tops out near 3.33.
             CreateLabel(root.transform, content.Title, new Vector3(0f, 2.85f, 0f), 0.05f, 26);
@@ -513,6 +519,123 @@ namespace NSFGrant.EditorTools
         private const float PanelFaceZ = 0.04f;
         // Clear width of every doorway (hub exits and room doors).
         private const float DoorWidth = 3f;
+        // Clear height of every doorway (hub exits and room doors).
+        private const float DoorHeight = 3.1f;
+        private static readonly Color PortalStone = new Color(0.44f, 0.44f, 0.47f);
+        private static readonly Color PlaqueColor = new Color(0.09f, 0.10f, 0.12f);
+        private static readonly Color RevealLightColor = new Color(1f, 0.93f, 0.78f);
+
+        // Every room's theme color is rescaled to this relative luminance
+        // (linear). The raw UN colors differ a lot in brightness (SDG 11
+        // orange is ~3x SDG 4 red), which made one room's signage, walls and
+        // floor far more salient than the others'.
+        private const float ThemeLuminance = 0.16f;
+
+        /// <summary>
+        /// A room's theme color with its hue kept but its luminance equalized
+        /// across rooms (see <see cref="ThemeLuminance"/>). Use this for every
+        /// theme-tinted surface so no room stands out by color brightness.
+        /// </summary>
+        private static Color ThemeColor(SdgStationContent content)
+        {
+            if (!ColorUtility.TryParseHtmlString(content.ThemeColorHex, out Color raw))
+            {
+                return Color.gray;
+            }
+            Color lin = raw.linear;
+            float y = 0.2126f * lin.r + 0.7152f * lin.g + 0.0722f * lin.b;
+            if (y <= 1e-4f)
+            {
+                return raw;
+            }
+            float k = ThemeLuminance / y;
+            var scaled = new Color(Mathf.Clamp01(lin.r * k), Mathf.Clamp01(lin.g * k),
+                                   Mathf.Clamp01(lin.b * k), 1f);
+            return scaled.gamma;
+        }
+
+        /// <summary>
+        /// Stone doorway portal with a recessed warm reveal light, a floor
+        /// threshold, and a museum plaque (SDG goal icon + number + name) on
+        /// a dark panel with an equal-luminance theme accent bar. The portal
+        /// is centered on <paramref name="pivot"/>'s origin with the wall in
+        /// its local XY plane; the viewer is on the pivot's local -Z side.
+        /// Used for all hub doorways and room doors, so every entrance is
+        /// built identically - only the room's content differs.
+        /// </summary>
+        private static void CreateDoorPortal(Transform pivot, SdgStationContent content,
+            float wallThickness)
+        {
+            float depth = wallThickness + 0.24f;
+            // Jambs stand 2 cm inside the opening so their inner faces aren't
+            // coplanar with the corridor walls' (x = +/-1.5), which z-fought.
+            float halfW = DoorWidth / 2f - 0.02f;
+            const float jambW = 0.28f;
+
+            // Jambs and head, deeper than the wall so the opening reads as a
+            // built portal rather than a hole cut in a panel.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                CreateWall(pivot, "PortalJamb",
+                    new Vector3(side * (halfW + jambW / 2f), DoorHeight / 2f, 0f),
+                    new Vector3(jambW, DoorHeight, depth), PortalStone);
+                CreateVisualCube(pivot, "PortalPlinth",
+                    new Vector3(side * (halfW + jambW / 2f), 0.15f, 0f),
+                    new Vector3(jambW + 0.08f, 0.3f, depth + 0.06f),
+                    Color.Lerp(PortalStone, Color.black, 0.35f));
+                // Warm light set into the inner face of each jamb: the same
+                // wayfinding cue as the old outline trim, but soft.
+                CreateGlowBar(pivot, "PortalReveal",
+                    new Vector3(side * (halfW - 0.012f), DoorHeight / 2f, 0f),
+                    new Vector3(0.025f, DoorHeight - 0.35f, 0.08f), RevealLightColor);
+            }
+            CreateWall(pivot, "PortalHead",
+                new Vector3(0f, DoorHeight + 0.14f, 0f),
+                new Vector3(DoorWidth + jambW * 2f, 0.28f, depth), PortalStone);
+            CreateVisualCube(pivot, "PortalCornice",
+                new Vector3(0f, DoorHeight + 0.31f, 0f),
+                new Vector3(DoorWidth + jambW * 2f + 0.2f, 0.07f, depth + 0.12f),
+                Color.Lerp(PortalStone, Color.white, 0.12f));
+            CreateGlowBar(pivot, "PortalRevealTop",
+                new Vector3(0f, DoorHeight - 0.012f, 0f),
+                new Vector3(DoorWidth - 0.05f, 0.025f, 0.08f), RevealLightColor);
+            CreateVisualCube(pivot, "PortalThreshold",
+                new Vector3(0f, 0.008f, 0f), new Vector3(DoorWidth, 0.016f, depth),
+                Color.Lerp(PortalStone, Color.black, 0.2f));
+
+            // Plaque, above the cornice on the viewer's face. The sign pivot
+            // turns 180 so its +Z (the readable side of icons/text) faces
+            // the viewer - which also mirrors X: the viewer's left is the
+            // sign's +X, and text runs toward -X.
+            const float plaqueW = 2.5f, plaqueH = 0.66f;
+            float plaqueY = DoorHeight + 0.38f + plaqueH / 2f;
+            var sign = new GameObject("RoomPlaque");
+            sign.transform.SetParent(pivot, false);
+            sign.transform.localPosition = new Vector3(0f, plaqueY, -(depth / 2f + 0.03f));
+            sign.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+
+            CreateVisualCube(sign.transform, "PlaquePanel", Vector3.zero,
+                new Vector3(plaqueW, plaqueH, 0.04f), PlaqueColor);
+            CreateVisualCube(sign.transform, "PlaqueAccent",
+                new Vector3(0f, -plaqueH / 2f + 0.025f, 0.012f),
+                new Vector3(plaqueW, 0.05f, 0.04f), ThemeColor(content));
+
+            const float iconSize = 0.5f;
+            CreateTexturedQuad(sign.transform, content.IconFileName, "PlaqueIcon",
+                new Vector3(plaqueW / 2f - 0.1f - iconSize / 2f, 0.02f, 0.025f),
+                Vector2.one * iconSize);
+
+            // "SDG 11 - Sustainable Cities..." -> "SDG 11" / "Sustainable...".
+            string title = content.Title ?? "";
+            int dash = title.IndexOf(" - ", System.StringComparison.Ordinal);
+            string goal = dash > 0 ? title.Substring(0, dash) : title;
+            string name = dash > 0 ? title.Substring(dash + 3) : "";
+            float textX = plaqueW / 2f - 0.2f - iconSize;
+            CreateText(sign.transform, goal.ToUpperInvariant(),
+                new Vector3(textX, 0.19f, 0.025f), 0.017f, 40, TextAnchor.MiddleLeft);
+            CreateText(sign.transform, name,
+                new Vector3(textX, -0.06f, 0.025f), 0.021f, 24, TextAnchor.MiddleLeft);
+        }
         private static readonly Color FrameColor = new Color(0.10f, 0.10f, 0.12f);
         private static readonly Color PanelFaceColor = new Color(0.13f, 0.14f, 0.17f);
         private static readonly Color FloorColor = new Color(0.24f, 0.24f, 0.26f);
@@ -858,7 +981,10 @@ namespace NSFGrant.EditorTools
                 light.color = new Color(1f, 0.96f, 0.88f);
                 light.intensity = 0.9f;
                 light.shadows = LightShadows.Soft;
-                lightGo.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
+                // Straight down (skylight-style). Any oblique sun lights the
+                // three doorway walls, 120 degrees apart, unequally - a
+                // salience difference between rooms in an attention study.
+                lightGo.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             }
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
@@ -1114,52 +1240,20 @@ namespace NSFGrant.EditorTools
                             new Vector3(x, 2.2f, 0f), new Vector3(segW, 4.4f, 0.2f), hubWallColor);
                     }
                     CreateWall(holder.transform, "Lintel",
-                        new Vector3(0f, 3.75f, 0f), new Vector3(DoorWidth, 1.3f, 0.2f),
-                        hubWallColor);
+                        new Vector3(0f, (DoorHeight + 4.4f) / 2f, 0f),
+                        new Vector3(DoorWidth, 4.4f - DoorHeight, 0.2f), hubWallColor);
 
-                    // Steady warm wayfinding trim framing the opening, facing
-                    // the hub interior (local -z). Identical on all three
-                    // doorways, so it aids navigation without privileging one
-                    // room - distinct from the Condition-C beacon.
-                    var trimColor = new Color(1f, 0.93f, 0.78f);
-                    foreach (float x in new[] { -DoorWidth / 2f, DoorWidth / 2f })
-                    {
-                        CreateGlowBar(holder.transform, "DoorTrim",
-                            new Vector3(x, 1.6f, -0.12f), new Vector3(0.1f, 3.0f, 0.06f),
-                            trimColor);
-                    }
-                    CreateGlowBar(holder.transform, "DoorTrimTop",
-                        new Vector3(0f, 3.1f, -0.12f), new Vector3(DoorWidth + 0.1f, 0.1f, 0.06f),
-                        trimColor);
-
-                    // Room title + theme band above the doorway, readable
-                    // from the hub interior - previously wayfinding required
-                    // walking a corridor to read the room's own lintel.
-                    // Identical typography/placement on all three doorways;
-                    // only the room's name and theme color differ (the same
-                    // per-room identity the door lintels already carry).
+                    // Stone portal + recessed warm reveal light + room plaque,
+                    // facing the hub interior (holder local -Z). Built by the
+                    // same helper as the room doors, so all six doorways are
+                    // identical apart from the room's name, icon and accent.
                     // Doorway angles map onto BuildDiscoveryHall's station
                     // angles: -120 -> station 0, 0 -> 1, +120 -> 2.
                     int stationIndex = angle == -120f ? 0 : angle == 0f ? 1 : 2;
                     if (stationIndex < SdgContentLibrary.Stations.Length)
                     {
-                        var roomContent = SdgContentLibrary.Stations[stationIndex];
-                        ColorUtility.TryParseHtmlString(
-                            roomContent.ThemeColorHex, out Color roomColor);
-                        CreateVisualCube(holder.transform, "DoorwayBand",
-                            new Vector3(0f, 3.7f, -0.14f),
-                            new Vector3(DoorWidth + 0.1f, 0.5f, 0.06f),
-                            Color.Lerp(roomColor, Color.black, 0.25f));
-                        // Hub interior is the holder's local -Z; CreateText
-                        // renders readable from its parent's +Z, so the sign
-                        // pivot flips 180 to face the hub center.
-                        var signPivot = new GameObject("DoorwaySign");
-                        signPivot.transform.SetParent(holder.transform, false);
-                        signPivot.transform.localPosition = new Vector3(0f, 3.7f, -0.15f);
-                        signPivot.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-                        CreateText(signPivot.transform, roomContent.Title,
-                            new Vector3(0f, 0f, 0.06f), 0.026f, 26,
-                            TextAnchor.MiddleCenter);
+                        CreateDoorPortal(holder.transform,
+                            SdgContentLibrary.Stations[stationIndex], 0.2f);
                     }
 
                     // Greenery flanking the opening on the hub side - same
