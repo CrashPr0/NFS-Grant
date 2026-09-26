@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using NSFGrant.Core;
+using NSFGrant.Logging;
 using NSFGrant.Survey;
 using NSFGrant.UI;
 
@@ -48,9 +49,9 @@ namespace NSFGrant.Session
         {
             if (PlatformDetector.IsXRActive)
             {
-                // Lab flow: staff set the participant ID in the Inspector;
-                // quizzes are administered outside the headset or via VERA.
-                Begin(session.ParticipantId, null, skipQuizzes: true);
+                // Lab flow: staff set the participant ID in the Inspector.
+                // Surveys run in the headset via VRSurveyPanel.
+                Begin(session.ParticipantId, null, skipQuizzes: false);
                 return;
             }
 
@@ -72,15 +73,7 @@ namespace NSFGrant.Session
                     break;
 
                 case Phase.Running when Input.GetKeyDown(endSessionKey):
-                    if (!_skipSurveys && quiz != null)
-                    {
-                        quiz.Show("post");
-                        _phase = Phase.PostQuiz;
-                    }
-                    else
-                    {
-                        ShowRankingOrFinish();
-                    }
+                    RequestFinishExploration();
                     break;
 
                 case Phase.PostQuiz when quiz == null || quiz.IsComplete:
@@ -90,6 +83,37 @@ namespace NSFGrant.Session
                 case Phase.Ranking when ranking == null || ranking.IsComplete:
                     FinishSession();
                     break;
+            }
+        }
+
+        /// <summary>True while the participant is exploring (between the surveys).</summary>
+        public bool IsExploring => _phase == Phase.Running;
+
+        /// <summary>True waiting for a participant ID (no ?pid= and no ID entered yet).</summary>
+        public bool IsAwaitingIntake => _phase == Phase.Intake;
+
+        /// <summary>True once the whole flow has finished.</summary>
+        public bool IsDone => _phase == Phase.Done;
+
+        /// <summary>
+        /// Ends exploration and opens the post-survey (or ranking / finish):
+        /// the desktop End key, and the VR "End exploring?" confirmation.
+        /// </summary>
+        public void RequestFinishExploration()
+        {
+            if (_phase != Phase.Running)
+            {
+                return;
+            }
+            StudyEventLogger.Instance?.LogEvent("exploration_end_requested", "", "");
+            if (!_skipSurveys && quiz != null)
+            {
+                quiz.Show("post");
+                _phase = Phase.PostQuiz;
+            }
+            else
+            {
+                ShowRankingOrFinish();
             }
         }
 
@@ -177,6 +201,10 @@ namespace NSFGrant.Session
 
         private void OnGUI()
         {
+            if (PlatformDetector.IsXRActive)
+            {
+                return; // VRSurveyPanel covers intake/done in the headset
+            }
             if (_phase == Phase.Intake)
             {
                 DrawIntakePanel();

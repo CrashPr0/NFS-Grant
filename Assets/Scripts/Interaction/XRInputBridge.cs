@@ -123,10 +123,9 @@ namespace NSFGrant.Interaction
         /// </summary>
         public static bool GetTriggerDown(Hand hand)
         {
-            if (UsesWebXR)
-            {
-                return WebXRInput.GetTriggerDown(hand == Hand.Left);
-            }
+            // WebXR: derive the edge from the analog trigger like the Unity XR
+            // path. WebXRController.GetButtonDown missed presses in testing
+            // (IWER): a squeeze read rt=1.00 but never produced a click.
             if (!UsesUnityXR)
             {
                 return OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, ToOvr(hand));
@@ -198,8 +197,15 @@ namespace NSFGrant.Interaction
 
             for (int i = 0; i < 2; i++)
             {
-                InputDevice device = GetDevice((Hand)i);
                 bool down = false;
+                if (UsesWebXR)
+                {
+                    down = WebXRInput.GetTrigger(i == (int)Hand.Left) > 0.6f;
+                    _pressedLastFrame[i] = stale ? down : _pressed[i];
+                    _pressed[i] = down;
+                    continue;
+                }
+                InputDevice device = GetDevice((Hand)i);
                 if (device.isValid &&
                     !device.TryGetFeatureValue(CommonUsages.triggerButton, out down))
                 {

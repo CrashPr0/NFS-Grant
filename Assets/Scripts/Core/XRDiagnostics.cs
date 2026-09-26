@@ -52,7 +52,8 @@ namespace NSFGrant.Core
                 $"head=({head.x:F2},{head.y:F2},{head.z:F2}) rig=({rig.x:F2},{rig.y:F2},{rig.z:F2}) " +
                 $"L={XRInputBridge.IsConnected(XRInputBridge.Hand.Left)} ls=({ls.x:F2},{ls.y:F2}) " +
                 $"R={XRInputBridge.IsConnected(XRInputBridge.Hand.Right)} rs=({rs.x:F2},{rs.y:F2}) " +
-                $"rt={XRInputBridge.GetTrigger(XRInputBridge.Hand.Right):F2}");
+                $"rt={XRInputBridge.GetTrigger(XRInputBridge.Hand.Right):F2} " +
+                $"survey[{VRSurveyPanel.DebugState}]");
         }
 
         private static bool UrlHasDebugFlag()

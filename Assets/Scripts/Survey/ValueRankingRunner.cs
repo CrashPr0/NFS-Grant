@@ -26,6 +26,24 @@ namespace NSFGrant.Survey
 
         public bool IsComplete { get; private set; }
 
+        // --- Read/act API for non-IMGUI front ends (VRSurveyPanel).
+        public bool IsVisible => _visible;
+        public string Prompt => definition != null ? definition.prompt : "";
+        public string[] Values => definition != null && definition.values != null ? definition.values : new string[0];
+        public int RankedCount => _ranked.Count;
+
+        /// <summary>1-based rank already given to value <paramref name="index"/>, or 0.</summary>
+        public int RankOf(int index) => _ranked.IndexOf(index) + 1;
+
+        /// <summary>Gives value <paramref name="index"/> the next rank.</summary>
+        public void Choose(int index)
+        {
+            if (_visible && index >= 0 && index < Values.Length)
+            {
+                Assign(index);
+            }
+        }
+
         /// <summary>Shows the ranking panel (desktop/WebGL builds).</summary>
         public void Show()
         {
@@ -76,7 +94,8 @@ namespace NSFGrant.Survey
 
         private void OnGUI()
         {
-            if (!_visible)
+            // In VR the in-headset VRSurveyPanel shows this instead.
+            if (!_visible || Core.PlatformDetector.IsXRActive)
             {
                 return;
             }

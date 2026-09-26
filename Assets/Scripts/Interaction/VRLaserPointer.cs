@@ -19,6 +19,9 @@ namespace NSFGrant.Interaction
     public class VRLaserPointer : MonoBehaviour
     {
         [SerializeField] private XRInputBridge.Hand hand = XRInputBridge.Hand.Right;
+
+        /// <summary>Which controller this beam belongs to (VRSurveyPanel aims with it).</summary>
+        public XRInputBridge.Hand Hand => hand;
         [SerializeField] private float maxDistance = 30f;
         [SerializeField] private float startOffset = 0.08f;
         [SerializeField] private Color beamColor = new Color(0.45f, 0.85f, 1f, 0.7f);

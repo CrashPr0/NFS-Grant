@@ -36,6 +36,13 @@ namespace NSFGrant.Interaction
                 return;
             }
 
+            // A survey/confirm panel owns the trigger while it's open, so an
+            // answer click can't also activate the exhibit behind it.
+            if (VRSurveyPanel.IsOpen)
+            {
+                return;
+            }
+
             bool rightDown = XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Right);
             bool leftDown = XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Left);
             if (!rightDown && !leftDown)

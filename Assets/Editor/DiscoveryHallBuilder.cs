@@ -169,6 +169,10 @@ namespace NSFGrant.EditorTools
 
             // --- Post-exploration value-ranking task.
             var rankingRunner = study.AddComponent<ValueRankingRunner>();
+            // In-headset front end for the same surveys (IMGUI never
+            // renders into the XR eye buffers). Self-wires to the runners
+            // on this object.
+            study.AddComponent<VRSurveyPanel>();
             var rankingAsset = CreateValueRankingAsset();
             var rankingSo = new SerializedObject(rankingRunner);
             rankingSo.FindProperty("definition").objectReferenceValue = rankingAsset;

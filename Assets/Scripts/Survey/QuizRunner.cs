@@ -24,6 +24,29 @@ namespace NSFGrant.Survey
 
         public bool IsComplete { get; private set; }
 
+        // --- Read/act API for non-IMGUI front ends (VRSurveyPanel). Same
+        // responses and log rows as the desktop panel.
+        public bool IsVisible => _visible;
+        public string StageLabel => stage?.ToLowerInvariant() == "pre" ? "PRE-SURVEY"
+                                  : stage?.ToLowerInvariant() == "post" ? "POST-SURVEY"
+                                  : (stage?.ToUpperInvariant() ?? "SURVEY");
+        public int QuestionIndex => _currentQuestion;
+        public int QuestionCount => quiz != null && quiz.questions != null ? quiz.questions.Length : 0;
+        public string CurrentPrompt => _visible ? quiz.questions[_currentQuestion].prompt : "";
+        public string[] CurrentOptions => _visible ? quiz.questions[_currentQuestion].options : new string[0];
+
+        /// <summary>Answers the current question with option <paramref name="index"/>.</summary>
+        public void Choose(int index)
+        {
+            if (!_visible || index < 0 || index >= CurrentOptions.Length)
+            {
+                return;
+            }
+            var question = quiz.questions[_currentQuestion];
+            RecordResponse(question.questionId, index, question.correctIndex);
+            NextQuestion();
+        }
+
         /// <summary>Shows the IMGUI quiz panel (desktop/WebGL builds).</summary>
         public void Show(string quizStage)
         {
@@ -51,7 +74,8 @@ namespace NSFGrant.Survey
 
         private void OnGUI()
         {
-            if (!_visible) return;
+            // In VR the in-headset VRSurveyPanel shows this instead.
+            if (!_visible || Core.PlatformDetector.IsXRActive) return;
 
             float baseUnit = StudyGuiKit.BaseUnit();
 
@@ -102,8 +126,7 @@ namespace NSFGrant.Survey
             {
                 if (GUI.Button(new Rect(qX, bY, qW, btnH), question.options[i], StudyGuiKit.ButtonStyle(baseUnit)))
                 {
-                    RecordResponse(question.questionId, i, question.correctIndex);
-                    NextQuestion();
+                    Choose(i);
                 }
                 bY += btnH + btnGap;
             }
