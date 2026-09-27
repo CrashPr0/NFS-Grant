@@ -205,8 +205,63 @@ namespace NSFGrant.EditorTools
             DiscoveryHallBuilder.BuildDiscoveryHall();
         }
 
+        /// <summary>
+        /// Shaders that code creates materials from at runtime via
+        /// Shader.Find. Nothing in the scene references them, so a player
+        /// build strips them unless they're Always Included - and each
+        /// caller then silently falls back to Sprites/Default, which isn't
+        /// stereo-instancing safe (hands/laser/survey render differently
+        /// per eye) and leaves locomotion without its comfort vignette.
+        /// </summary>
+        private static readonly string[] RuntimeShaders =
+        {
+            "NSFGrant/ComfortVignette",       // VRLocomotion
+            "NSFGrant/HandShaded",            // VRHandVisual
+            "NSFGrant/UnlitTransparentColor", // VRLaserPointer, VRSurveyPanel, VRLocomotion
+        };
+
+        /// <summary>
+        /// Adds <see cref="RuntimeShaders"/> to Graphics > Always Included
+        /// Shaders (idempotent). False if a shader is missing from the project.
+        /// </summary>
+        private static bool IncludeRuntimeShaders()
+        {
+            var graphics = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.GraphicsSettings>(
+                "ProjectSettings/GraphicsSettings.asset");
+            var so = new SerializedObject(graphics);
+            var list = so.FindProperty("m_AlwaysIncludedShaders");
+            foreach (string name in RuntimeShaders)
+            {
+                var shader = Shader.Find(name);
+                if (shader == null)
+                {
+                    Debug.LogError($"[CiTools] Runtime shader {name} not found.");
+                    return false;
+                }
+                bool present = false;
+                for (int i = 0; i < list.arraySize && !present; i++)
+                {
+                    present = list.GetArrayElementAtIndex(i).objectReferenceValue == shader;
+                }
+                if (!present)
+                {
+                    list.InsertArrayElementAtIndex(list.arraySize);
+                    list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = shader;
+                    Debug.Log($"[CiTools] Added {name} to Always Included Shaders.");
+                }
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            return true;
+        }
+
         private static void Run(BuildPlayerOptions options)
         {
+            if (!IncludeRuntimeShaders())
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
             Directory.CreateDirectory("Builds");
             var report = BuildPipeline.BuildPlayer(options);
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
