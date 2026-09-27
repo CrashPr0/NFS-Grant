@@ -42,6 +42,10 @@ namespace NSFGrant.EditorTools
             // editor session re-bakes instead of pointing at dead assets.
             _plasterTexture = null;
             _terrazzoTexture = null;
+            ProceduralPlanter.Reset();
+            _contactShadows.Clear();
+            _contactShadowMaterial = null;
+            System.Array.Clear(_hubPlaques, 0, _hubPlaques.Length);
 
             Scene scene = EditorSceneManager.NewScene(
                 NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -203,6 +207,21 @@ namespace NSFGrant.EditorTools
                 stationComponents.Add(BuildStation(SdgContentLibrary.Stations[i], center));
             }
 
+            // Each hub doorway's plaque names the room behind it, so it must
+            // move with that room: CounterbalanceManager permutes the station
+            // roots between the arc slots at session start, and a plaque left
+            // on the (static) hub wall then named the wrong room for most
+            // assignments. Station poses are rotations of one another about
+            // the hub center, so a plaque parented to its station lands on
+            // the matching doorway whichever slot the station is given.
+            for (int i = 0; i < stationComponents.Count && i < _hubPlaques.Length; i++)
+            {
+                if (_hubPlaques[i] != null)
+                {
+                    _hubPlaques[i].SetParent(stationComponents[i].transform, true);
+                }
+            }
+
             // --- Docent route (active only in Condition C).
             var docentRoot = new GameObject("DocentGuide");
             var beacon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -240,6 +259,10 @@ namespace NSFGrant.EditorTools
                 routeProp.GetArrayElementAtIndex(i).objectReferenceValue = stationComponents[i];
             }
             docentSo.ApplyModifiedPropertiesWithoutUndo();
+
+            // Contact shadows last: they sit on whatever floor is under their
+            // objects, so every floor must exist first.
+            CreateContactShadows();
 
             // --- Save.
             const string path = "Assets/Scenes/DiscoveryHall.unity";
@@ -317,6 +340,9 @@ namespace NSFGrant.EditorTools
             var camData = camGo.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>()
                           ?? camGo.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
             camData.renderPostProcessing = true;
+            // The desktop keeps real-time shadows, so it skips the contact
+            // shadows that stand in for them in the headset.
+            camGo.GetComponent<Camera>().cullingMask &= ~(1 << XROnlyVisualLayer);
 
             player.AddComponent<DesktopPlayerController>();
             player.AddComponent<DesktopInteractor>();
@@ -372,13 +398,15 @@ namespace NSFGrant.EditorTools
             CreateWall(root.transform, "DoorLintel",
                 new Vector3(0f, (DoorHeight + 5f) / 2f, 6f),
                 new Vector3(DoorWidth, 5f - DoorHeight, 0.15f), neutralWall);
-            // Same portal + plaque as the hub doorways, facing the corridor
-            // (room +Z). The pivot's -Z is the viewer side.
+            // Same portal as the hub doorways, facing the corridor (room +Z;
+            // the pivot's -Z is the viewer side) - but no plaque: the hub
+            // doorway's plaque already names the room, and a second one
+            // framed in the same view read as clutter.
             var roomDoor = new GameObject("RoomDoorPortal");
             roomDoor.transform.SetParent(root.transform, false);
             roomDoor.transform.localPosition = new Vector3(0f, 0f, 6f);
             roomDoor.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-            CreateDoorPortal(roomDoor.transform, content, 0.15f);
+            CreateDoorPortal(roomDoor.transform, content, 0.15f, withPlaque: false);
 
             // Corridor to the hub (room front at 10 m from center, hub wall
             // at 6 m; the hub doorway gap lines up with these walls).
@@ -533,7 +561,7 @@ namespace NSFGrant.EditorTools
             // every zone panel.
             foreach (float x in new[] { -2.2f, 2.2f })
             {
-                CreatePlanter(root, new Vector3(x, 0f, 5.5f));
+                CreatePlanter(root, new Vector3(x, 0f, 5.5f), faceZ: 1f);
             }
         }
 
@@ -583,10 +611,12 @@ namespace NSFGrant.EditorTools
         /// is centered on <paramref name="pivot"/>'s origin with the wall in
         /// its local XY plane; the viewer is on the pivot's local -Z side.
         /// Used for all hub doorways and room doors, so every entrance is
-        /// built identically - only the room's content differs.
+        /// built identically - only the room's content differs. Room doors
+        /// pass <paramref name="withPlaque"/> false (one label per room, at
+        /// the hub). Returns the plaque, or null when none was built.
         /// </summary>
-        private static void CreateDoorPortal(Transform pivot, SdgStationContent content,
-            float wallThickness)
+        private static Transform CreateDoorPortal(Transform pivot, SdgStationContent content,
+            float wallThickness, bool withPlaque = true)
         {
             float depth = wallThickness + 0.24f;
             // Jambs stand 2 cm inside the opening so their inner faces aren't
@@ -624,6 +654,10 @@ namespace NSFGrant.EditorTools
             CreateVisualCube(pivot, "PortalThreshold",
                 new Vector3(0f, 0.008f, 0f), new Vector3(DoorWidth, 0.016f, depth),
                 Color.Lerp(PortalStone, Color.black, 0.2f));
+            if (!withPlaque)
+            {
+                return null;
+            }
 
             // Plaque, above the cornice on the viewer's face. The sign pivot
             // turns 180 so its +Z (the readable side of icons/text) faces
@@ -657,6 +691,7 @@ namespace NSFGrant.EditorTools
                 new Vector3(textX, 0.19f, 0.025f), 0.017f, 40, TextAnchor.MiddleLeft);
             CreateText(sign.transform, name,
                 new Vector3(textX, -0.06f, 0.025f), 0.021f, 24, TextAnchor.MiddleLeft);
+            return sign.transform;
         }
         private static readonly Color FrameColor = new Color(0.10f, 0.10f, 0.12f);
         private static readonly Color PanelFaceColor = new Color(0.13f, 0.14f, 0.17f);
@@ -880,6 +915,7 @@ namespace NSFGrant.EditorTools
             var docent = new GameObject(id);
             docent.transform.SetParent(parent, false);
             docent.transform.localPosition = localPos;
+            RequestContactShadow(docent.transform, 0.8f, xrOnly: true);
 
             // One capsule collider over the whole figure for gaze + selection.
             var capsule = docent.AddComponent<CapsuleCollider>();
@@ -1274,7 +1310,10 @@ namespace NSFGrant.EditorTools
                     int stationIndex = angle == -120f ? 0 : angle == 0f ? 1 : 2;
                     if (stationIndex < SdgContentLibrary.Stations.Length)
                     {
-                        CreateDoorPortal(holder.transform,
+                        // Re-parented onto its station once the stations
+                        // exist (see BuildDiscoveryHall) so it follows
+                        // counterbalancing.
+                        _hubPlaques[stationIndex] = CreateDoorPortal(holder.transform,
                             SdgContentLibrary.Stations[stationIndex], 0.2f);
                     }
 
@@ -1645,31 +1684,105 @@ namespace NSFGrant.EditorTools
         }
 
         /// <summary>
-        /// Potted plant: dark pot, trunk, three offset leaf-sphere clusters.
-        /// Deterministic and identical at every placement; colliderless so
-        /// it can never trap the CharacterController or catch gaze rays.
+        /// Potted tree (see ProceduralPlanter): generated ceramic pot,
+        /// branching trunk and stylized leaf-card crown. Identical at every
+        /// placement - the pair at each doorway is mirrored so it frames the
+        /// opening symmetrically. <paramref name="faceZ"/> is the planter's
+        /// lit side: -1 when visitors approach from the parent's -Z (hub
+        /// doorways), +1 from +Z (room entrances). Colliderless so it can
+        /// never trap the CharacterController or catch gaze rays.
         /// </summary>
-        private static void CreatePlanter(Transform parent, Vector3 localPos)
+        private static void CreatePlanter(Transform parent, Vector3 localPos, float faceZ = -1f)
         {
-            var planter = new GameObject("Planter");
-            planter.transform.SetParent(parent, false);
-            planter.transform.localPosition = localPos;
+            var planter = ProceduralPlanter.Create(parent, localPos, mirror: localPos.x > 0f,
+                                                   yawDegrees: faceZ < 0f ? 0f : 180f);
+            // Everywhere, not just the headset: the stylized tree shaders
+            // cast no real-time shadow of their own.
+            RequestContactShadow(planter.transform, 0.46f, xrOnly: false);
+        }
 
-            var potColor = new Color(0.23f, 0.20f, 0.18f);
-            var leafDark = new Color(0.15f, 0.34f, 0.18f);
-            var leafLight = new Color(0.24f, 0.46f, 0.22f);
+        // ---------------------------------------------------- contact shadows
 
-            CreateVisualPrimitive(planter.transform, PrimitiveType.Cylinder, "Pot",
-                new Vector3(0f, 0.22f, 0f), new Vector3(0.5f, 0.22f, 0.5f), potColor);
-            CreateVisualPrimitive(planter.transform, PrimitiveType.Cylinder, "Trunk",
-                new Vector3(0f, 0.7f, 0f), new Vector3(0.07f, 0.35f, 0.07f),
-                new Color(0.32f, 0.24f, 0.16f));
-            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyLow",
-                new Vector3(0.12f, 1.15f, 0.06f), new Vector3(0.55f, 0.5f, 0.55f), leafDark);
-            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyHigh",
-                new Vector3(-0.09f, 1.45f, -0.04f), new Vector3(0.45f, 0.42f, 0.45f), leafLight);
-            CreateVisualPrimitive(planter.transform, PrimitiveType.Sphere, "CanopyTop",
-                new Vector3(0.03f, 1.68f, 0.02f), new Vector3(0.3f, 0.3f, 0.3f), leafDark);
+        /// <summary>Layer only headset cameras draw (named in TagManager).</summary>
+        private const int XROnlyVisualLayer = 29;
+
+        private static readonly List<(Transform anchor, float radius, bool xrOnly)> _contactShadows =
+            new List<(Transform, float, bool)>();
+        private static Material _contactShadowMaterial;
+
+        /// <summary>
+        /// Queue a soft contact shadow under <paramref name="anchor"/>, built
+        /// once the floors exist (<see cref="CreateContactShadows"/>).
+        /// <paramref name="xrOnly"/>: the object casts real shadows on the
+        /// desktop, so only headset cameras (which render without real-time
+        /// shadows) should draw the patch.
+        /// </summary>
+        private static void RequestContactShadow(Transform anchor, float radius, bool xrOnly)
+        {
+            _contactShadows.Add((anchor, radius, xrOnly));
+        }
+
+        /// <summary>
+        /// One NSFGrant/ContactShadow quad per request, laid on the highest
+        /// floor surface under its object and parented to it (so it follows
+        /// counterbalancing). Colliderless; no shadow casting of its own.
+        /// </summary>
+        private static void CreateContactShadows()
+        {
+            var shader = Shader.Find("NSFGrant/ContactShadow");
+            if (shader == null)
+            {
+                Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/ContactShadow not found; no contact shadows.");
+                return;
+            }
+            _contactShadowMaterial = new Material(shader) { name = "ContactShadow", enableInstancing = true };
+
+            // Floors are flat renderers, and the visible ones (hub floor,
+            // room platforms, carpet runners) are colliderless tints a few
+            // cm above the floor collider - so measure renderers, not
+            // physics, or the patch ends up hidden under the tint.
+            var floors = new List<Bounds>();
+            foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                Bounds b = r.bounds;
+                if (b.size.y < 0.08f && Mathf.Max(b.size.x, b.size.z) > 1f)
+                {
+                    floors.Add(b);
+                }
+            }
+
+            foreach (var (anchor, radius, xrOnly) in _contactShadows)
+            {
+                Vector3 p = anchor.position;
+                float floorY = p.y;
+                bool found = false;
+                foreach (var b in floors)
+                {
+                    if (p.x >= b.min.x && p.x <= b.max.x && p.z >= b.min.z && p.z <= b.max.z &&
+                        b.max.y <= p.y + 0.1f && (!found || b.max.y > floorY))
+                    {
+                        floorY = b.max.y;
+                        found = true;
+                    }
+                }
+
+                var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                quad.name = "ContactShadow";
+                Object.DestroyImmediate(quad.GetComponent<Collider>());
+                quad.transform.SetPositionAndRotation(
+                    new Vector3(anchor.position.x, floorY + 0.004f, anchor.position.z),
+                    Quaternion.Euler(90f, 0f, 0f));
+                quad.transform.localScale = new Vector3(radius * 2f, radius * 2f, 1f);
+                quad.transform.SetParent(anchor, true);
+                var renderer = quad.GetComponent<MeshRenderer>();
+                renderer.sharedMaterial = _contactShadowMaterial;
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+                if (xrOnly)
+                {
+                    quad.layer = XROnlyVisualLayer;
+                }
+            }
         }
 
         /// <summary>
@@ -1695,6 +1808,7 @@ namespace NSFGrant.EditorTools
                 column.transform.localRotation = Quaternion.Euler(0f, angle, 0f);
                 column.transform.localPosition =
                     Quaternion.Euler(0f, angle, 0f) * (Vector3.forward * cornerRadius);
+                RequestContactShadow(column.transform, 0.55f, xrOnly: true);
 
                 CreateVisualPrimitive(column.transform, PrimitiveType.Cylinder, "Base",
                     new Vector3(0f, 0.05f, 0f), new Vector3(0.56f, 0.05f, 0.56f),
@@ -1829,6 +1943,10 @@ namespace NSFGrant.EditorTools
 
         private static Texture2D _plasterTexture;
         private static Texture2D _terrazzoTexture;
+
+        // Hub doorway plaques by station index, re-parented onto their
+        // stations once built. Reset at the start of every build.
+        private static readonly Transform[] _hubPlaques = new Transform[3];
 
         /// <summary>
         /// Subtle plaster/panel detail texture for walls: fine deterministic

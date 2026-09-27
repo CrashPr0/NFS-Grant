@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 using NSFGrant.Interaction;
 
 namespace NSFGrant.Core
@@ -17,6 +18,10 @@ namespace NSFGrant.Core
     /// immersive session swaps rigs live. The native Quest build keeps the
     /// original startup-only behaviour, where XR is active from frame one
     /// and nothing should churn.
+    ///
+    /// Headset cameras render without real-time shadows (a shadow map every
+    /// frame is expensive on Quest); soft contact-shadow patches on the
+    /// XROnlyVisual layer stand in for them (see NSFGrant/ContactShadow).
     /// </summary>
     public class PlatformRigSwitcher : MonoBehaviour
     {
@@ -56,6 +61,14 @@ namespace NSFGrant.Core
             if (vrRig != null)
             {
                 vrRig.SetActive(xr);
+                if (xr)
+                {
+                    // After SetActive: the rig creates its eye cameras in Awake.
+                    foreach (var cam in vrRig.GetComponentsInChildren<Camera>(true))
+                    {
+                        cam.GetUniversalAdditionalCameraData().renderShadows = false;
+                    }
+                }
             }
             if (desktopRig != null)
             {
