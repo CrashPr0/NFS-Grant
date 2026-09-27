@@ -224,17 +224,19 @@ namespace NSFGrant.Logging
                 }
 
                 bool ok = false;
+                bool empty = false;
                 for (int attempt = 1; attempt <= MaxAttempts && !ok; attempt++)
                 {
-                    var result = new bool[1];
+                    var result = new bool[2]; // [0] ok, [1] file read back empty
                     yield return UploadFile(path, type, result);
                     ok = result[0];
+                    empty = result[1];
                     if (!ok && attempt < MaxAttempts)
                     {
                         yield return new WaitForSecondsRealtime(2f * attempt);
                     }
                 }
-                if (ok)
+                if (ok && !empty)
                 {
                     _uploadedLength[path] = length;
                 }
@@ -283,6 +285,15 @@ namespace NSFGrant.Logging
             {
                 Debug.LogWarning($"[RemoteDataUploader] Can't read {Path.GetFileName(path)}: {e.Message}");
                 result[0] = false;
+                yield break;
+            }
+            if (data.Length == 0)
+            {
+                // Logger hasn't flushed anything yet, and the endpoint rejects
+                // empty bodies. Nothing to lose: count it as done, but don't
+                // record the length so the next pass uploads the real content.
+                result[0] = true;
+                result[1] = true;
                 yield break;
             }
 
