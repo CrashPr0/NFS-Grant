@@ -13,15 +13,23 @@
 //      legible.
 //   2. Fixed foveation - XRWebGLLayer.fixedFoveation: the headset renders
 //      the edges of each eye's view at lower resolution.
-//   3. Target frame rate - XRSession.updateTargetFrameRate: 72 Hz gives
-//      each frame 25 % more time than 90 Hz; plenty for a slow museum walk.
+//   3. Adaptive frame rate - XRSession.updateTargetFrameRate. The display
+//      runs at fixed rates (Quest 3: 72/80/90/120 Hz; there is no true
+//      variable refresh - a late frame is re-shown, reprojected, as judder).
+//      Sessions start at 90 Hz for smoothness; only when frames are still
+//      late with the resolution already at its floor does the rate drop to
+//      72 Hz (25 % more time per frame). After ~10 s with no late frames at
+//      full resolution it tries 90 Hz again; each quick fall-back doubles
+//      the wait before the next try (up to 5 min), so it can't flip-flop.
+//      Switches are at least 10 s apart (each can cause a brief hitch).
 //
 // All three are feature-detected (no-ops where unsupported). URL switches
 // for comparing on the headset without rebuilding:
 //   ?dynres=0          dynamic resolution off
 //   ?dynresmin=0.75    lowest viewport scale (0.5 - 1)
 //   ?fov=0.5           foveation level 0 - 1 (0 = off)
-//   ?hz=72             target frame rate (0 = browser default)
+//   ?hz=auto           adaptive 90/72 (default); a number fixes the rate,
+//                      0 = browser default
 // Live state is in window.nsfXrPerf, and while in VR a summary is logged
 // every 5 s ("[XRPerf] ..."), visible over Quest remote debugging.
 (function () {
@@ -38,11 +46,14 @@
     dynres: params.get('dynres') !== '0',
     minScale: Math.min(1, Math.max(0.5, num('dynresmin', 0.75))),
     foveation: Math.min(1, Math.max(0, num('fov', 0.5))),
-    hz: num('hz', 72)
+    // 'auto' (default) = adaptive; a number = fixed; 0 = leave the browser's.
+    hz: (params.get('hz') || 'auto') === 'auto' ? 'auto' : num('hz', 0)
   };
   var state = window.nsfXrPerf = {
     config: cfg, scale: 1, recommended: null, targetHz: null, lateFraction: 0,
-    foveation: null   // what the layer actually accepted
+    foveation: null,        // what the layer actually accepted
+    supportedHz: null,      // what the headset offers, e.g. [72, 80, 90, 120]
+    highHz: null, lowHz: null
   };
 
   function effectiveScale() {
@@ -54,9 +65,54 @@
     return s;
   }
 
+  // ---- adaptive frame rate state
+  var session_ = null, switching = false, lastSwitchT = -1e9, raisedAtT = -1e9;
+  var strugglingWindows = 0, fullCalmWindows = 0, retryDelayMs = 10000;
+
+  // Switch times are taken from the next frame's timestamp (lastSwitchT =
+  // null until then), so spacing is measured on the frame clock itself -
+  // emulators don't always share performance.now()'s time origin.
+  function switchRate(hz) {
+    if (!session_ || switching || hz === state.targetHz) return;
+    switching = true;
+    var from = state.targetHz;
+    session_.updateTargetFrameRate(hz).then(function () {
+      state.targetHz = hz;
+      console.log('[XRPerf] frame rate ' + from + ' -> ' + hz + ' Hz');
+    }, function () {}).then(function () {
+      switching = false;
+      lastSwitchT = null;
+      lastT = windowStart = 0;         // don't count the transition as late frames
+      strugglingWindows = fullCalmWindows = 0;
+    });
+  }
+
+  // Called once per half-second window with that window's late fraction.
+  function adaptRate(late, t) {
+    if (cfg.hz !== 'auto' || !state.highHz || !state.lowHz || state.highHz === state.lowHz || switching) return;
+    var atFloor = !cfg.dynres || state.scale <= cfg.minScale + 1e-6;
+    if (state.targetHz === state.highHz) {
+      // Resolution can't go lower and frames are still late: drop the rate.
+      strugglingWindows = atFloor && late > 0.05 ? strugglingWindows + 1 : 0;
+      if (strugglingWindows >= 4 && t - lastSwitchT > 10000) {
+        // Fell straight back after going up: wait longer before the next try.
+        retryDelayMs = t - raisedAtT < 30000 ? Math.min(retryDelayMs * 2, 300000) : 10000;
+        switchRate(state.lowHz);
+      }
+    } else if (state.targetHz === state.lowHz) {
+      // Comfortable at full resolution: try the smoother rate again.
+      fullCalmWindows = state.scale >= 1 && late === 0 ? fullCalmWindows + 1 : 0;
+      if (fullCalmWindows * 500 >= retryDelayMs && t - lastSwitchT > 10000) {
+        raisedAtT = t;
+        switchRate(state.highHz);
+      }
+    }
+  }
+
   // ---- governor: late frames per half-second window
   var lastT = 0, windowStart = 0, windowFrames = 0, windowLate = 0, calmWindows = 0, lastLog = 0;
   function onFrame(t) {
+    if (lastSwitchT === null) lastSwitchT = t;
     var budget = 1000 / (state.targetHz || 72);
     if (lastT) {
       var dt = t - lastT;
@@ -77,6 +133,7 @@
         state.scale = Math.min(1, state.scale + 0.025);
         calmWindows = 0;
       }
+      adaptRate(late, t);
       windowStart = t;
       windowFrames = 0;
       windowLate = 0;
@@ -90,20 +147,39 @@
     }
   }
 
-  // ---- 3. frame rate, once per session; frame hook for the governor
+  // ---- 3. frame rate: pick the rates once per session
   var configured = typeof WeakSet === 'function' ? new WeakSet() : null;
   function configureSession(session) {
     if (!configured || configured.has(session)) return;
     configured.add(session);
+    session_ = null;
     state.scale = 1;
     lastT = windowStart = calmWindows = 0;
+    strugglingWindows = fullCalmWindows = 0;
+    retryDelayMs = 10000;
+    // Count session start as a switch: no rate change in the first 10 s,
+    // which often stutter while the scene settles.
+    lastSwitchT = null;
     if (typeof session.frameRate === 'number') state.targetHz = session.frameRate;
-    if (cfg.hz > 0 && typeof session.updateTargetFrameRate === 'function' && session.supportedFrameRates) {
-      var rates = Array.prototype.slice.call(session.supportedFrameRates);
-      if (rates.indexOf(cfg.hz) >= 0) {
-        session.updateTargetFrameRate(cfg.hz).then(function () { state.targetHz = cfg.hz; }, function () {});
-      }
+    if (typeof session.updateTargetFrameRate !== 'function' || !session.supportedFrameRates) return;
+
+    var rates = Array.prototype.slice.call(session.supportedFrameRates).sort(function (a, b) { return a - b; });
+    state.supportedHz = rates;
+    session_ = session;
+    if (cfg.hz === 'auto') {
+      // High: 90 if offered, else the fastest at or below 90. Low: 72 if
+      // offered, else the slowest. 120 Hz is left alone - it halves the
+      // per-frame budget for little gain in a museum walk-through.
+      var high = rates.indexOf(90) >= 0 ? 90 : rates.filter(function (r) { return r <= 90; }).pop();
+      var low = rates.indexOf(72) >= 0 ? 72 : rates[0];
+      state.highHz = high || null;
+      state.lowHz = low || null;
+      if (state.highHz) switchRate(state.highHz);
+    } else if (cfg.hz > 0 && rates.indexOf(cfg.hz) >= 0) {
+      switchRate(cfg.hz);
     }
+    console.log('[XRPerf] session rates=' + rates.join(',') + ' mode=' +
+      (cfg.hz === 'auto' ? 'auto ' + state.lowHz + '-' + state.highHz : cfg.hz || 'browser default'));
   }
 
   var originalRaf = XRSession.prototype.requestAnimationFrame;
