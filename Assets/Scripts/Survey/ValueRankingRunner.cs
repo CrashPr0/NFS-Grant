@@ -105,7 +105,6 @@ namespace NSFGrant.Survey
             float pad         = 30f * baseUnit;
             float headerH     = 58f * baseUnit;
             float progressH   = 5f  * baseUnit;
-            float promptH     = 56f * baseUnit;
             float instructH   = 30f * baseUnit;
             float btnH        = 46f * baseUnit;
             float btnGap      = 10f * baseUnit;
@@ -113,6 +112,13 @@ namespace NSFGrant.Survey
             int count = definition.values.Length;
 
             float cardW = Mathf.Min(620f * baseUnit, Screen.width - 60f);
+
+            // The prompt wraps to 3 lines on small windows; size it to fit so
+            // it doesn't run into the instruction line below it.
+            var promptStyle = StudyGuiKit.BodyStyle(baseUnit);
+            promptStyle.fontSize = Mathf.RoundToInt(19 * baseUnit);
+            float promptH = Mathf.Max(56f * baseUnit,
+                promptStyle.CalcHeight(new GUIContent(definition.prompt), cardW - pad * 2f));
             float cardH = Mathf.Min(
                 headerH + progressH + pad + promptH + instructH + 10f * baseUnit
                     + count * (btnH + btnGap) - btnGap + pad,
@@ -137,8 +143,6 @@ namespace NSFGrant.Survey
             float qW = cardW - pad * 2f;
             float qY = pY + progressH + pad;
 
-            var promptStyle = StudyGuiKit.BodyStyle(baseUnit);
-            promptStyle.fontSize = Mathf.RoundToInt(19 * baseUnit);
             GUI.Label(new Rect(qX, qY, qW, promptH), definition.prompt, promptStyle);
 
             var instructStyle = StudyGuiKit.BodyStyle(baseUnit);

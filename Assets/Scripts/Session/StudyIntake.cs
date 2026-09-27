@@ -11,7 +11,8 @@ namespace NSFGrant.Session
     /// Participant intake and session flow, so the same build runs unattended
     /// for the self-paced web sample and assisted in the LTI Lab:
     ///
-    ///   Intake -> pre-quiz -> exploration -> (End key) -> post-quiz
+    ///   Intake -> pre-quiz -> exploration -> ("Finish exploring" button
+    ///   or F10) -> post-quiz
     ///          -> value-ranking -> done
     ///
     /// Assignment sources, in priority order:
@@ -37,6 +38,7 @@ namespace NSFGrant.Session
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
         private bool _skipSurveys;
+        private bool _confirmFinish;
 
         private void Awake()
         {
@@ -105,6 +107,7 @@ namespace NSFGrant.Session
             {
                 return;
             }
+            _confirmFinish = false;
             StudyEventLogger.Instance?.LogEvent("exploration_end_requested", "", "");
             if (!_skipSurveys && quiz != null)
             {
@@ -209,6 +212,11 @@ namespace NSFGrant.Session
             {
                 DrawIntakePanel();
             }
+            else if (_phase == Phase.Running)
+            {
+                if (_confirmFinish) DrawFinishConfirm();
+                else DrawFinishButton();
+            }
             else if (_phase == Phase.Done)
             {
                 DrawDonePanel();
@@ -261,6 +269,67 @@ namespace NSFGrant.Session
             }
             GUI.enabled = true;
             GUI.color = prevColor;
+        }
+
+        /// <summary>
+        /// Always-visible way to end exploration on desktop/web - the F10
+        /// shortcut is for staff (on Macs it's a media key; on Windows the
+        /// browser takes it). Mirrors the VR "End exploring?" confirmation.
+        /// </summary>
+        private void DrawFinishButton()
+        {
+            float baseUnit = StudyGuiKit.BaseUnit();
+            float margin = 20f * baseUnit;
+            float w = 210f * baseUnit;
+            float h = 48f * baseUnit;
+            // Bottom-center: the WebXR page template's fixed-size canvas gets
+            // clipped at both sides in narrow windows, never in the middle.
+            var rect = new Rect((Screen.width - w) * 0.5f, Screen.height - h - margin, w, h);
+            StudyGuiKit.MarkHudRect(rect);
+            if (GUI.Button(rect, "Finish exploring", StudyGuiKit.ButtonStyle(baseUnit)))
+            {
+                _confirmFinish = true;
+            }
+        }
+
+        private void DrawFinishConfirm()
+        {
+            float baseUnit = StudyGuiKit.BaseUnit();
+
+            float pad     = 30f * baseUnit;
+            float headerH = 64f * baseUnit;
+            float bodyH   = 56f * baseUnit;
+            float btnH    = 52f * baseUnit;
+            float gap     = 12f * baseUnit;
+
+            float cardW = Mathf.Min(520f * baseUnit, Screen.width - 60f);
+            float cardH = headerH + pad + bodyH + gap + btnH * 2f + gap + pad;
+            float cardX = (Screen.width - cardW) * 0.5f;
+            float cardY = (Screen.height - cardH) * 0.5f;
+
+            StudyGuiKit.DrawOverlay();
+            StudyGuiKit.DrawCard(new Rect(cardX, cardY, cardW, cardH));
+            StudyGuiKit.DrawHeader(new Rect(cardX, cardY, cardW, headerH));
+            GUI.Label(new Rect(cardX + pad, cardY, cardW - pad * 2f, headerH),
+                      "End exploring?", StudyGuiKit.TitleStyle(baseUnit));
+
+            float x = cardX + pad;
+            float w = cardW - pad * 2f;
+            float y = cardY + headerH + pad;
+            GUI.Label(new Rect(x, y, w, bodyH),
+                      "Finish exploring the hall and continue to the final questions?",
+                      StudyGuiKit.BodyStyle(baseUnit));
+            y += bodyH + gap;
+
+            if (GUI.Button(new Rect(x, y, w, btnH), "Yes, I'm finished", StudyGuiKit.ButtonStyle(baseUnit)))
+            {
+                RequestFinishExploration();
+            }
+            y += btnH + gap;
+            if (GUI.Button(new Rect(x, y, w, btnH), "No, keep exploring", StudyGuiKit.ButtonStyle(baseUnit)))
+            {
+                _confirmFinish = false;
+            }
         }
 
         /// <summary>

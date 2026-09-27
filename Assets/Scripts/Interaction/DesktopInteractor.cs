@@ -35,7 +35,7 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0) && !StudyGuiKit.PointerOverHud)
             {
                 HandleClick();
             }

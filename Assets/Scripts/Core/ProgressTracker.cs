@@ -79,8 +79,9 @@ namespace NSFGrant.Core
                 return;
             }
             // Only while a session is live, so the HUD doesn't linger on the
-            // intake or completion panels.
-            if (session != null && !session.SessionRunning)
+            // intake or completion panels - and never in the headset, where a
+            // screen-space IMGUI box would be drawn into the XR view.
+            if ((session != null && !session.SessionRunning) || PlatformDetector.IsXRActive)
             {
                 return;
             }

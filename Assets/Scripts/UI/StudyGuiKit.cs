@@ -127,6 +127,34 @@ namespace NSFGrant.UI
         /// </summary>
         public static bool ModalVisible => Time.frameCount - _lastOverlayFrame <= 1;
 
+        private static Rect _hudRect;
+        private static int _hudFrame = -10;
+
+        /// <summary>
+        /// Registers a small non-modal button drawn this frame (e.g. "Finish
+        /// exploring"), in GUI coordinates. Scene input must skip clicks over
+        /// it (<see cref="PointerOverHud"/>), same reason as ModalVisible.
+        /// </summary>
+        public static void MarkHudRect(Rect guiRect)
+        {
+            _hudRect = guiRect;
+            _hudFrame = Time.frameCount;
+        }
+
+        /// <summary>True when the mouse is over the HUD button drawn last frame.</summary>
+        public static bool PointerOverHud
+        {
+            get
+            {
+                if (Time.frameCount - _hudFrame > 1)
+                {
+                    return false;
+                }
+                Vector2 m = Input.mousePosition; // screen space: y up
+                return _hudRect.Contains(new Vector2(m.x, Screen.height - m.y));
+            }
+        }
+
         /// <summary>Full-screen dark scrim behind a panel.</summary>
         public static void DrawOverlay()
         {
