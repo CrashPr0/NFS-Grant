@@ -159,3 +159,13 @@ and press **VR**; on desktop it runs as the flat mouse/keyboard tour).
   (`updateAxes('thumbstick', x, y)`, `updateButtonValue('trigger', v)`).
 - Eye tracking is not available in WebXR (head-gaze only) - see
   docs/VERA_WEBXR_NOTES.md.
+- Headset performance (`Assets/Plugins/WebGL/NSFGrantXRPerf.jspre`, wraps
+  the WebXR calls the package already makes): dynamic resolution (each
+  eye's viewport scaled down in 5 % steps when frames arrive late, never
+  below 75 %), fixed foveation, and a 72 Hz target. Compare on the Quest
+  without rebuilding: `&dynres=0`, `&dynresmin=0.8`, `&fov=0` (off) to `1`,
+  `&hz=90` (`0` = browser default). While in VR, `[XRPerf] scale=... late=...`
+  is logged every 5 s (Quest remote debugging); live state in
+  `window.nsfXrPerf`. The VR rig also renders without real-time shadows
+  (`PlatformRigSwitcher`); soft `NSFGrant/ContactShadow` patches on the
+  `XROnlyVisual` layer stand in for them in the headset only.

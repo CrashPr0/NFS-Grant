@@ -26,6 +26,11 @@ namespace NSFGrant.EditorTools
             System.IO.Directory.CreateDirectory("Assets/Settings");
 
             var rendererData = ScriptableObject.CreateInstance<UniversalRendererData>();
+            // Auto, not the default Always: render straight to the backbuffer
+            // unless a camera needs an intermediate texture (the desktop
+            // camera's post-processing). Always costs the headset an extra
+            // full-screen copy + MSAA resolve per frame - expensive on Quest.
+            rendererData.intermediateTextureMode = IntermediateTextureMode.Auto;
             AssetDatabase.CreateAsset(rendererData, "Assets/Settings/URP_Renderer.asset");
 
             var pipeline = UniversalRenderPipelineAsset.Create(rendererData);
