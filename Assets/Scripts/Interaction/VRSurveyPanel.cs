@@ -179,6 +179,11 @@ namespace NSFGrant.Interaction
                     });
                 }
             }
+            else if (intake != null && intake.IsConnectingToVera)
+            {
+                c.Header = "UN SDG DISCOVERY HALL";
+                c.Body = "Connecting to the study server...";
+            }
             else if (intake != null && intake.IsAwaitingIntake)
             {
                 c.Header = "UN SDG DISCOVERY HALL";

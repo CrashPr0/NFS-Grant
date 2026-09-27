@@ -104,10 +104,17 @@ above clear, **and**:
 | VERA plugin installed via UPM git URL | ✅ in `Packages/manifest.json`; not yet confirmed resolved in-editor |
 | `VERA > Settings > Authenticate` run | 🔲 requires a human in the Unity editor (interactive OAuth, can't be done from a headless session) |
 | Experiment selected in VERA Settings (triggers code-gen) | 🔲 blocked on the above |
-| `VERA_PLUGIN_PRESENT` added to Scripting Define Symbols (all targets) | 🔲 blocked on plugin resolving + code-gen existing |
-| `VeraPluginAdapter.cs` TODOs replaced with real `VERAFile_*` / `VERASessionManager` calls | 🔲 blocked on code-gen |
+| ~~`VERA_PLUGIN_PRESENT` define~~ | Not needed: the adapter keys off VERA's own generated defines (`VERAFile_*`, `VERAIV_*`) |
+| `VeraPluginAdapter.cs` wired to real `VERASessionManager` calls (Gaze_Samples, StudyEvents, FinalizeSession) + VERA participant/condition in `StudyIntake` | ✅ 2026-09-27, compile-checked with all VERA defines on; goes live after sign-in + experiment selection. Test plan: `docs/VERA_TEST_ENVIRONMENT.md` |
+| Portal `timestamp_utc_ms` columns (Float) | 🔲 recommend changing to String - float can't hold epoch ms |
 
 ## Change log
+
+- 2026-09-27 — Unity side wired for a VERA test environment (headset +
+  immersive web): adapter sends Gaze_Samples/StudyEvents and finalizes the
+  session; intake takes VERA's pID/Condition and skips the in-app quiz in
+  VERA-hosted browser sessions; Drive upload kept as backup. Remaining
+  human steps in `docs/VERA_TEST_ENVIRONMENT.md`.
 
 - 2026-07-14 — Portal column entry for `GazeSamples`/`StudyEvents` reviewed
   twice; last known outstanding issue was row 19 `gaze_source` type.

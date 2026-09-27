@@ -92,7 +92,7 @@ namespace NSFGrant.Logging
 
             // Re-publish on the VERA seam so the plugin (once installed)
             // receives the identical event stream the CSV records.
-            VeraBridge.Instance?.NotifyEvent(eventType, targetId, detail);
+            VeraBridge.Instance?.NotifyEvent(eventType, targetId, detail, worldPos, screenPos);
 
             var inv = CultureInfo.InvariantCulture;
             var row = new StringBuilder(256);

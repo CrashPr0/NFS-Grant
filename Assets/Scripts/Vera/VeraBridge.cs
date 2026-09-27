@@ -24,8 +24,11 @@ namespace NSFGrant.Vera
         /// <summary>(participantId, platform, condition)</summary>
         public event Action<string, string, string> SessionStarted;
 
-        /// <summary>(eventType, targetId, detail)</summary>
-        public event Action<string, string, string> EventLogged;
+        /// <summary>(eventType, targetId, detail, worldPos, screenPos) - one StudyEvents row.</summary>
+        public event Action<string, string, string, Vector3?, Vector2?> EventLogged;
+
+        /// <summary>One gaze sample per frame - one Gaze_Samples row.</summary>
+        public event Action<GazeSample> GazeSampled;
 
         /// <summary>(participantId, sessionDurationSeconds)</summary>
         public event Action<string, float> SessionEnded;
@@ -40,14 +43,52 @@ namespace NSFGrant.Vera
             SessionStarted?.Invoke(participantId, platform, condition);
         }
 
-        public void NotifyEvent(string eventType, string targetId, string detail)
+        public void NotifyEvent(string eventType, string targetId, string detail,
+            Vector3? worldPos = null, Vector2? screenPos = null)
         {
-            EventLogged?.Invoke(eventType, targetId, detail);
+            EventLogged?.Invoke(eventType, targetId, detail, worldPos, screenPos);
+        }
+
+        /// <summary>True when anyone listens, so the logger can skip building samples.</summary>
+        public bool WantsGaze => GazeSampled != null;
+
+        public void NotifyGazeSample(in GazeSample sample)
+        {
+            GazeSampled?.Invoke(sample);
         }
 
         public void NotifySessionEnded(string participantId, float duration)
         {
             SessionEnded?.Invoke(participantId, duration);
+        }
+
+        /// <summary>The values of one AttentionDataLogger row.</summary>
+        public readonly struct GazeSample
+        {
+            public readonly int Frame;
+            public readonly Vector3 HeadPos;
+            public readonly Quaternion HeadRot;
+            public readonly Vector3 GazeOrigin, GazeDir;
+            public readonly string GazeSource;
+            public readonly float Confidence, AngularVelocity;
+            public readonly bool IsFixating;
+            public readonly int FixationId;
+            public readonly string HitTarget;
+            public readonly Vector3 HitPoint;
+            public readonly float HitDistance;
+            public readonly bool HasHit;
+
+            public GazeSample(int frame, Vector3 headPos, Quaternion headRot, Vector3 gazeOrigin,
+                Vector3 gazeDir, string gazeSource, float confidence, float angularVelocity,
+                bool isFixating, int fixationId, string hitTarget, Vector3 hitPoint,
+                float hitDistance, bool hasHit)
+            {
+                Frame = frame; HeadPos = headPos; HeadRot = headRot;
+                GazeOrigin = gazeOrigin; GazeDir = gazeDir; GazeSource = gazeSource;
+                Confidence = confidence; AngularVelocity = angularVelocity;
+                IsFixating = isFixating; FixationId = fixationId; HitTarget = hitTarget;
+                HitPoint = hitPoint; HitDistance = hitDistance; HasHit = hasHit;
+            }
         }
 
         private void OnDestroy()

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using NSFGrant.Vera;
 
 namespace NSFGrant.Logging
 {
@@ -105,6 +106,15 @@ namespace NSFGrant.Logging
             {
                 _writer.Flush();
                 _lastFlushTime = Time.unscaledTime;
+            }
+
+            // Same row to VERA's Gaze_Samples file (VeraPluginAdapter).
+            var bridge = VeraBridge.Instance;
+            if (bridge != null && bridge.WantsGaze)
+            {
+                bridge.NotifyGazeSample(new VeraBridge.GazeSample(
+                    Time.frameCount, headPos, headRot, gazeOrigin, gazeDir, gazeSource, confidence,
+                    angularVelocity, isFixating, fixationId, hitTarget, hitPoint, hitDistance, hasHit));
             }
         }
 

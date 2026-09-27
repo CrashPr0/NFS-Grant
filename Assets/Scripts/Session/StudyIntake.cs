@@ -1,9 +1,11 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using NSFGrant.Core;
 using NSFGrant.Logging;
 using NSFGrant.Survey;
 using NSFGrant.UI;
+using NSFGrant.Vera;
 
 namespace NSFGrant.Session
 {
@@ -16,6 +18,11 @@ namespace NSFGrant.Session
     ///          -> value-ranking -> done
     ///
     /// Assignment sources, in priority order:
+    ///   0. VERA, in a build connected to a VERA experiment: the participant
+    ///      ID and Condition come from VERA's session (waits up to
+    ///      veraWaitSeconds for it). In a VERA-hosted browser session VERA
+    ///      runs the pre/post knowledge quiz as portal questionnaires, so the
+    ///      in-app quiz is skipped there; the value ranking still runs.
     ///   1. URL parameters on WebGL/desktop: ?pid=P123&amp;cond=guided
     ///      (cond: passive|interactive|guided or a|b|c) — recruitment links
     ///      and VERA can encode assignment directly.
@@ -35,10 +42,15 @@ namespace NSFGrant.Session
         [Tooltip("Key that ends exploration and opens the post-quiz (desktop).")]
         [SerializeField] private KeyCode endSessionKey = KeyCode.F10;
 
+        [Tooltip("In a VERA-connected build, how long to wait for VERA's session " +
+                 "before falling back to the Inspector/URL/intake-panel ID.")]
+        [SerializeField] private float veraWaitSeconds = 20f;
+
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
         private bool _skipSurveys;
         private bool _confirmFinish;
+        private bool _waitingForVera;
 
         private void Awake()
         {
@@ -48,6 +60,44 @@ namespace NSFGrant.Session
         }
 
         private void Start()
+        {
+            // An explicit ?pid= wins (e.g. testing a VERA-connected build
+            // outside VERA); otherwise a connected build takes VERA's session.
+            if (VeraSession.BuildConnected && string.IsNullOrEmpty(GetUrlParameter("pid")))
+            {
+                StartCoroutine(BeginFromVera());
+                return;
+            }
+            BeginWithoutVera();
+        }
+
+        private IEnumerator BeginFromVera()
+        {
+            _waitingForVera = true;
+            float deadline = Time.realtimeSinceStartup + veraWaitSeconds;
+            while (!VeraSession.IsReady && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+            _waitingForVera = false;
+
+            if (VeraSession.IsReady)
+            {
+                Debug.Log($"[StudyIntake] VERA session: pID {VeraSession.ParticipantId}, " +
+                          $"condition {VeraSession.Condition ?? "(not set)"}.");
+                Begin(VeraSession.ParticipantId, VeraSession.Condition,
+                      skipQuizzes: VeraSession.IsVeraHostedWeb);
+            }
+            else
+            {
+                Debug.LogWarning($"[StudyIntake] Connected to VERA experiment " +
+                                 $"'{VeraSession.ExperimentName}', but no VERA session after " +
+                                 $"{veraWaitSeconds:F0}s; continuing without VERA.");
+                BeginWithoutVera();
+            }
+        }
+
+        private void BeginWithoutVera()
         {
             if (PlatformDetector.IsXRActive)
             {
@@ -92,7 +142,10 @@ namespace NSFGrant.Session
         public bool IsExploring => _phase == Phase.Running;
 
         /// <summary>True waiting for a participant ID (no ?pid= and no ID entered yet).</summary>
-        public bool IsAwaitingIntake => _phase == Phase.Intake;
+        public bool IsAwaitingIntake => _phase == Phase.Intake && !_waitingForVera;
+
+        /// <summary>True while a VERA-connected build waits for VERA's session.</summary>
+        public bool IsConnectingToVera => _phase == Phase.Intake && _waitingForVera;
 
         /// <summary>True once the whole flow has finished.</summary>
         public bool IsDone => _phase == Phase.Done;
@@ -166,13 +219,15 @@ namespace NSFGrant.Session
 
         private static bool TryParseCondition(string value, out StudyCondition condition)
         {
-            switch (value.Trim().ToLowerInvariant())
-            {
-                case "a": case "passive": condition = StudyCondition.Passive; return true;
-                case "b": case "interactive": condition = StudyCondition.Interactive; return true;
-                case "c": case "guided": condition = StudyCondition.Guided; return true;
-                default: condition = StudyCondition.Interactive; return false;
-            }
+            // Letters (URL links), or any name starting like the condition -
+            // covers the VERA portal's level names and abbreviations
+            // ("Passive", "Passive (Ps)", "Ps", "Int", "Guid").
+            string v = value.Trim().ToLowerInvariant();
+            if (v == "a" || v == "ps" || v.StartsWith("pas")) { condition = StudyCondition.Passive; return true; }
+            if (v == "b" || v.StartsWith("int")) { condition = StudyCondition.Interactive; return true; }
+            if (v == "c" || v.StartsWith("guid")) { condition = StudyCondition.Guided; return true; }
+            condition = StudyCondition.Interactive;
+            return false;
         }
 
         /// <summary>Reads a query parameter from the launch URL (WebGL).</summary>
@@ -210,7 +265,8 @@ namespace NSFGrant.Session
             }
             if (_phase == Phase.Intake)
             {
-                DrawIntakePanel();
+                if (_waitingForVera) DrawConnectingPanel();
+                else DrawIntakePanel();
             }
             else if (_phase == Phase.Running)
             {
@@ -269,6 +325,26 @@ namespace NSFGrant.Session
             }
             GUI.enabled = true;
             GUI.color = prevColor;
+        }
+
+        private void DrawConnectingPanel()
+        {
+            float baseUnit = StudyGuiKit.BaseUnit();
+            float pad = 30f * baseUnit;
+            float headerH = 64f * baseUnit;
+            float bodyH = 48f * baseUnit;
+            float cardW = Mathf.Min(520f * baseUnit, Screen.width - 60f);
+            float cardH = headerH + pad + bodyH + pad;
+            float cardX = (Screen.width - cardW) * 0.5f;
+            float cardY = (Screen.height - cardH) * 0.5f;
+
+            StudyGuiKit.DrawOverlay();
+            StudyGuiKit.DrawCard(new Rect(cardX, cardY, cardW, cardH));
+            StudyGuiKit.DrawHeader(new Rect(cardX, cardY, cardW, headerH));
+            GUI.Label(new Rect(cardX + pad, cardY, cardW - pad * 2f, headerH),
+                      "UN SDG Discovery Hall", StudyGuiKit.TitleStyle(baseUnit));
+            GUI.Label(new Rect(cardX + pad, cardY + headerH + pad, cardW - pad * 2f, bodyH),
+                      "Connecting to the study server...", StudyGuiKit.BodyStyle(baseUnit));
         }
 
         /// <summary>
