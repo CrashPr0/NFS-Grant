@@ -76,7 +76,7 @@ namespace NSFGrant.Interaction
         private readonly List<(Collider collider, Renderer renderer, Option option)> _buttons =
             new List<(Collider, Renderer, Option)>();
         private Material _panelMat, _headerMat, _buttonMat, _hoverMat, _doneMat, _accentMat, _textMat;
-        private Font _font;
+        private TMPro.TMP_FontAsset _font;
 
         private bool _confirmOpen;
         private float _bothTriggersSince = -1f;
@@ -219,7 +219,7 @@ namespace NSFGrant.Interaction
             _hoverMat = MakeMaterial(HoverColor);
             _doneMat = MakeMaterial(DoneColor);
             _accentMat = MakeMaterial(AccentColor);
-            _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _font = TMPro.TMP_Settings.defaultFontAsset;
             // Text must draw after the panel quads (queue 3100) or the
             // near-opaque panel would blend over it.
             _textMat = new Material(_font.material) { renderQueue = 3200 };
@@ -310,19 +310,25 @@ namespace NSFGrant.Interaction
             var go = new GameObject("Text");
             go.transform.SetParent(_root, false);
             go.transform.localPosition = localPos;
-            var tm = go.AddComponent<TextMesh>();
+            // TextMeshPro (SDF): crisp in the headset. fontSize = lineHeight
+            // x 10 matches the old TextMesh sizing (see DiscoveryHallBuilder).
+            var tm = go.AddComponent<TMPro.TextMeshPro>();
             tm.font = _font;
-            tm.fontSize = 64;
-            // World line height ~= fontSize * characterSize / 10.
-            tm.characterSize = lineHeight * 10f / tm.fontSize;
-            tm.anchor = anchor;
-            tm.alignment = anchor == TextAnchor.MiddleRight ? TextAlignment.Right : TextAlignment.Left;
-            tm.fontStyle = style;
+            tm.fontSharedMaterial = _textMat;
+            tm.fontSize = lineHeight * 10f;
+            tm.fontStyle = style == FontStyle.Bold ? TMPro.FontStyles.Bold : TMPro.FontStyles.Normal;
             tm.color = color ?? Color.white;
+            tm.richText = false;
+            tm.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            tm.overflowMode = TMPro.TextOverflowModes.Overflow;
+            tm.rectTransform.sizeDelta = Vector2.zero;
+            switch (anchor)
+            {
+                case TextAnchor.MiddleRight: tm.alignment = TMPro.TextAlignmentOptions.Right; break;
+                case TextAnchor.UpperLeft: tm.alignment = TMPro.TextAlignmentOptions.TopLeft; break;
+                default: tm.alignment = TMPro.TextAlignmentOptions.Left; break; // MiddleLeft
+            }
             tm.text = text;
-            // The built-in font material draws on top of everything, so the
-            // panel text is never hidden by scene geometry or the hands.
-            go.GetComponent<MeshRenderer>().sharedMaterial = _textMat;
         }
 
         private static float EstimateBodyHeight(string body)

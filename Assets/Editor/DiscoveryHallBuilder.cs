@@ -2270,7 +2270,7 @@ namespace NSFGrant.EditorTools
             float size, int maxLineChars)
         {
             var mesh = CreateTextMesh(parent, localPos, size);
-            mesh.anchor = TextAnchor.LowerCenter;
+            SetAnchor(mesh, TextAnchor.LowerCenter);
             mesh.text = Wrap(text, maxLineChars);
         }
 
@@ -2279,7 +2279,7 @@ namespace NSFGrant.EditorTools
             float size, int maxLineChars, TextAnchor anchor)
         {
             var mesh = CreateTextMesh(parent, localPos, size);
-            mesh.anchor = anchor;
+            SetAnchor(mesh, anchor);
             mesh.text = Wrap(text, maxLineChars);
         }
 
@@ -2290,7 +2290,7 @@ namespace NSFGrant.EditorTools
             // Stations face the visitor along local +Z, so the readable face
             // of each panel is its +Z side.
             var mesh = CreateTextMesh(parent, new Vector3(0f, 0f, 0.51f), size);
-            mesh.anchor = TextAnchor.MiddleCenter;
+            SetAnchor(mesh, TextAnchor.MiddleCenter);
             mesh.text = Wrap(text, maxLineChars);
         }
 
@@ -2325,13 +2325,25 @@ namespace NSFGrant.EditorTools
             return result.ToString().TrimEnd('\n');
         }
 
-        private static TextMesh CreateTextMesh(Transform parent, Vector3 localPos, float size)
+        /// <summary>
+        /// World-space text via TextMeshPro (signed-distance-field), which
+        /// stays crisp at any distance in a headset where legacy TextMesh
+        /// bitmap text looked soft and aliased. Sizes are calibrated to the
+        /// old TextMesh (fontSize 48 x characterSize) so every sign keeps
+        /// exactly the same line height and layout: measured TMP fontSize
+        /// = 48 x size matches line and glyph height to 4 decimals. Line
+        /// breaks still come from Wrap() (no TMP auto-wrap), so layouts are
+        /// deterministic and identical across rooms. TMP's SDF shader is
+        /// depth-tested (text no longer needs NSFGrant/TextOccluded) and
+        /// single-pass-instanced safe.
+        /// </summary>
+        private static TMPro.TextMeshPro CreateTextMesh(Transform parent, Vector3 localPos, float size)
         {
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
-            // Stations face the visitor along local +Z; flip the TextMesh so
-            // it reads correctly from that side.
+            // Stations face the visitor along local +Z; flip the text so it
+            // reads correctly from that side.
             go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             // Counteract parent scaling so text is not distorted.
             Vector3 lossy = parent.lossyScale;
@@ -2340,51 +2352,41 @@ namespace NSFGrant.EditorTools
                 lossy.y != 0f ? 1f / lossy.y : 1f,
                 lossy.z != 0f ? 1f / lossy.z : 1f);
 
-            // World-space line height is fontSize * characterSize / 10, so at
-            // fontSize 48 a characterSize of 0.015 gives ~7 cm lines; average
-            // glyph width is roughly half the line height. Size text budgets
-            // against the 1.6-1.8 m panels accordingly.
-            var mesh = go.AddComponent<TextMesh>();
-            mesh.characterSize = size;
-            mesh.fontSize = 48;
-            mesh.alignment = TextAlignment.Center;
+            var mesh = go.AddComponent<TMPro.TextMeshPro>();
+            mesh.font = TMPro.TMP_Settings.defaultFontAsset;
+            mesh.fontSize = 48f * size;
             mesh.color = Color.white;
-
-            // The built-in font material draws with ZTest Always, so text
-            // renders through panels and walls; swap in the depth-tested
-            // variant so geometry occludes text naturally.
-            var font = mesh.font;
-            if (font == null)
-            {
-                font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                mesh.font = font;
-            }
-            go.GetComponent<MeshRenderer>().sharedMaterial = GetOccludedTextMaterial(font);
-
+            mesh.richText = false;
+            mesh.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+            mesh.overflowMode = TMPro.TextOverflowModes.Overflow;
+            // Zero-size rect: the alignment point sits exactly at the
+            // transform, reproducing TextMesh's anchor semantics.
+            mesh.rectTransform.sizeDelta = Vector2.zero;
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
             return mesh;
         }
 
-        private static Material occludedTextMaterial;
-
-        private static Material GetOccludedTextMaterial(Font font)
+        /// <summary>Maps a TextMesh-style anchor onto TMP alignment + pivot.</summary>
+        private static void SetAnchor(TMPro.TextMeshPro mesh, TextAnchor anchor)
         {
-            // One shared material per build; the null check also covers the
-            // previous build's material destroyed by NewScene.
-            if (occludedTextMaterial == null)
+            TMPro.TextAlignmentOptions a;
+            Vector2 pivot;
+            switch (anchor)
             {
-                var shader = Shader.Find("NSFGrant/TextOccluded");
-                if (shader == null)
-                {
-                    Debug.LogWarning("[DiscoveryHallBuilder] NSFGrant/TextOccluded shader " +
-                                     "not found; text will render through geometry.");
-                    return font.material;
-                }
-                occludedTextMaterial = new Material(shader)
-                {
-                    mainTexture = font.material.mainTexture
-                };
+                case TextAnchor.UpperLeft:    a = TMPro.TextAlignmentOptions.TopLeft;     pivot = new Vector2(0f, 1f); break;
+                case TextAnchor.UpperCenter:  a = TMPro.TextAlignmentOptions.Top;         pivot = new Vector2(0.5f, 1f); break;
+                case TextAnchor.UpperRight:   a = TMPro.TextAlignmentOptions.TopRight;    pivot = new Vector2(1f, 1f); break;
+                case TextAnchor.MiddleLeft:   a = TMPro.TextAlignmentOptions.Left;        pivot = new Vector2(0f, 0.5f); break;
+                case TextAnchor.MiddleRight:  a = TMPro.TextAlignmentOptions.Right;       pivot = new Vector2(1f, 0.5f); break;
+                case TextAnchor.LowerLeft:    a = TMPro.TextAlignmentOptions.BottomLeft;  pivot = new Vector2(0f, 0f); break;
+                case TextAnchor.LowerCenter:  a = TMPro.TextAlignmentOptions.Bottom;      pivot = new Vector2(0.5f, 0f); break;
+                case TextAnchor.LowerRight:   a = TMPro.TextAlignmentOptions.BottomRight; pivot = new Vector2(1f, 0f); break;
+                default:                      a = TMPro.TextAlignmentOptions.Center;      pivot = new Vector2(0.5f, 0.5f); break;
             }
-            return occludedTextMaterial;
+            mesh.alignment = a;
+            mesh.rectTransform.pivot = pivot;
         }
     }
 }
