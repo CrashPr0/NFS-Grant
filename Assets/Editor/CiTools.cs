@@ -125,6 +125,26 @@ namespace NSFGrant.EditorTools
             PlayerSettings.WebGL.decompressionFallback = false;
             PlayerSettings.WebGL.dataCaching = true;
 
+            // Download size (participants on the Quest browser / slow links
+            // give up while it loads). Size-optimized IL2CPP output +
+            // Emscripten size optimization, and aggressive managed stripping
+            // - Assets/link.xml keeps the assemblies reached by reflection
+            // (VERA/Newtonsoft) or from JS (WebXR). Stored as a platform
+            // setting so this editor assembly needs no reference to
+            // UnityEditor.WebGL.Extensions.
+            // NOT "disksizelto": with link-time optimization the P/Invoke
+            // into native zlib (GZipStream -> DeflateStreamNative.
+            // CreateZStream) compiled to a wasm trap, so the first upload
+            // checkpoint crashed the player ("RuntimeError: unreachable").
+            var web = UnityEditor.Build.NamedBuildTarget.WebGL;
+            PlayerSettings.SetManagedStrippingLevel(web, ManagedStrippingLevel.High);
+            PlayerSettings.SetIl2CppCodeGeneration(web, UnityEditor.Build.Il2CppCodeGeneration.OptimizeSize);
+            EditorUserBuildSettings.SetPlatformSettings(
+                BuildPipeline.GetBuildTargetName(BuildTarget.WebGL), "CodeOptimization", "disksize");
+            // Unity 6 Personal may hide the splash; this is project-wide, so
+            // it also drops the head-locked logo from Quest builds.
+            PlayerSettings.SplashScreen.show = false;
+
             EnableXrLoader(BuildTargetGroup.WebGL, "WebXR.WebXRLoader");
             RegisterWebXRSettings();
             if (EditorBuildSettings.TryGetConfigObject(XRGeneralSettings.k_SettingsKey,

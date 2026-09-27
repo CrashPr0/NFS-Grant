@@ -1,0 +1,14 @@
+<!--
+  Keeps assemblies whole under High managed stripping (set for the web
+  build in CiTools.ConfigureWebXR). The linker can't see these uses:
+    Assembly-CSharp  - our components, reached via SendMessage/JsonUtility
+    VERA, Newtonsoft.Json, MimeTypes - VERA's reflection-based JSON
+    WebXR            - methods called from the page's JavaScript
+-->
+<linker>
+  <assembly fullname="Assembly-CSharp" preserve="all" />
+  <assembly fullname="VERA" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+  <assembly fullname="MimeTypes" preserve="all" />
+  <assembly fullname="WebXR" preserve="all" />
+</linker>
