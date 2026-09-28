@@ -687,8 +687,9 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Standalone: VERAFile_Experiment_Telemetry
-    WebGL: VERAFile_Experiment_Telemetry
+    Android: URP_COMPATIBILITY_MODE
+    Standalone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE
+    WebGL: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}

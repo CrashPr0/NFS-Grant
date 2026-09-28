@@ -26,11 +26,9 @@ namespace NSFGrant.EditorTools
             System.IO.Directory.CreateDirectory("Assets/Settings");
 
             var rendererData = ScriptableObject.CreateInstance<UniversalRendererData>();
-            // Auto, not the default Always: render straight to the backbuffer
-            // unless a camera needs an intermediate texture (the desktop
-            // camera's post-processing). Always costs the headset an extra
-            // full-screen copy + MSAA resolve per frame - expensive on Quest.
-            rendererData.intermediateTextureMode = IntermediateTextureMode.Auto;
+            // Always (the default): each camera renders to its own texture and
+            // is copied to the screen. Kept for WebXR's two-pass eye rendering.
+            rendererData.intermediateTextureMode = IntermediateTextureMode.Always;
             AssetDatabase.CreateAsset(rendererData, "Assets/Settings/URP_Renderer.asset");
 
             var pipeline = UniversalRenderPipelineAsset.Create(rendererData);
@@ -42,6 +40,14 @@ namespace NSFGrant.EditorTools
             pipeline.renderScale = 1f;
             AssetDatabase.CreateAsset(pipeline, "Assets/Settings/URP_PipelineAsset.asset");
 
+            // Render Graph off (URP "Compatibility Mode", which Unity 6.3 also
+            // gates behind the URP_COMPATIBILITY_MODE define - set for Android,
+            // Standalone and WebGL in Player settings). With Render Graph, the
+            // WebXR Export package's multi-pass stereo shows only the right
+            // eye in the headset (upstream De-Panther/unity-webxr-export #398,
+            // #428); the compatibility path renders both.
+            GraphicsSettings.GetRenderPipelineSettings<RenderGraphSettings>()
+                .enableRenderCompatibilityMode = true;
             GraphicsSettings.defaultRenderPipeline = pipeline;
             QualitySettings.renderPipeline = pipeline;
             AssetDatabase.SaveAssets();
