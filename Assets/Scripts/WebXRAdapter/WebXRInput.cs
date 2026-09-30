@@ -41,6 +41,17 @@ namespace NSFGrant.WebXRAdapter
             return c != null && c.isControllerActive;
         }
 
+        /// <summary>
+        /// The controller's most specific WebXR input profile (e.g.
+        /// "meta-quest-touch-plus" on a Quest 3), or null before the browser
+        /// has reported one. The closest thing WebXR exposes to a device model.
+        /// </summary>
+        public static string GetProfile(bool left)
+        {
+            var profiles = Get(left)?.GetProfiles();
+            return profiles != null && profiles.Length > 0 ? profiles[0] : null;
+        }
+
         public static Vector2 GetThumbstick(bool left)
         {
             var c = Get(left);

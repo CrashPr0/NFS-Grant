@@ -184,7 +184,7 @@ One row per discrete event — the `events_*.csv` replacement.
 |---|---|---|---|
 | — | `pID` / `conditions` / `ts` | — | auto |
 | 1 | `timestamp_utc_ms` | Float or String | see caveat above |
-| 2 | `platform` | String | `VR` / `Desktop` / `WebGL` — not an IV, so not covered by `conditions` |
+| 2 | `platform` | String | `headset` / `desktop`, same as the local CSV. It changes mid-session when a browser participant enters or leaves VR (`xr_session_start` / `xr_session_end`). Not an IV, so not covered by `conditions` |
 | 3 | `event_type` | String | click, key_press, station_enter, station_exit, teleport, docent_guidance, quiz_response, session_start, session_end, … |
 | 4 | `target_id` | String | AttentionTarget / station / object id |
 | 5 | `detail` | String | free-text payload |

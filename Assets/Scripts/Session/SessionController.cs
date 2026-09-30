@@ -50,6 +50,12 @@ namespace NSFGrant.Session
 
         private DateTime _sessionStartUtc;
 
+        // A browser participant can enter/leave VR mid-session (WebXR).
+        private bool _usedHeadset;
+        private bool _inXrSegment;
+        private float _xrStartTime;
+        private string _xrControllerProfile;
+
         public string ParticipantId
         {
             get => participantId;
@@ -80,6 +86,16 @@ namespace NSFGrant.Session
             if (screenshotCapture == null) screenshotCapture = GetComponentInChildren<ScreenshotCapture>();
             if (uploader == null) uploader = GetComponentInChildren<RemoteDataUploader>();
             if (counterbalance == null) counterbalance = GetComponentInChildren<CounterbalanceManager>();
+        }
+
+        private void OnEnable()
+        {
+            PlatformRigSwitcher.XRSessionChanged += OnXRSessionChanged;
+        }
+
+        private void OnDisable()
+        {
+            PlatformRigSwitcher.XRSessionChanged -= OnXRSessionChanged;
         }
 
         private void Start()
@@ -120,6 +136,10 @@ namespace NSFGrant.Session
 
             string platform = PlatformDetector.PlatformTag;
             string condition = CurrentConditionName();
+            _usedHeadset = PlatformDetector.IsXRActive;
+            _inXrSegment = _usedHeadset;
+            _xrStartTime = 0f;
+            _xrControllerProfile = null;
 
             dataLogger.StartSession(participantId);
             // Starts in-session checkpoint uploads (web build).
@@ -152,7 +172,7 @@ namespace NSFGrant.Session
             dataLogger.StopSession();
             dataLogger.WriteSummary(
                 participantId,
-                PlatformDetector.PlatformTag,
+                PlatformDetector.TagFor(_usedHeadset),
                 CurrentConditionName(),
                 SessionTime,
                 FindObjectsByType<AttentionTarget>(FindObjectsSortMode.None),
@@ -166,6 +186,51 @@ namespace NSFGrant.Session
             Debug.Log($"[SessionController] Session stopped after {SessionTime:F1}s.");
         }
 
+        /// <summary>
+        /// WebXR: the session started flat at page load, then the participant
+        /// pressed "Enter VR" (or left VR). Records the switch and re-stamps
+        /// the platform of later rows. Both xr_session_* rows carry
+        /// "headset", so they bracket the VR segment. Never fires on the
+        /// native Quest build, which is in VR from the first frame.
+        /// </summary>
+        private void OnXRSessionChanged(bool entered)
+        {
+            if (!SessionRunning)
+            {
+                return; // StartSession stamps whatever platform is active then.
+            }
+
+            string platform = PlatformDetector.TagFor(entered);
+            if (entered)
+            {
+                _usedHeadset = true;
+                _inXrSegment = true;
+                _xrStartTime = SessionTime;
+                // Often still unknown here: controllers connect a few frames
+                // after the session starts. Update() keeps looking, so
+                // xr_session_end reports it.
+                _xrControllerProfile = PlatformDetector.XRControllerProfile;
+                SetPlatform(platform);
+                eventLogger?.LogEvent("xr_session_start", "",
+                    $"rig=vr;xr_device={PlatformDetector.XRDeviceName};" +
+                    $"controller_profile={_xrControllerProfile ?? "unknown"}");
+            }
+            else
+            {
+                _inXrSegment = false;
+                eventLogger?.LogEvent("xr_session_end", "",
+                    $"rig=desktop;xr_duration_s={SessionTime - _xrStartTime:F1};" +
+                    $"controller_profile={_xrControllerProfile ?? "unknown"}");
+                SetPlatform(platform);
+            }
+        }
+
+        private void SetPlatform(string platform)
+        {
+            eventLogger?.SetPlatform(platform);
+            VeraBridge.Instance?.NotifyPlatformChanged(platform);
+        }
+
         private void Update()
         {
             if (!SessionRunning)
@@ -174,6 +239,10 @@ namespace NSFGrant.Session
             }
 
             SessionTime += Time.unscaledDeltaTime;
+            if (_inXrSegment && _xrControllerProfile == null)
+            {
+                _xrControllerProfile = PlatformDetector.XRControllerProfile;
+            }
             gazeRaycaster.SessionTime = SessionTime;
             if (eventLogger != null)
             {
