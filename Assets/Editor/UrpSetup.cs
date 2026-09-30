@@ -40,16 +40,25 @@ namespace NSFGrant.EditorTools
             pipeline.renderScale = 1f;
             AssetDatabase.CreateAsset(pipeline, "Assets/Settings/URP_PipelineAsset.asset");
 
+            GraphicsSettings.defaultRenderPipeline = pipeline;
+            QualitySettings.renderPipeline = pipeline;
+
             // Render Graph off (URP "Compatibility Mode", which Unity 6.3 also
             // gates behind the URP_COMPATIBILITY_MODE define - set for Android,
             // Standalone and WebGL in Player settings). With Render Graph, the
             // WebXR Export package's multi-pass stereo shows only the right
             // eye in the headset (upstream De-Panther/unity-webxr-export #398,
-            // #428); the compatibility path renders both.
-            GraphicsSettings.GetRenderPipelineSettings<RenderGraphSettings>()
-                .enableRenderCompatibilityMode = true;
-            GraphicsSettings.defaultRenderPipeline = pipeline;
-            QualitySettings.renderPipeline = pipeline;
+            // #428); the compatibility path renders both. Only resolvable once
+            // a pipeline is assigned: CreateAsset above replaced the old one.
+            if (GraphicsSettings.TryGetRenderPipelineSettings<RenderGraphSettings>(out var renderGraph))
+            {
+                renderGraph.enableRenderCompatibilityMode = true;
+            }
+            else
+            {
+                Debug.LogWarning("[UrpSetup] RenderGraphSettings not found; Compatibility Mode " +
+                                 "comes from UniversalRenderPipelineGlobalSettings.asset.");
+            }
             AssetDatabase.SaveAssets();
 
             Debug.Log("[UrpSetup] URP assigned (MSAA 4x, HDR off, 20m shadows). " +
