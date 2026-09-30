@@ -208,6 +208,36 @@ headset's display refresh rate). For analyses that need the native 30 Hz
 eye-tracker timestamps rather than frame-aligned samples, resample on
 `timestamp_utc_ms` during post-processing.
 
+### `platform` column and browser VR (WebXR)
+
+`events_*.csv` stamps every row with `platform` = `headset` or `desktop`
+(same for the VERA `StudyEvents` file). On the native Quest APK the
+session starts in the headset, so every row says `headset`, as before.
+
+In the browser the session starts **flat** at page load (`desktop`) and
+the participant may press **VR** later, so the column follows the rig
+that is live when the row is written:
+
+| Event | `platform` | `detail` |
+|---|---|---|
+| `xr_session_start` | `headset` | `rig=vr;xr_device=<Unity XR device>;controller_profile=<WebXR input profile, e.g. meta-quest-touch-plus, or unknown>` |
+| `xr_session_end` | `headset` | `rig=desktop;xr_duration_s=<seconds in VR>;controller_profile=<as above>` |
+
+Rows from `xr_session_start` through `xr_session_end` say `headset`;
+rows before and after say `desktop`. The two rows bracket each VR segment,
+and a participant can have several. If the session is already in VR when
+it starts, there is no `xr_session_start`: `session_start` says
+`platform=headset`, and leaving VR still logs `xr_session_end`, timed from
+the session start. Browsers don't report the headset model, so the
+controller input profile is the closest proxy. Controllers usually
+connect a few frames after VR starts, so `xr_session_start` often says
+`unknown`. `xr_session_end` gives the profile seen during the segment.
+
+`summary_*.csv` has one `platform` per session: `headset` if any part of
+the session ran in a headset, otherwise `desktop`. For how long, use the
+`xr_session_*` rows. `gaze_*.csv` has no platform column. Filter it by
+`timestamp_utc_ms` against the VR segments.
+
 ## Research & compliance notes
 
 - **IRB / participant privacy:** eye-tracking data is identifiable

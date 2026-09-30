@@ -55,6 +55,9 @@ session, or programmatically (URL parameter / VERA assignment).
 present, otherwise the **DesktopPlayer** (WASD + hold-right-mouse look,
 left-click to select). `PlatformDetector.PlatformTag` stamps every data file
 with `headset` or `desktop` so the groups separate cleanly in analysis.
+A browser participant who presses **VR** mid-session gets
+`xr_session_start` / `xr_session_end` events, and the event rows in between
+say `headset` (see "`platform` column and browser VR" in the README).
 
 - Headset: eye gaze (Quest Pro) or head gaze (Quest 3) + controller-trigger
   selection + `VRLocomotion` (left-stick smooth walk, right-stick teleport +

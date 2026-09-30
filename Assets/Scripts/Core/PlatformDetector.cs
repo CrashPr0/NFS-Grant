@@ -22,6 +22,24 @@ namespace NSFGrant.Core
 #endif
 
         /// <summary>Short platform tag written into every data file.</summary>
-        public static string PlatformTag => IsXRActive ? "headset" : "desktop";
+        public static string PlatformTag => TagFor(IsXRActive);
+
+        public static string TagFor(bool xr) => xr ? "headset" : "desktop";
+
+        /// <summary>Unity's loaded XR device (e.g. "WebXR Display").</summary>
+        public static string XRDeviceName => XRSettings.loadedDeviceName;
+
+        /// <summary>
+        /// WebXR: the controllers' input profile (e.g. "meta-quest-touch-plus"),
+        /// the closest thing a browser reports to the headset model; null until
+        /// the controllers connect, and always null outside WebGL.
+        /// </summary>
+        public static string XRControllerProfile =>
+#if UNITY_WEBGL && !UNITY_EDITOR
+            NSFGrant.WebXRAdapter.WebXRInput.GetProfile(false) ??
+            NSFGrant.WebXRAdapter.WebXRInput.GetProfile(true);
+#else
+            null;
+#endif
     }
 }

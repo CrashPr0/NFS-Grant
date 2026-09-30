@@ -37,6 +37,7 @@ namespace NSFGrant.Vera
         {
             _bridge = GetComponent<VeraBridge>();
             _bridge.SessionStarted += OnSessionStarted;
+            _bridge.PlatformChanged += OnPlatformChanged;
             _bridge.EventLogged += OnEventLogged;
             _bridge.SessionEnded += OnSessionEnded;
 #if VERAFile_Gaze_Samples
@@ -49,6 +50,7 @@ namespace NSFGrant.Vera
         private void OnDisable()
         {
             _bridge.SessionStarted -= OnSessionStarted;
+            _bridge.PlatformChanged -= OnPlatformChanged;
             _bridge.EventLogged -= OnEventLogged;
             _bridge.SessionEnded -= OnSessionEnded;
 #if VERAFile_Gaze_Samples
@@ -66,6 +68,11 @@ namespace NSFGrant.Vera
                     : "not connected in this build";
             Debug.Log($"[VeraPluginAdapter] Session start (participant={participantId}, " +
                       $"platform={platform}, condition={condition}); VERA {vera}.");
+        }
+
+        private void OnPlatformChanged(string platform)
+        {
+            _platform = platform;
         }
 
         private void OnEventLogged(string eventType, string targetId, string detail,

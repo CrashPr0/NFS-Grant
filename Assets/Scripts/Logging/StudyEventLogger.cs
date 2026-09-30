@@ -60,6 +60,15 @@ namespace NSFGrant.Logging
             Debug.Log($"[StudyEventLogger] Logging events to {path}");
         }
 
+        /// <summary>
+        /// Changes the platform column of the rows written from now on (a
+        /// browser participant entering or leaving VR mid-session).
+        /// </summary>
+        public void SetPlatform(string platform)
+        {
+            _platform = Sanitize(platform);
+        }
+
         /// <summary>Logs an event with neither world nor screen position.</summary>
         public void LogEvent(string eventType, string targetId = "", string detail = "")
         {

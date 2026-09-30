@@ -24,6 +24,9 @@ namespace NSFGrant.Vera
         /// <summary>(participantId, platform, condition)</summary>
         public event Action<string, string, string> SessionStarted;
 
+        /// <summary>(platform) - the platform of subsequent StudyEvents rows changed (WebXR enter/exit VR).</summary>
+        public event Action<string> PlatformChanged;
+
         /// <summary>(eventType, targetId, detail, worldPos, screenPos) - one StudyEvents row.</summary>
         public event Action<string, string, string, Vector3?, Vector2?> EventLogged;
 
@@ -41,6 +44,11 @@ namespace NSFGrant.Vera
         public void NotifySessionStarted(string participantId, string platform, string condition)
         {
             SessionStarted?.Invoke(participantId, platform, condition);
+        }
+
+        public void NotifyPlatformChanged(string platform)
+        {
+            PlatformChanged?.Invoke(platform);
         }
 
         public void NotifyEvent(string eventType, string targetId, string detail,

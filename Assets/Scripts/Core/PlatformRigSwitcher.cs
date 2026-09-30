@@ -19,6 +19,10 @@ namespace NSFGrant.Core
     /// original startup-only behaviour, where XR is active from frame one
     /// and nothing should churn.
     ///
+    /// Each live swap raises <see cref="XRSessionChanged"/>; SessionController
+    /// turns it into xr_session_start / xr_session_end events and re-stamps
+    /// the platform column of later rows.
+    ///
     /// Headset cameras render without real-time shadows (a shadow map every
     /// frame is expensive on Quest); soft contact-shadow patches on the
     /// XROnlyVisual layer stand in for them (see NSFGrant/ContactShadow).
@@ -29,6 +33,12 @@ namespace NSFGrant.Core
         [SerializeField] private GameObject desktopRig;
 
         private bool _lastXrState;
+
+        /// <summary>
+        /// Raised when an immersive session starts (true) or ends (false)
+        /// after startup, i.e. only on the Unity XR / WebXR path.
+        /// </summary>
+        public static event System.Action<bool> XRSessionChanged;
 
         private void Awake()
         {
@@ -54,6 +64,7 @@ namespace NSFGrant.Core
             Apply(xr);
             Debug.Log($"[PlatformRigSwitcher] XR session {(xr ? "entered" : "exited")}; " +
                       $"switched to the {(xr ? "VR" : "desktop")} rig.");
+            XRSessionChanged?.Invoke(xr);
         }
 
         private void Apply(bool xr)
