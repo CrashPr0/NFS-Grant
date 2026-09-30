@@ -30,7 +30,9 @@ namespace NSFGrant.Logging
     ///   - a checkpoint every <see cref="checkpointIntervalSeconds"/> during
     ///     the session, and whenever the page/app loses focus or is paused
     ///     (tab hidden, headset removed) - so a participant who closes the
-    ///     tab early still leaves most of their data behind;
+    ///     tab early still leaves most of their data behind (on focus loss
+    ///     every changed file is sent at once, since the WebGL player loop
+    ///     stops while the page is in the background);
     ///   - a final upload when the session stops, retried until it succeeds
     ///     while the page stays open.
     /// CSVs are append-only logs, so every checkpoint is a prefix of the
@@ -57,6 +59,10 @@ namespace NSFGrant.Logging
 
         [Tooltip("Seconds between in-session checkpoint uploads (0 = final upload only).")]
         [SerializeField] private float checkpointIntervalSeconds = 120f;
+
+        [Tooltip("Flushed before each upload pass reads the CSVs (found on this object if unset).")]
+        [SerializeField] private AttentionDataLogger attentionLogger;
+        [SerializeField] private StudyEventLogger eventLogger;
 
         [Header("Which builds upload")]
         [SerializeField] private bool uploadOnWebGL = true;
@@ -94,9 +100,18 @@ namespace NSFGrant.Logging
         private bool _busy;
         private bool _finalRequested;
         private bool _finalDone;
+        private bool _checkpointPending;
         private float _nextFinalRetry = float.MaxValue;
         // Size last uploaded per file; unchanged files are skipped.
         private readonly Dictionary<string, long> _uploadedLength = new Dictionary<string, long>();
+
+        private void Awake()
+        {
+            if (attentionLogger == null) attentionLogger = GetComponent<AttentionDataLogger>();
+            if (attentionLogger == null) attentionLogger = FindFirstObjectByType<AttentionDataLogger>();
+            if (eventLogger == null) eventLogger = GetComponent<StudyEventLogger>();
+            if (eventLogger == null) eventLogger = FindFirstObjectByType<StudyEventLogger>();
+        }
 
         /// <summary>Editor/builder: set the endpoint and token.</summary>
         public void Configure(string url, string token, float checkpointSeconds)
@@ -117,6 +132,7 @@ namespace NSFGrant.Logging
             _uploadedLength.Clear();
             _finalRequested = false;
             _finalDone = false;
+            _checkpointPending = false;
             _nextFinalRetry = float.MaxValue;
             FinalStatus = UploadEnabled ? UploadStatus.Idle : UploadStatus.Disabled;
             _nextCheckpoint = checkpointIntervalSeconds > 0f
@@ -175,24 +191,58 @@ namespace NSFGrant.Logging
         {
             if (UploadEnabled && _sessionStartUtc != null && !_finalRequested)
             {
-                TryRun();
+                TryRun(leaving: true);
             }
         }
 
-        private void TryRun()
+        /// <param name="leaving">
+        /// Focus lost / paused: send every changed file at once, before the
+        /// first yield. The WebGL player loop stops while the page is blurred
+        /// (runInBackground is off, and hidden tabs get no animation frames
+        /// anyway), so a coroutine that sends files one by one only gets the
+        /// first request out; the browser carries requests already sent to
+        /// completion in the background.
+        /// </param>
+        private void TryRun(bool leaving = false)
         {
             if (_busy)
             {
-                return; // the running pass picks up _finalRequested when it ends
+                // The running pass may have read some files already; it
+                // re-runs when it ends (as a final pass if one was requested).
+                _checkpointPending = true;
+                return;
             }
-            StartCoroutine(UploadAll());
+            StartCoroutine(UploadAll(leaving));
         }
 
-        private IEnumerator UploadAll()
+        // One file in an upload pass.
+        private sealed class FileUpload
+        {
+            public string Path;
+            public string ContentType;
+            public long Length;       // size when queued; recorded once uploaded
+            public int Attempts;
+            public bool Ok;
+            public bool Empty;        // read back empty: done, but nothing recorded
+            public string Summary;    // "12 KB, gzip", for the log
+            public UnityWebRequest Request;
+            public UnityWebRequestAsyncOperation Operation;
+        }
+
+        private IEnumerator UploadAll(bool leaving)
         {
             _busy = true;
+            _checkpointPending = false;
             bool final = _finalRequested;
             bool allOk = true;
+
+            // The loggers buffer rows and flush on a timer; push those rows
+            // to disk so this pass uploads them. On a focus/pause pass the
+            // files are read right here, inside the callback, before any
+            // flush the loggers' own callbacks might do (order is undefined)
+            // - and the participant may close the tab right after.
+            attentionLogger?.Flush();
+            eventLogger?.Flush();
 
             DateTime since = (_sessionStartUtc ?? DateTime.UtcNow).AddSeconds(-1);
             var files = new List<(string path, string type, bool immutable)>();
@@ -213,6 +263,7 @@ namespace NSFGrant.Logging
                 }
             }
 
+            var uploads = new List<FileUpload>();
             foreach (var (path, type, immutable) in files)
             {
                 long length;
@@ -222,25 +273,43 @@ namespace NSFGrant.Logging
                 {
                     continue; // unchanged since the last successful upload
                 }
+                uploads.Add(new FileUpload { Path = path, ContentType = type, Length = length });
+            }
 
-                bool ok = false;
-                bool empty = false;
-                for (int attempt = 1; attempt <= MaxAttempts && !ok; attempt++)
+            if (leaving && uploads.Count > 0)
+            {
+                // First attempt for every file, all in flight together.
+                foreach (var u in uploads)
                 {
-                    var result = new bool[2]; // [0] ok, [1] file read back empty
-                    yield return UploadFile(path, type, result);
-                    ok = result[0];
-                    empty = result[1];
-                    if (!ok && attempt < MaxAttempts)
+                    StartUpload(u);
+                }
+                foreach (var u in uploads)
+                {
+                    if (u.Operation != null) yield return u.Operation;
+                }
+                foreach (var u in uploads)
+                {
+                    u.Ok = FinishUpload(u);
+                    if (u.Ok && !u.Empty) _uploadedLength[u.Path] = u.Length;
+                }
+            }
+
+            // One at a time with backoff: every attempt on a periodic or
+            // final pass, and the retries after a focus/pause pass.
+            foreach (var u in uploads)
+            {
+                while (!u.Ok && u.Attempts < MaxAttempts)
+                {
+                    if (u.Attempts > 0)
                     {
-                        yield return new WaitForSecondsRealtime(2f * attempt);
+                        yield return new WaitForSecondsRealtime(2f * u.Attempts);
                     }
+                    StartUpload(u);
+                    if (u.Operation != null) yield return u.Operation;
+                    u.Ok = FinishUpload(u);
+                    if (u.Ok && !u.Empty) _uploadedLength[u.Path] = u.Length;
                 }
-                if (ok && !empty)
-                {
-                    _uploadedLength[path] = length;
-                }
-                allOk &= ok;
+                allOk &= u.Ok;
             }
 
             _busy = false;
@@ -261,21 +330,33 @@ namespace NSFGrant.Logging
                     Debug.LogWarning($"[RemoteDataUploader] Final upload incomplete; retrying in {FinalRetrySeconds:F0}s.");
                 }
             }
-            else if (_finalRequested)
+            else if (_finalRequested || _checkpointPending)
             {
-                // StopSession arrived while this checkpoint was running.
+                // StopSession, or another checkpoint, arrived while this
+                // checkpoint was running.
                 TryRun();
             }
         }
 
-        private IEnumerator UploadFile(string path, string contentType, bool[] result)
+        /// <summary>
+        /// Reads, compresses and sends one file, without waiting: the POST is
+        /// in flight when this returns. Leaves Request null when there is
+        /// nothing to send (file unreadable, or read back empty).
+        /// </summary>
+        private void StartUpload(FileUpload u)
         {
+            u.Attempts++;
+            u.Empty = false;
+            u.Request = null;
+            u.Operation = null;
+
+            string fileName = Path.GetFileName(u.Path);
             byte[] data;
             try
             {
                 // Loggers keep their file open for writing; open shared so
                 // the read works on desktop OSes too (WebGL has no locking).
-                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                using var fs = new FileStream(u.Path, FileMode.Open, FileAccess.Read,
                     FileShare.ReadWrite | FileShare.Delete);
                 using var ms = new MemoryStream();
                 fs.CopyTo(ms);
@@ -283,24 +364,22 @@ namespace NSFGrant.Logging
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[RemoteDataUploader] Can't read {Path.GetFileName(path)}: {e.Message}");
-                result[0] = false;
-                yield break;
+                Debug.LogWarning($"[RemoteDataUploader] Can't read {fileName}: {e.Message}");
+                return;
             }
             if (data.Length == 0)
             {
                 // Logger hasn't flushed anything yet, and the endpoint rejects
                 // empty bodies. Nothing to lose: count it as done, but don't
                 // record the length so the next pass uploads the real content.
-                result[0] = true;
-                result[1] = true;
-                yield break;
+                u.Empty = true;
+                return;
             }
 
             // Text logs gzip ~5x; fall back to plain if compression isn't
             // available on this platform.
             string enc = "none";
-            if (contentType == "text/csv")
+            if (u.ContentType == "text/csv")
             {
                 byte[] gz = TryGzip(data);
                 if (gz != null)
@@ -309,11 +388,11 @@ namespace NSFGrant.Logging
                     enc = "gzip";
                 }
             }
+            u.Summary = $"{data.Length / 1024} KB, {enc}";
 
-            string fileName = Path.GetFileName(path);
             string url = endpointUrl + (endpointUrl.Contains("?") ? "&" : "?")
                 + "name=" + UnityWebRequest.EscapeURL(fileName)
-                + "&type=" + UnityWebRequest.EscapeURL(contentType)
+                + "&type=" + UnityWebRequest.EscapeURL(u.ContentType)
                 + "&pid=" + UnityWebRequest.EscapeURL(_participantId)
                 + "&enc=" + enc;
             if (!string.IsNullOrEmpty(sharedToken))
@@ -322,27 +401,41 @@ namespace NSFGrant.Logging
             }
 
             byte[] body = Encoding.ASCII.GetBytes(Convert.ToBase64String(data));
-            using var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
             request.uploadHandler = new UploadHandlerRaw(body);
             request.downloadHandler = new DownloadHandlerBuffer();
             // text/plain + no custom headers = no CORS preflight.
             request.SetRequestHeader("Content-Type", "text/plain");
             request.timeout = 120;
 
-            yield return request.SendWebRequest();
+            u.Request = request;
+            u.Operation = request.SendWebRequest();
+        }
 
-            string reply = request.downloadHandler?.text ?? "";
-            bool ok = request.result == UnityWebRequest.Result.Success && reply.StartsWith("ok");
+        /// <summary>Result of the attempt StartUpload began (once it's done); frees the request.</summary>
+        private static bool FinishUpload(FileUpload u)
+        {
+            if (u.Request == null)
+            {
+                return u.Empty; // empty counts as done; unreadable as failed
+            }
+
+            string fileName = Path.GetFileName(u.Path);
+            string reply = u.Request.downloadHandler?.text ?? "";
+            bool ok = u.Request.result == UnityWebRequest.Result.Success && reply.StartsWith("ok");
             if (ok)
             {
-                Debug.Log($"[RemoteDataUploader] Uploaded {fileName} ({data.Length / 1024} KB, {enc}).");
+                Debug.Log($"[RemoteDataUploader] Uploaded {fileName} ({u.Summary}).");
             }
             else
             {
                 Debug.LogWarning($"[RemoteDataUploader] Upload of {fileName} failed: " +
-                                 $"{request.error} {reply}".Trim());
+                                 $"{u.Request.error} {reply}".Trim());
             }
-            result[0] = ok;
+            u.Request.Dispose();
+            u.Request = null;
+            u.Operation = null;
+            return ok;
         }
 
         private static byte[] TryGzip(byte[] data)

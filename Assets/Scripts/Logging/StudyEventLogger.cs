@@ -129,9 +129,23 @@ namespace NSFGrant.Logging
 
             if (Time.unscaledTime - _lastFlushTime >= flushIntervalSeconds)
             {
-                _writer.Flush();
-                _lastFlushTime = Time.unscaledTime;
+                Flush();
             }
+        }
+
+        /// <summary>
+        /// Writes buffered rows to the file now. RemoteDataUploader calls
+        /// this before a checkpoint reads the file, so the upload includes
+        /// rows logged since the last timed flush.
+        /// </summary>
+        public void Flush()
+        {
+            if (_writer == null)
+            {
+                return;
+            }
+            _writer.Flush();
+            _lastFlushTime = Time.unscaledTime;
         }
 
         public void StopSession()
@@ -158,7 +172,7 @@ namespace NSFGrant.Logging
         {
             if (paused)
             {
-                _writer?.Flush();
+                Flush();
             }
         }
 

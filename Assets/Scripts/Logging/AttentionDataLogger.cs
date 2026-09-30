@@ -104,8 +104,7 @@ namespace NSFGrant.Logging
 
             if (Time.unscaledTime - _lastFlushTime >= flushIntervalSeconds)
             {
-                _writer.Flush();
-                _lastFlushTime = Time.unscaledTime;
+                Flush();
             }
 
             // Same row to VERA's Gaze_Samples file (VeraPluginAdapter).
@@ -174,6 +173,21 @@ namespace NSFGrant.Logging
             Debug.Log($"[AttentionDataLogger] Summary written to {path}");
         }
 
+        /// <summary>
+        /// Writes buffered rows to the file now. RemoteDataUploader calls
+        /// this before a checkpoint reads the file, so the upload includes
+        /// rows logged since the last timed flush.
+        /// </summary>
+        public void Flush()
+        {
+            if (_writer == null)
+            {
+                return;
+            }
+            _writer.Flush();
+            _lastFlushTime = Time.unscaledTime;
+        }
+
         public void StopSession()
         {
             if (_writer == null)
@@ -209,7 +223,7 @@ namespace NSFGrant.Logging
             // flush so no data is lost if the OS kills the process.
             if (paused)
             {
-                _writer?.Flush();
+                Flush();
             }
         }
 
