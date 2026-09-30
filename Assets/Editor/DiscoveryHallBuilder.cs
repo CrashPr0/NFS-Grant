@@ -43,6 +43,7 @@ namespace NSFGrant.EditorTools
             _plasterTexture = null;
             _terrazzoTexture = null;
             ProceduralPlanter.Reset();
+            ProceduralDocent.Reset();
             _contactShadows.Clear();
             _contactShadowMaterial = null;
             System.Array.Clear(_hubPlaques, 0, _hubPlaques.Length);
@@ -292,8 +293,8 @@ namespace NSFGrant.EditorTools
             so.FindProperty("hand").intValue = (int)hand;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            // Laser pointer from the same controller (visual aim aid;
-            // selection stays on the gaze ray - see VRLaserPointer).
+            // Laser pointer from the same controller: aim aid and the
+            // trigger's selection pointer (see VRLaserPointer/VRInteractor).
             var laser = go.AddComponent<VRLaserPointer>();
             var laserSo = new SerializedObject(laser);
             laserSo.FindProperty("hand").intValue = (int)hand;
@@ -901,6 +902,8 @@ namespace NSFGrant.EditorTools
                 var interactableSo = new SerializedObject(interactable);
                 interactableSo.FindProperty("objectId").stringValue = id;
                 interactableSo.ApplyModifiedPropertiesWithoutUndo();
+                // One pick per wall: the chosen option stays outlined.
+                button.AddComponent<InteractionHighlight>().LatchSelection = true;
 
                 CreateBodyText(button.transform, content.CallToActionOptions[i], 0.022f, 40);
             }
@@ -931,27 +934,89 @@ namespace NSFGrant.EditorTools
             interactableSo.FindProperty("objectId").stringValue = id;
             interactableSo.ApplyModifiedPropertiesWithoutUndo();
 
-            // Simple primitive figure — robe, head, base ring — standing in
-            // for the avatar planned for the Guided condition.
-            CreateVisualPrimitive(docent.transform, PrimitiveType.Cylinder, "BaseRing",
-                new Vector3(0f, 0.03f, 0f), new Vector3(0.9f, 0.03f, 0.9f),
-                Color.Lerp(color, Color.black, 0.4f));
-            CreateVisualPrimitive(docent.transform, PrimitiveType.Capsule, "Robe",
-                new Vector3(0f, 0.75f, 0f), new Vector3(0.5f, 0.6f, 0.5f),
-                Color.Lerp(color, Color.white, 0.35f));
-            CreateVisualPrimitive(docent.transform, PrimitiveType.Sphere, "Head",
-                new Vector3(0f, 1.55f, 0f), Vector3.one * 0.32f,
-                Color.Lerp(color, Color.white, 0.7f));
+            // Speech card beside the figure, on the docent's right (the
+            // visitor's left), which its right arm presents - same spot
+            // and size as the blockout's, so sightlines to the exhibit
+            // panels are unchanged. Framed dark card with a theme header
+            // carrying the docent's name (like the zone panels' headers;
+            // a name floating over the figure collided with the room
+            // title behind it), and a pointer toward the docent. A child
+            // pivot so DocentPresence can pop it.
+            var card = new GameObject("SpeechCard").transform;
+            card.SetParent(docent.transform, false);
+            card.localPosition = new Vector3(1.35f, 1.45f, 0f);
+            CreateVisualCube(card, "CardFrame", new Vector3(0f, 0.11f, -0.012f),
+                new Vector3(1.98f, 1.25f, 0.03f), FrameColor);
+            CreateVisualCube(card, "CardFace", Vector3.zero,
+                new Vector3(1.9f, 0.95f, 0.04f), PanelFaceColor);
+            CreateVisualCube(card, "CardHeader", new Vector3(0f, 0.6f, 0.0f),
+                new Vector3(1.9f, 0.22f, 0.04f), color);
+            CreateText(card, content.DocentName,
+                new Vector3(0f, 0.6f, 0.03f), 0.026f, 20, TextAnchor.MiddleCenter);
+            var pointer = CreateVisualCube(card, "CardPointer", new Vector3(-0.99f, -0.2f, -0.012f),
+                new Vector3(0.12f, 0.12f, 0.03f), FrameColor);
+            pointer.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            CreateText(card, content.DocentGreeting,
+                new Vector3(0f, -0.01f, 0.03f), 0.016f, 44, TextAnchor.MiddleCenter);
 
-            CreateText(docent.transform, content.DocentName,
-                new Vector3(0f, 1.85f, 0f), 0.03f, 20, TextAnchor.LowerCenter);
+            // Code-built holographic guide on a projector pedestal (see
+            // ProceduralDocent), animated by DocentPresence.
+            ProceduralDocent.Create(docent.transform, color, card);
+            CreateDocentSparkles(docent.transform, color);
+        }
 
-            // Greeting on a small framed speech panel beside the figure.
-            CreateVisualCube(docent.transform, "SpeechFrame",
-                new Vector3(1.35f, 1.45f, 0f), new Vector3(1.9f, 0.95f, 0.04f),
-                PanelFaceColor);
-            CreateText(docent.transform, content.DocentGreeting,
-                new Vector3(1.35f, 1.45f, 0.03f), 0.016f, 44, TextAnchor.MiddleCenter);
+        /// <summary>
+        /// A few theme-colored motes drifting up out of the docent's
+        /// projector - the "projection" reads as live even when still.
+        /// A dozen particles at most, additive.
+        /// </summary>
+        private static void CreateDocentSparkles(Transform parent, Color color)
+        {
+            var go = new GameObject("ProjectorSparkles");
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = new Vector3(0f, 0.12f, 0f);
+            go.transform.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(2.5f, 4f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.018f, 0.04f);
+            main.startColor = Color.Lerp(color, Color.white, 0.45f);
+            main.maxParticles = 14;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 3f;
+
+            // Narrow cone pointing up (the -90 X turn), emitting from the
+            // pedestal's glowing ring.
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 4f;
+            shape.radius = 0.37f;
+            shape.radiusThickness = 0.15f;
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[]
+                {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(0.8f, 0.2f),
+                    new GradientAlphaKey(0.5f, 0.7f),
+                    new GradientAlphaKey(0f, 1f)
+                });
+            colorOverLifetime.color = grad;
+
+            var renderer = go.GetComponent<ParticleSystemRenderer>();
+            renderer.renderMode = ParticleSystemRenderMode.Billboard;
+            renderer.sharedMaterial = ParticleMaterial(additive: true);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
 
         private static void CreateGoalIcon(Transform parent,

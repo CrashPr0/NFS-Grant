@@ -230,7 +230,8 @@ namespace NSFGrant.EditorTools
         /// lifted to eye height when it is still on the floor), CentralHub
         /// looking at the waterfall, and one interior view per SdgStation
         /// (SDG04_QualityEducation, SDG11_SustainableCities,
-        /// SDG13_ClimateAction) aimed at that room's exhibit wall.
+        /// SDG13_ClimateAction) aimed at that room's exhibit wall, plus a
+        /// close-up of each room's docent (&lt;station&gt;_Docent).
         /// The sample scene contributes vr_spawn, looking at its targets.
         /// </summary>
         private static List<Shot> CollectShots(Scene scene)
@@ -322,6 +323,18 @@ namespace NSFGrant.EditorTools
                     Location = Slug(station.StationId),
                     Position = position,
                     Rotation = Quaternion.LookRotation(target - position, Vector3.up),
+                    Template = null
+                });
+
+                // The room's docent (local z = 3.4, facing the door), from a
+                // visitor's eye height a couple of meters in front of it.
+                Vector3 docentEye = station.transform.TransformPoint(new Vector3(-0.6f, EyeHeight, 6.1f));
+                Vector3 docentAim = station.transform.TransformPoint(new Vector3(0.45f, 1.25f, 3.4f));
+                shots.Add(new Shot
+                {
+                    Location = Slug(station.StationId) + "_Docent",
+                    Position = docentEye,
+                    Rotation = Quaternion.LookRotation(docentAim - docentEye, Vector3.up),
                     Template = null
                 });
             }

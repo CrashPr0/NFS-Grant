@@ -4,11 +4,13 @@ using NSFGrant.Gaze;
 namespace NSFGrant.Interaction
 {
     /// <summary>
-    /// Gaze-and-commit selection for the headset group: pressing either
-    /// index trigger activates the InteractableObject currently under the
-    /// participant's gaze ray (eye gaze on Quest Pro, head gaze on Quest 3).
-    /// Keeping selection on the gaze ray means the attention signal and the
-    /// interaction signal share one coordinate frame in the data.
+    /// Trigger selection for the headset group. Pulling a hand's index
+    /// trigger activates what that hand's laser is pointing at
+    /// (source=vr_laser); if the beam is on nothing selectable, it falls
+    /// back to the object under the gaze ray (eye gaze on Quest Pro, head
+    /// gaze on Quest 3; source=vr_gaze), which was the only path before and
+    /// made the visible beam look broken. Gaze keeps being sampled every
+    /// frame for the attention data either way.
     /// </summary>
     public class VRInteractor : MonoBehaviour
     {
@@ -21,6 +23,8 @@ namespace NSFGrant.Interaction
         [SerializeField, Range(0f, 1f)] private float hapticAmplitude = 0.6f;
         [SerializeField] private float hapticSeconds = 0.08f;
 
+        private VRLaserPointer[] _lasers;
+
         private void Awake()
         {
             if (gazeProvider == null)
@@ -29,13 +33,14 @@ namespace NSFGrant.Interaction
             }
         }
 
+        private void Start()
+        {
+            // The lasers live on the controller anchors inside this rig.
+            _lasers = GetComponentsInChildren<VRLaserPointer>(true);
+        }
+
         private void Update()
         {
-            if (gazeProvider == null || gazeProvider.Source == GazeProvider.GazeSource.None)
-            {
-                return;
-            }
-
             // A survey/confirm panel owns the trigger while it's open, so an
             // answer click can't also activate the exhibit behind it.
             if (VRSurveyPanel.IsOpen)
@@ -50,15 +55,45 @@ namespace NSFGrant.Interaction
                 return;
             }
 
-            if (Physics.Raycast(gazeProvider.GazeRay, out RaycastHit hit, maxRayDistance, layerMask))
+            var hand = rightDown ? XRInputBridge.Hand.Right : XRInputBridge.Hand.Left;
+            var laser = LaserFor(hand);
+            if (laser != null && laser.HoverTarget != null)
+            {
+                laser.HoverTarget.Activate("vr_laser", laser.HitPoint);
+                Pulse(hand);
+                return;
+            }
+
+            if (gazeProvider == null || gazeProvider.Source == GazeProvider.GazeSource.None)
+            {
+                return;
+            }
+            if (Physics.Raycast(gazeProvider.GazeRay, out RaycastHit hit, maxRayDistance, layerMask,
+                    QueryTriggerInteraction.Ignore))
             {
                 var interactable = hit.collider.GetComponentInParent<InteractableObject>();
                 if (interactable != null)
                 {
-                    interactable.Activate("vr_trigger", hit.point);
-                    Pulse(rightDown ? XRInputBridge.Hand.Right : XRInputBridge.Hand.Left);
+                    interactable.Activate("vr_gaze", hit.point);
+                    Pulse(hand);
                 }
             }
+        }
+
+        private VRLaserPointer LaserFor(XRInputBridge.Hand hand)
+        {
+            if (_lasers == null)
+            {
+                return null;
+            }
+            foreach (var laser in _lasers)
+            {
+                if (laser != null && laser.Hand == hand && laser.isActiveAndEnabled)
+                {
+                    return laser;
+                }
+            }
+            return null;
         }
 
         private void Pulse(XRInputBridge.Hand hand)

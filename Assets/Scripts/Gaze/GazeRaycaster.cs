@@ -44,7 +44,12 @@ namespace NSFGrant.Gaze
             AttentionTarget hitTarget = null;
 
             if (_gazeProvider.Source != GazeProvider.GazeSource.None &&
-                Physics.Raycast(_gazeProvider.GazeRay, out RaycastHit hit, maxDistance, layerMask))
+                // Triggers ignored: the rooms' SdgStation sensors are
+                // invisible boxes around each room, and hitting one from the
+                // hub recorded its face as the gaze point instead of the
+                // exhibit actually looked at.
+                Physics.Raycast(_gazeProvider.GazeRay, out RaycastHit hit, maxDistance, layerMask,
+                    QueryTriggerInteraction.Ignore))
             {
                 HasHit = true;
                 HitPoint = hit.point;

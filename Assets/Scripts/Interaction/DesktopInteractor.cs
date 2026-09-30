@@ -10,6 +10,13 @@ namespace NSFGrant.Interaction
     /// data than headset users: every click is logged with its 2D screen
     /// coordinates and, when it hits scene geometry, the 3D world position
     /// and object under the cursor. Typed keys are logged as key_press events.
+    /// The object under the cursor is also reported as hovered, so it can
+    /// show that it is clickable (<see cref="InteractionHighlight"/>).
+    ///
+    /// Rays ignore trigger colliders: each room's SdgStation sensor is a
+    /// trigger box around the whole room, and with "queries hit triggers"
+    /// on (the project default) a click from the hub or corridor stopped on
+    /// its invisible face instead of reaching the exhibit.
     /// </summary>
     public class DesktopInteractor : MonoBehaviour
     {
@@ -18,6 +25,8 @@ namespace NSFGrant.Interaction
 
         [SerializeField] private float maxRayDistance = 100f;
         [SerializeField] private LayerMask layerMask = ~0;
+
+        private InteractableObject _hovered;
 
         private void Awake()
         {
@@ -32,8 +41,11 @@ namespace NSFGrant.Interaction
             // Clicks/keys aimed at an on-screen panel belong to that panel.
             if (rigCamera == null || StudyGuiKit.ModalVisible)
             {
+                SetHovered(null);
                 return;
             }
+
+            UpdateHover();
 
             if (Input.GetMouseButtonDown(0) && !StudyGuiKit.PointerOverHud)
             {
@@ -47,12 +59,51 @@ namespace NSFGrant.Interaction
             }
         }
 
+        private void OnDisable()
+        {
+            SetHovered(null);
+        }
+
+        private void UpdateHover()
+        {
+            InteractableObject target = null;
+            // Not while right-drag looking: the cursor isn't pointing then.
+            if (!StudyGuiKit.PointerOverHud && !Input.GetMouseButton(1))
+            {
+                Ray ray = rigCamera.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, layerMask,
+                        QueryTriggerInteraction.Ignore))
+                {
+                    target = hit.collider.GetComponentInParent<InteractableObject>();
+                }
+            }
+            SetHovered(target);
+        }
+
+        private void SetHovered(InteractableObject target)
+        {
+            if (target == _hovered)
+            {
+                return;
+            }
+            if (_hovered != null)
+            {
+                _hovered.SetHovered(this, false);
+            }
+            _hovered = target;
+            if (_hovered != null)
+            {
+                _hovered.SetHovered(this, true);
+            }
+        }
+
         private void HandleClick()
         {
             Vector2 screenPos = Input.mousePosition;
             Ray ray = rigCamera.ScreenPointToRay(screenPos);
 
-            if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, layerMask))
+            if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, layerMask,
+                    QueryTriggerInteraction.Ignore))
             {
                 var interactable = hit.collider.GetComponentInParent<InteractableObject>();
                 if (interactable != null)

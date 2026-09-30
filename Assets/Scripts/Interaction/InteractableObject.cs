@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using NSFGrant.Core;
@@ -15,6 +17,11 @@ namespace NSFGrant.Interaction
     ///
     /// In the Passive condition (A), activations are still logged as
     /// attempted clicks but the onActivated content response is suppressed.
+    ///
+    /// Pointers (the desktop mouse, each VR laser) report hover here, and
+    /// <see cref="InteractionHighlight"/> (added automatically) turns hover
+    /// and activation into a glow - only where interaction is enabled, so
+    /// Passive participants aren't shown affordances their condition lacks.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class InteractableObject : MonoBehaviour
@@ -30,6 +37,55 @@ namespace NSFGrant.Interaction
 
         /// <summary>Total activations this session (logged + content-suppressed).</summary>
         public int ActivationCount { get; private set; }
+
+        /// <summary>True while at least one pointer is over this object.</summary>
+        public bool IsHovered => _hoveredBy.Count > 0;
+
+        /// <summary>Hover started or ended (any pointer).</summary>
+        public event Action<bool> HoverChanged;
+
+        /// <summary>Activated with interaction enabled (after logging).</summary>
+        public event Action<InteractableObject> Activated;
+
+        private readonly HashSet<object> _hoveredBy = new HashSet<object>();
+
+        private void Awake()
+        {
+            if (GetComponent<InteractionHighlight>() == null)
+            {
+                gameObject.AddComponent<InteractionHighlight>();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_hoveredBy.Count > 0)
+            {
+                _hoveredBy.Clear();
+                HoverChanged?.Invoke(false);
+            }
+        }
+
+        /// <summary>
+        /// A pointer (any object identifying it, e.g. the laser component)
+        /// entered or left this object. Idempotent per pointer.
+        /// </summary>
+        public void SetHovered(object pointer, bool hovered)
+        {
+            bool was = IsHovered;
+            if (hovered)
+            {
+                _hoveredBy.Add(pointer);
+            }
+            else
+            {
+                _hoveredBy.Remove(pointer);
+            }
+            if (was != IsHovered)
+            {
+                HoverChanged?.Invoke(IsHovered);
+            }
+        }
 
         /// <summary>
         /// Activate from VR (no screen coordinates).
@@ -76,6 +132,7 @@ namespace NSFGrant.Interaction
             if (interactionEnabled)
             {
                 onActivated?.Invoke();
+                Activated?.Invoke(this);
                 GetComponent<ContentLink>()?.Open();
             }
         }

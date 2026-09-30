@@ -198,7 +198,11 @@ today, with prefab visuals instead of primitives.
 > `VRLaserPointer`: a laser + endpoint dot from each controller, purely a
 > visual aim aid - selection stays on the gaze ray so the attention and
 > interaction signals remain in one coordinate frame per the study
-> design. If per-eye issues persist for any element, check that its
+> design. (Superseded 2026-09-29: the laser now selects, with the gaze
+> ray as fallback - pointing at an exhibit and pulling the trigger did
+> nothing on Quest 3 unless the head was centered on it too. Gaze is
+> still logged every frame; activations record source=vr_laser/vr_gaze.)
+> If per-eye issues persist for any element, check that its
 > shader carries these macros.
 >
 > **Status (2026-07-02, polish pass):** (1) rooms and corridors got

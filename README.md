@@ -129,15 +129,17 @@ on the gaze ray).
 | `AttentionTarget` | Marks any object (with a Collider) as an AOI, tagged with its information format (text / data-viz / video / interactive / docent / call-to-action) and station; accumulates dwell time, look count, time-to-first-look. |
 | `SdgStation` | Trigger volume per SDG station; tracks visits, time inside, and first entry — the navigation-path backbone. |
 | `InteractableObject` | Clickable content; every activation logged with world (and on desktop, screen) coordinates. Content response suppressed in the Passive condition. |
+| `InteractionHighlight` | Added to every interactable: glowing frame (panels, action buttons) or floor ring (docent) on hover, flash on click; the chosen call-to-action option stays outlined. Shown only where the condition enables interaction. |
 | `DesktopInteractor` / `DesktopPlayerController` | Laptop/WebGL input: WASD + mouse-look navigation, click logging with 2D screen coords, key-press logging. |
-| `VRInteractor` | Gaze-and-commit selection with the controller trigger in VR; short haptic pulse on a successful selection. |
+| `VRInteractor` | Trigger selection in VR: activates what that hand's laser points at (`source=vr_laser`), falling back to the gaze ray (`source=vr_gaze`); short haptic pulse on a successful selection. |
 | `VRLocomotion` | Hand-rolled VR locomotion: left-stick smooth walk (CharacterController collision), right-stick teleport arc + reticle, right-stick snap turn pivoting on the head. Fades to black around jumps; logs every teleport/turn. |
 | `ProceduralAmbience` | Runtime-synthesized spatial waterfall loop in the hub (no audio asset); fixed seed so every participant hears the same sound. |
 | `VRHandVisual` | Controller-tracked stylized hands (procedural primitives, stereo-safe `NSFGrant/HandShaded`); fingers close and warm in color as the trigger squeezes, hidden when the controller disconnects. |
-| `VRLaserPointer` | Laser line + endpoint dot from each controller (visual aim aid; selection stays on the gaze ray). |
+| `VRLaserPointer` | Laser line + endpoint dot from each controller; the selection pointer - brightens and reports hover on interactables. |
 | `TeleportSurface` | Marks a collider as a valid teleport destination (the hall's base floor plane). |
 | `StudyConditionManager` | Holds the active condition (Passive / Interactive / Guided). |
 | `DocentGuide` | Guided-condition route: beacon highlights the next suggested station; all guidance logged. |
+| `DocentPresence` | Animates each room's code-built docent (`ProceduralDocent`, `NSFGrant/DocentHologram`): floating idle, head follows the visitor, waves and pops its speech card when clicked (not in Passive). |
 | `QuizDefinition` / `QuizRunner` | Pre/post knowledge quiz; responses logged as events (IMGUI panel for desktop, API for VR/world-space UI). |
 | `AttentionDataLogger` | Streams per-frame gaze samples to CSV; writes the session summary (targets, stations, interactions). |
 | `StudyEventLogger` | Discrete-event CSV: clicks, key presses, station enter/exit, docent guidance, quiz responses, session lifecycle. |
@@ -232,7 +234,7 @@ Assets/
     ├── Gaze/        # GazeProvider, FixationDetector, GazeRaycaster, AttentionTarget
     ├── Interaction/ # InteractableObject, desktop + VR interactors, desktop movement
     ├── Stations/    # SdgStation (per-station visit tracking)
-    ├── Docent/      # DocentGuide (Condition C)
+    ├── Docent/      # DocentGuide (Condition C), DocentPresence (docent animation)
     ├── Survey/      # QuizDefinition, QuizRunner
     ├── Logging/     # Gaze CSV, event CSV, screenshots, remote upload
     ├── Vera/        # VeraBridge (VERA Unity plugin integration seam)
