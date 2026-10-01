@@ -94,8 +94,11 @@ Drive access; the media-download step only re-fetches missing files.
 
 ### Desktop / web controls
 
-WASD or arrow keys to move; hold the **right mouse button** to look around;
-**left-click** to select content. Set **Active Input Handling** to
+WASD or arrow keys to move. **Click** the scene to capture the mouse, then
+move it to look around and **left-click** to select what the center dot is
+on; **Esc** frees the cursor (for on-screen buttons). With the cursor free,
+holding the **right mouse button** also looks around and left-click selects
+under the cursor. Set **Active Input Handling** to
 "Input Manager (Old)" or "Both" in Player settings (the scripts use the
 classic Input API).
 

@@ -12,6 +12,8 @@ namespace NSFGrant.Interaction
     /// and object under the cursor. Typed keys are logged as key_press events.
     /// The object under the cursor is also reported as hovered, so it can
     /// show that it is clickable (<see cref="InteractionHighlight"/>).
+    /// While the mouse is captured (DesktopPlayerController) the pointer is
+    /// the screen-center aim dot, and that is the logged screen position.
     ///
     /// Rays ignore trigger colliders: each room's SdgStation sensor is a
     /// trigger box around the whole room, and with "queries hit triggers"
@@ -47,7 +49,8 @@ namespace NSFGrant.Interaction
 
             UpdateHover();
 
-            if (Input.GetMouseButtonDown(0) && !StudyGuiKit.PointerOverHud)
+            if (Input.GetMouseButtonDown(0) &&
+                (DesktopPlayerController.AimFromCenter || !StudyGuiKit.PointerOverHud))
             {
                 HandleClick();
             }
@@ -59,6 +62,10 @@ namespace NSFGrant.Interaction
             }
         }
 
+        private static Vector2 PointerPosition => DesktopPlayerController.AimFromCenter
+            ? new Vector2(Screen.width / 2f, Screen.height / 2f)
+            : (Vector2)Input.mousePosition;
+
         private void OnDisable()
         {
             SetHovered(null);
@@ -68,9 +75,10 @@ namespace NSFGrant.Interaction
         {
             InteractableObject target = null;
             // Not while right-drag looking: the cursor isn't pointing then.
-            if (!StudyGuiKit.PointerOverHud && !Input.GetMouseButton(1))
+            if (DesktopPlayerController.AimFromCenter ||
+                (!StudyGuiKit.PointerOverHud && !Input.GetMouseButton(1)))
             {
-                Ray ray = rigCamera.ScreenPointToRay(Input.mousePosition);
+                Ray ray = rigCamera.ScreenPointToRay(PointerPosition);
                 if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, layerMask,
                         QueryTriggerInteraction.Ignore))
                 {
@@ -99,7 +107,7 @@ namespace NSFGrant.Interaction
 
         private void HandleClick()
         {
-            Vector2 screenPos = Input.mousePosition;
+            Vector2 screenPos = PointerPosition;
             Ray ray = rigCamera.ScreenPointToRay(screenPos);
 
             if (Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, layerMask,
