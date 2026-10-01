@@ -337,6 +337,17 @@ namespace NSFGrant.EditorTools
                     Rotation = Quaternion.LookRotation(docentAim - docentEye, Vector3.up),
                     Template = null
                 });
+
+                // The References panel on the room's left side wall.
+                Vector3 refEye = station.transform.TransformPoint(new Vector3(-2.6f, EyeHeight, 2.4f));
+                Vector3 refAim = station.transform.TransformPoint(new Vector3(-6.1f, 1.8f, 2.4f));
+                shots.Add(new Shot
+                {
+                    Location = Slug(station.StationId) + "_References",
+                    Position = refEye,
+                    Rotation = Quaternion.LookRotation(refAim - refEye, Vector3.up),
+                    Template = null
+                });
             }
 
             foreach (Transform transform in UnityEngine.Object.FindObjectsByType<Transform>(

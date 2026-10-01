@@ -118,6 +118,11 @@ namespace NSFGrant.EditorTools
             // Non-interactive equivalent of Window > WebXR > Copy WebGLTemplates.
             string src = Path.Combine(pkg.resolvedPath, "Hidden~", "WebGLTemplates");
             CopyDirectory(src, Path.Combine("Assets", "WebGLTemplates"));
+            if (!InjectLoadingScreen(Path.Combine("Assets", "WebGLTemplates", "WebXR2020", "index.html")))
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
             AssetDatabase.Refresh();
 
             PlayerSettings.WebGL.template = "PROJECT:WebXR2020";
@@ -244,6 +249,48 @@ namespace NSFGrant.EditorTools
         /// Adds <see cref="RuntimeShaders"/> to Graphics > Always Included
         /// Shaders (idempotent). False if a shader is missing from the project.
         /// </summary>
+        private const string LoadingOverlayPath = "tools/webxr-template/loading-overlay.html";
+
+        /// <summary>
+        /// Puts the study's loading screen (title, percentage, "Starting
+        /// up" phase, slow-connection hint, error message) into the freshly
+        /// copied WebXR page template, replacing Unity's bare logo + bar.
+        /// The template folder is regenerated from the package on every
+        /// build, so the overlay lives in tools/ and is applied here.
+        /// </summary>
+        private static bool InjectLoadingScreen(string indexPath)
+        {
+            if (!File.Exists(LoadingOverlayPath) || !File.Exists(indexPath))
+            {
+                Debug.LogError($"[CiTools] Loading screen: {LoadingOverlayPath} or {indexPath} missing.");
+                return false;
+            }
+            string html = File.ReadAllText(indexPath);
+            var edits = new (string find, string replace)[]
+            {
+                ("<canvas id=\"unity-canvas\" style=\"width: 100%; height: 100%;\"></canvas>",
+                 "<canvas id=\"unity-canvas\" style=\"width: 100%; height: 100%;\"></canvas>\n" +
+                 File.ReadAllText(LoadingOverlayPath)),
+                ("progressBarFull.style.width = 100 * progress + \"%\";",
+                 "progressBarFull.style.width = 100 * progress + \"%\"; nsfLoading.progress(progress);"),
+                ("loadingBar.style.display = \"none\";",
+                 "loadingBar.style.display = \"none\"; nsfLoading.done();"),
+                ("alert(message);", "nsfLoading.error(message);"),
+            };
+            foreach (var (find, replace) in edits)
+            {
+                if (!html.Contains(find))
+                {
+                    Debug.LogError($"[CiTools] Loading screen: template no longer contains '{find}' " +
+                                   "(WebXR Export template changed?).");
+                    return false;
+                }
+                html = html.Replace(find, replace);
+            }
+            File.WriteAllText(indexPath, html);
+            return true;
+        }
+
         private static bool IncludeRuntimeShaders()
         {
             var graphics = AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.GraphicsSettings>(

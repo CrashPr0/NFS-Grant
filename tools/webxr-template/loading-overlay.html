@@ -1,0 +1,76 @@
+<!-- NSF Grant loading screen. CiTools.ConfigureWebXR injects this into the
+     WebXR Export page template (copied fresh from the package each build)
+     and routes Unity's load progress to window.nsfLoading. Unity reports
+     0-0.9 while downloading and 0.9-1 while starting up. -->
+<style>
+  #unity-canvas-container { position: relative; }
+  #unity-loading-bar { display: none !important; }
+  #nsf-loading { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px; padding: 24px; box-sizing: border-box;
+    background: radial-gradient(ellipse at center, #26303f 0%, #12161d 75%);
+    color: #eef1f6; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center;
+    transition: opacity 0.5s ease; }
+  #nsf-loading.hidden { opacity: 0; pointer-events: none; }
+  #nsf-loading h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: 0.3px; }
+  #nsf-loading .sub { margin: 0; font-size: 14px; color: #aab4c3; }
+  #nsf-loading .track { width: min(420px, 80%); height: 12px; border-radius: 6px; background: #2c3442; overflow: hidden; }
+  #nsf-loading .fill { height: 100%; width: 0%; border-radius: 6px; transition: width 0.3s ease;
+    background: linear-gradient(90deg, #4ab0e8, #7ad19a); }
+  #nsf-loading .fill.busy { width: 100% !important;
+    background: repeating-linear-gradient(-45deg, #4ab0e8 0 14px, #6fc3ef 14px 28px); background-size: 40px 40px;
+    animation: nsf-stripes 0.8s linear infinite; }
+  @keyframes nsf-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }
+  #nsf-loading .status { font-size: 16px; min-height: 22px; }
+  #nsf-loading .tip { font-size: 13px; color: #8d98a8; max-width: 460px; min-height: 18px; }
+  #nsf-loading.error .status { color: #ff9a8a; }
+</style>
+<div id="nsf-loading" role="status" aria-live="polite">
+  <h1>UN SDG Discovery Hall</h1>
+  <p class="sub">Loading the virtual museum</p>
+  <div class="track"><div class="fill"></div></div>
+  <div class="status">Starting download&hellip;</div>
+  <div class="tip">Please keep this tab open. The first load can take a minute; later visits are faster.</div>
+</div>
+<script>
+  window.nsfLoading = (function () {
+    var root = document.getElementById('nsf-loading');
+    var fill = root.querySelector('.fill');
+    var status = root.querySelector('.status');
+    var tip = root.querySelector('.tip');
+    var last = -1, lastChange = Date.now();
+    // A stall on the download usually means a slow connection.
+    var watchdog = setInterval(function () {
+      if (Date.now() - lastChange > 20000 && last < 0.9) {
+        tip.textContent = 'Still downloading. On a slow connection this can take a few minutes; please keep this tab open.';
+      }
+    }, 5000);
+    return {
+      progress: function (p) {
+        if (p !== last) { last = p; lastChange = Date.now(); }
+        if (p < 0.9) {
+          var pct = Math.min(99, Math.round(p / 0.9 * 100));
+          fill.style.width = pct + '%';
+          status.textContent = 'Downloading… ' + pct + '%';
+        } else {
+          fill.classList.add('busy');
+          status.textContent = 'Starting up…';
+          tip.textContent = 'Almost there. Setting up the museum (a few seconds; longer on headsets).';
+        }
+      },
+      done: function () {
+        clearInterval(watchdog);
+        fill.classList.remove('busy'); fill.style.width = '100%';
+        status.textContent = 'Ready';
+        root.classList.add('hidden');
+        setTimeout(function () { root.style.display = 'none'; }, 600);
+      },
+      error: function (message) {
+        clearInterval(watchdog);
+        root.classList.add('error');
+        fill.classList.remove('busy');
+        status.textContent = 'Something went wrong while loading.';
+        tip.textContent = 'Please reload the page. If it keeps happening, try Chrome or the Quest browser. (' + message + ')';
+      }
+    };
+  })();
+</script>

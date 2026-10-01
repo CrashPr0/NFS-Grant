@@ -42,6 +42,7 @@ namespace NSFGrant.EditorTools
             // editor session re-bakes instead of pointing at dead assets.
             _plasterTexture = null;
             _terrazzoTexture = null;
+            _referencesLayout = null;
             ProceduralPlanter.Reset();
             ProceduralDocent.Reset();
             _contactShadows.Clear();
@@ -485,14 +486,73 @@ namespace NSFGrant.EditorTools
 
             CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 3.4f));
 
-            // References hang on the left side wall, facing into the room.
+            // References hang on the left side wall, facing into the room,
+            // sized to fit their text (see ReferencesLayout).
+            var refLayout = ReferencesLayout();
             var references = CreateZone(root.transform, content.StationId, "References",
                 "References", AttentionTarget.ContentFormat.Other,
-                new Vector3(-6.1f, 1.6f, 3.5f), new Vector2(1.9f, 1.5f), themeColor,
-                null, string.Join("\n", content.References), 0.011f, 66);
+                new Vector3(-6.1f, refLayout.centerY, 2.4f), refLayout.panel, themeColor,
+                null, string.Join("\n", content.References), refLayout.charSize, ReferencesWrapChars);
             references.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
 
             return station;
+        }
+
+        private const int ReferencesWrapChars = 84;
+        private static (Vector2 panel, float centerY, float charSize)? _referencesLayout;
+
+        /// <summary>
+        /// One References panel size for every room, fitted to the longest
+        /// list (room parity: the panels must not differ in size, and a
+        /// fixed 1.9 x 1.5 m panel let long lists and URLs spill past its
+        /// edges). Text is scaled to fill the side wall comfortably (larger
+        /// than before, or smaller if a list is too long); the panel stands
+        /// on its legs (bottom >= 0.35 m) and stays under the crown trim.
+        /// </summary>
+        private static (Vector2 panel, float centerY, float charSize) ReferencesLayout()
+        {
+            if (_referencesLayout.HasValue)
+            {
+                return _referencesLayout.Value;
+            }
+            const float maxTextHeight = 2.6f, maxTextWidth = 4.6f, margin = 0.3f, maxGrow = 1.6f;
+            float charSize = 0.011f;
+            Vector2 size = MeasureReferences(charSize);
+            // Fill the wall space (up to 1.6x the old text size) for
+            // readability, or shrink if the list is too long to fit.
+            float scale = Mathf.Min(maxGrow, maxTextHeight / size.y, maxTextWidth / size.x);
+            if (!Mathf.Approximately(scale, 1f))
+            {
+                charSize *= scale;
+                size = MeasureReferences(charSize);
+            }
+            var panel = new Vector2(Mathf.Max(1.9f, size.x + margin), Mathf.Max(1.5f, size.y + margin));
+            float centerY = Mathf.Max(1.6f, 0.35f + panel.y / 2f);
+            _referencesLayout = (panel, centerY, charSize);
+            Debug.Log($"[DiscoveryHallBuilder] References panel {panel.x:F2} x {panel.y:F2} m at y {centerY:F2}, " +
+                      $"text {size.x:F2} x {size.y:F2} m, char size {charSize:F4}.");
+            return _referencesLayout.Value;
+        }
+
+        private static Vector2 MeasureReferences(float charSize)
+        {
+            var temp = new GameObject("MeasureReferences");
+            Vector2 max = Vector2.zero;
+            try
+            {
+                foreach (var station in SdgContentLibrary.Stations)
+                {
+                    var mesh = CreateTextMesh(temp.transform, Vector3.zero, charSize);
+                    Vector2 v = mesh.GetPreferredValues(
+                        Wrap(string.Join("\n", station.References), ReferencesWrapChars));
+                    max = Vector2.Max(max, v);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(temp);
+            }
+            return max;
         }
 
         private static void AddCounterbalanceMarker(GameObject zone, int slotIndex)
@@ -1055,7 +1115,10 @@ namespace NSFGrant.EditorTools
                 string id = $"{content.StationId}_Photo{i + 1}";
                 var board = new GameObject(id);
                 board.transform.SetParent(parent, false);
-                board.transform.localPosition = new Vector3(x, 3.45f, 0.2f);
+                // High enough that the zone panels' headers (top ~2.57 m),
+                // which stand in front, don't hide the photo's lower part
+                // from a visitor close to the panels.
+                board.transform.localPosition = new Vector3(x, 3.8f, 0.2f);
 
                 var box = board.AddComponent<BoxCollider>();
                 box.size = new Vector3(2.15f, 1.5f, 0.1f);
@@ -2482,13 +2545,29 @@ namespace NSFGrant.EditorTools
         /// collide with neighboring stations. Re-break each line on word
         /// boundaries so no line exceeds the panel's character budget.
         /// </summary>
+        /// <summary>Breaks words longer than a line (URLs) into line-sized pieces.</summary>
+        private static IEnumerable<string> SplitLongWords(string[] words, int maxLineChars)
+        {
+            foreach (string word in words)
+            {
+                for (int i = 0; i < word.Length; i += maxLineChars)
+                {
+                    yield return word.Substring(i, Mathf.Min(maxLineChars, word.Length - i));
+                }
+                if (word.Length == 0)
+                {
+                    yield return word;
+                }
+            }
+        }
+
         private static string Wrap(string text, int maxLineChars)
         {
             var result = new System.Text.StringBuilder();
             foreach (string line in text.Split('\n'))
             {
                 int lineLength = 0;
-                foreach (string word in line.Split(' '))
+                foreach (string word in SplitLongWords(line.Split(' '), maxLineChars))
                 {
                     if (lineLength > 0 && lineLength + 1 + word.Length > maxLineChars)
                     {
