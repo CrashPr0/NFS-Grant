@@ -53,13 +53,18 @@ namespace NSFGrant.Vera
         /// <summary>The build's active VERA experiment, when connected.</summary>
         public static string ExperimentName => BuildConnected ? _experimentName : null;
 
-        /// <summary>VERA has a participant and is ready (portal IDs received).</summary>
+        /// <summary>
+        /// VERA has a participant session running (portal IDs received and the
+        /// participant created). VERASessionManager.initialized alone only means
+        /// the logger is up; the participant doesn't exist yet, so reading its
+        /// ID then throws.
+        /// </summary>
         public static bool IsReady
         {
             get
             {
 #if VERAFile_Experiment_Telemetry
-                return VERASessionManager.initialized;
+                return VERASessionManager.sessionInProgress;
 #else
                 return false;
 #endif
@@ -72,7 +77,7 @@ namespace NSFGrant.Vera
             get
             {
 #if VERAFile_Experiment_Telemetry
-                return VERASessionManager.initialized && VERASessionManager.collecting;
+                return VERASessionManager.sessionInProgress;
 #else
                 return false;
 #endif
