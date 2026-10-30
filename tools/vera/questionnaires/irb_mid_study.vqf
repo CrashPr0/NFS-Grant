@@ -1,0 +1,62 @@
+meta:
+  id: irb-mid-study
+  name: Mid-Study Questionnaire
+  version: 2.0.0
+  description: |
+    IRB 26-285 approved instrument (Survey Questionnaire 10.12.26 and
+    SDG Knowledge Test 9.10.26). Wording is verbatim; do not edit without
+    an IRB modification.
+    M1-M4. Shown once after the participant has explored a second
+    distinct SDG zone. The app shows these itself (MidStudyCheckIn);
+    import this card only if VERA should administer them instead.
+  shortName: MidStudy
+  tags: [irb-26-285, mid]
+
+questions:
+  - id: M1
+    text: "How engaged do you feel with the experience right now?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all engaged"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely engaged"
+        - "Prefer not to answer"
+
+  - id: M2
+    text: "How mentally demanding or overwhelming has the experience been so far?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely"
+        - "Prefer not to answer"
+
+  - id: M3
+    text: "How easy has it been to navigate the environment?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Very difficult"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Very easy"
+        - "Prefer not to answer"
+
+  - id: M4
+    text: "How interested are you in continuing to explore?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all interested"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely interested"
+        - "Prefer not to answer"

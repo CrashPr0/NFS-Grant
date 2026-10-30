@@ -274,6 +274,11 @@ namespace NSFGrant.Session
 
         private void RequestEyeTrackingPermission()
         {
+            // IRB 26-285: no eye-gaze measures, so don't ask for eye tracking.
+            if (!StudyProtocol.CollectGazeMeasures)
+            {
+                return;
+            }
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (!Permission.HasUserAuthorizedPermission(EyeTrackingPermission))
             {

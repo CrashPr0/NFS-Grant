@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using NSFGrant.Core;
 using NSFGrant.Vera;
 
 namespace NSFGrant.Logging
@@ -11,6 +12,12 @@ namespace NSFGrant.Logging
     /// Writes per-frame gaze/attention samples to a CSV file under
     /// Application.persistentDataPath/StudyData. One file is created per
     /// session, named with the participant ID and a UTC timestamp.
+    ///
+    /// Under IRB 26-285 (StudyProtocol.CollectGazeMeasures = false) only
+    /// head pose is kept: the file is named motion_*.csv, the gaze,
+    /// fixation and look-target columns stay empty (same header, so
+    /// analysis scripts still parse it), and the summary has no fixation
+    /// count or gaze dwell table.
     ///
     /// On Quest, files land in
     ///   /sdcard/Android/data/&lt;package&gt;/files/StudyData/
@@ -50,7 +57,8 @@ namespace NSFGrant.Logging
             Directory.CreateDirectory(DataDirectory);
             string stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
             string safeId = StudyPaths.FileToken(participantId);
-            CurrentFilePath = Path.Combine(DataDirectory, $"gaze_{safeId}_{stamp}.csv");
+            string prefix = StudyProtocol.CollectGazeMeasures ? "gaze" : "motion";
+            CurrentFilePath = Path.Combine(DataDirectory, $"{prefix}_{safeId}_{stamp}.csv");
 
             _writer = new StreamWriter(CurrentFilePath, false, Encoding.UTF8);
             _writer.WriteLine(Header);
@@ -72,6 +80,15 @@ namespace NSFGrant.Logging
                 return;
             }
 
+            if (!StudyProtocol.CollectGazeMeasures)
+            {
+                var none = new Vector3(float.NaN, float.NaN, float.NaN);
+                gazeOrigin = none; gazeDir = none;
+                gazeSource = ""; confidence = float.NaN; angularVelocity = float.NaN;
+                isFixating = false; fixationId = -1;
+                hitTarget = ""; hasHit = false;
+            }
+
             var inv = CultureInfo.InvariantCulture;
             _row.Clear();
             _row.Append(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()).Append(',');
@@ -82,14 +99,23 @@ namespace NSFGrant.Logging
             _row.Append(headRot.y.ToString("F5", inv)).Append(',');
             _row.Append(headRot.z.ToString("F5", inv)).Append(',');
             _row.Append(headRot.w.ToString("F5", inv)).Append(',');
-            AppendVector(gazeOrigin, inv);
-            AppendVector(gazeDir, inv);
-            _row.Append(gazeSource).Append(',');
-            _row.Append(confidence.ToString("F3", inv)).Append(',');
-            _row.Append(angularVelocity.ToString("F2", inv)).Append(',');
-            _row.Append(isFixating ? '1' : '0').Append(',');
-            _row.Append(fixationId).Append(',');
-            _row.Append(Sanitize(hitTarget)).Append(',');
+            if (StudyProtocol.CollectGazeMeasures)
+            {
+                AppendVector(gazeOrigin, inv);
+                AppendVector(gazeDir, inv);
+                _row.Append(gazeSource).Append(',');
+                _row.Append(confidence.ToString("F3", inv)).Append(',');
+                _row.Append(angularVelocity.ToString("F2", inv)).Append(',');
+                _row.Append(isFixating ? '1' : '0').Append(',');
+                _row.Append(fixationId).Append(',');
+                _row.Append(Sanitize(hitTarget)).Append(',');
+            }
+            else
+            {
+                // gaze origin/dir, source, confidence, velocity, fixation
+                // flag + id, hit target: 12 empty columns.
+                _row.Append(',', 12);
+            }
             if (hasHit)
             {
                 AppendVector(hitPoint, inv);
@@ -131,11 +157,12 @@ namespace NSFGrant.Logging
             summary.WriteLine("participant_id,platform,condition,session_duration_s,total_fixations");
             summary.WriteLine(
                 $"{Sanitize(participantId)},{Sanitize(platform)},{Sanitize(condition)}," +
-                $"{sessionDuration.ToString("F2", inv)},{fixationCount}");
+                $"{sessionDuration.ToString("F2", inv)}," +
+                (StudyProtocol.CollectGazeMeasures ? fixationCount.ToString(inv) : ""));
 
             summary.WriteLine();
             summary.WriteLine("target_id,format,station_id,total_dwell_time_s,look_count,time_to_first_look_s");
-            foreach (var target in targets)
+            foreach (var target in StudyProtocol.CollectGazeMeasures ? targets : new Gaze.AttentionTarget[0])
             {
                 summary.WriteLine(
                     $"{Sanitize(target.TargetId)}," +

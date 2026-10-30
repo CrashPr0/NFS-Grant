@@ -1,0 +1,309 @@
+meta:
+  id: irb-post-study
+  name: Post-Study Questionnaire
+  version: 2.0.0
+  description: |
+    IRB 26-285 approved instrument (Survey Questionnaire 10.12.26 and
+    SDG Knowledge Test 9.10.26). Wording is verbatim; do not edit without
+    an IRB modification.
+    K1-K3 repeat, then K4, E1-E8, A1-A2, F1-F2, AI0-AI2, B1-B4, T1-T3,
+    O1-O5. Branching the importer can't express: AI1-AI2 only if AI0 is a
+    Yes; B1-B4, P9 and T3 browser only; T2 only if T1 is a Yes.
+    Browser payment needs K4, E1, E2, E3, E4, E5, E7 answered or declined.
+  shortName: PostStudy
+  tags: [irb-26-285, post]
+
+questions:
+  - id: K1
+    text: "SDG 4 - Quality Education. Which statement best describes how libraries can advance Quality Education?"
+    type: multiple_choice
+    config:
+      options:
+        - "By limiting learning services to formally enrolled students"
+        - "By expanding equitable access to education, information, digital technologies, and lifelong learning opportunities"
+        - "By focusing only on preservation of historical materials"
+        - "By providing emergency response services only"
+
+  - id: K2
+    text: "SDG 11 - Sustainable Cities and Communities. Which library activity is an example of strengthening sustainable and resilient communities?"
+    type: multiple_choice
+    config:
+      options:
+        - "Serving as a resilience hub that provides trusted information, internet connectivity, charging, safe space, and access to essential services during emergencies"
+        - "Restricting community partnerships during emergencies"
+        - "Reducing access to local cultural and historical information"
+        - "Limiting civic participation to government agencies"
+
+  - id: K3
+    text: "SDG 13 - Climate Action. Which approach is described as a way libraries can advance Climate Action?"
+    type: multiple_choice
+    config:
+      options:
+        - "Avoiding environmental topics because they are outside the library role"
+        - "Combining climate-literacy education with practical activities such as repair, reuse, makerspaces, and community partnerships"
+        - "Providing climate information only to environmental professionals"
+        - "Replacing community programs with building-efficiency projects alone"
+
+  - id: K4
+    text: "I learned something new from this experience."
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Strongly disagree"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Strongly agree"
+        - "Prefer not to answer"
+
+  - id: E1
+    text: "Overall, how engaging was this experience?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all engaging"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely engaging"
+        - "Prefer not to answer"
+
+  - id: E2
+    text: "Overall, how easy was it to navigate the environment?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Very difficult"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Very easy"
+        - "Prefer not to answer"
+
+  - id: E3
+    text: "How mentally demanding was the experience?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all demanding"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely demanding"
+        - "Prefer not to answer"
+
+  - id: E4
+    text: "How useful were the information presentations for understanding the SDGs?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all useful"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely useful"
+        - "Prefer not to answer"
+
+  - id: E5
+    text: "Overall, how satisfied were you with the experience?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Very dissatisfied"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Very satisfied"
+        - "Prefer not to answer"
+
+  - id: E6
+    text: "How likely would you be to use a similar learning experience again?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Very unlikely"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Very likely"
+
+  - id: E7
+    text: "After this experience, how motivated are you to learn more about the SDGs?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all motivated"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely motivated"
+        - "Prefer not to answer"
+
+  - id: E8
+    text: "After this experience, how willing are you to take an action related to one or more of the SDGs?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all willing"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely willing"
+
+  - id: A1
+    text: "Thinking back to when you first entered the SDG Discovery Hall, what type of information first caught your attention?"
+    type: multiple_choice
+    config:
+      options:
+        - "Written/text"
+        - "Data visualization/interactive infographic"
+        - "Narrative video/audio"
+        - "Interactive activity/simulation"
+        - "AI-enabled virtual docent"
+        - "Something else"
+        - "Do not remember"
+
+  - id: A2
+    text: "What is the first specific thing you remember noticing?"
+    type: text
+
+  - id: F1
+    text: "Which type of information helped you learn the most?"
+    type: multiple_choice
+    config:
+      options:
+        - "Written/text"
+        - "Data visualization/interactive infographic"
+        - "Narrative video/audio"
+        - "Interactive activity/simulation"
+        - "AI docent"
+        - "No single format"
+        - "Other"
+
+  - id: F2
+    text: "Which type of information held your attention the most?"
+    type: multiple_choice
+    config:
+      options:
+        - "Written/text"
+        - "Data visualization/interactive infographic"
+        - "Narrative video/audio"
+        - "Interactive activity/simulation"
+        - "AI docent"
+        - "No single format"
+        - "Other"
+
+  - id: AI0
+    text: "Did you use the optional AI-enabled virtual docent during this study?"
+    type: multiple_choice
+    config:
+      options:
+        - "No"
+        - "Yes, once"
+        - "Yes, more than once"
+        - "Not sure / do not remember"
+
+  - id: AI1
+    text: "How useful was the AI-enabled virtual docent?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all useful"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely useful"
+
+  - id: AI2
+    text: "What, if anything, was useful or not useful about the AI docent?"
+    type: text
+
+  - id: B1
+    text: "Which SDG zones did you visit during your exploration? Select all that apply."
+    type: selection
+    config:
+      options:
+        - "SDG 4 – Quality Education"
+        - "SDG 11 – Sustainable Cities and Communities"
+        - "SDG 13 – Climate Action"
+        - "Not sure / do not remember"
+
+  - id: B2
+    text: "What was the first information element you selected or interacted with?"
+    type: multiple_choice
+    config:
+      options:
+        - "Written/text information"
+        - "Data visualization/interactive infographic"
+        - "Narrative video/audio"
+        - "Interactive activity/simulation"
+        - "AI-enabled virtual docent"
+        - "Something else"
+        - "Do not remember"
+
+  - id: B3
+    text: "Which types of objects or interactive elements did you use? Select all that apply."
+    type: selection
+    config:
+      options:
+        - "Text/information panels"
+        - "Data visualizations/interactive infographics"
+        - "Narrative video/audio"
+        - "Interactive activities/simulations"
+        - "AI-enabled virtual docent"
+        - "Other"
+        - "None / do not remember"
+
+  - id: B4
+    text: "Before beginning this post-study questionnaire, how would you describe the status of your exploration?"
+    type: multiple_choice
+    config:
+      options:
+        - "I considered my exploration complete"
+        - "I chose to stop before I was finished"
+        - "A technical or connection problem caused me to stop early"
+        - "Another reason caused me to stop early"
+        - "Not sure"
+
+  - id: T1
+    text: "Did you experience any technical difficulties?"
+    type: multiple_choice
+    config:
+      options:
+        - "No"
+        - "Yes – minor, but I was able to continue"
+        - "Yes – significant"
+
+  - id: T2
+    text: "If yes, please briefly describe the technical difficulty."
+    type: text
+
+  - id: T3
+    text: "Browser only: During the study, did you experience connection-related problems such as slow loading, buffering, freezing, or disconnection?"
+    type: multiple_choice
+    config:
+      options:
+        - "No"
+        - "Yes – minor, but I was able to continue"
+        - "Yes – significant"
+        - "Not sure whether the problem was my internet connection or the study itself"
+
+  - id: O1
+    text: "What stood out most to you during the experience?"
+    type: text
+
+  - id: O2
+    text: "What, if anything, did you learn that was new to you?"
+    type: text
+
+  - id: O3
+    text: "Was anything difficult, confusing, or frustrating?"
+    type: text
+
+  - id: O4
+    text: "What would you change to improve the experience?"
+    type: text
+
+  - id: O5
+    text: "Is there anything else you would like to share?"
+    type: text

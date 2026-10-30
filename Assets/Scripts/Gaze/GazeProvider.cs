@@ -92,6 +92,12 @@ namespace NSFGrant.Gaze
             direction = Vector3.forward;
             confidence = 0f;
 
+            // IRB 26-285: eye tracking stays off; head gaze only.
+            if (!Core.StudyProtocol.CollectGazeMeasures)
+            {
+                return false;
+            }
+
             bool leftValid = IsEyeValid(leftEyeGaze);
             bool rightValid = IsEyeValid(rightEyeGaze);
 

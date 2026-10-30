@@ -22,6 +22,9 @@ namespace NSFGrant.Survey
             [Tooltip("Stable identifier used in the data files, e.g. sdg13_q1.")]
             public string questionId;
 
+            [Tooltip("Stages that ask this item, comma-separated (e.g. \"pre\" or \"pre,post\"). Empty = every stage.")]
+            public string stages = "";
+
             [TextArea]
             public string prompt;
 

@@ -13,16 +13,22 @@ namespace NSFGrant.Session
     /// Participant intake and session flow, so the same build runs unattended
     /// for the self-paced web sample and assisted in the LTI Lab:
     ///
-    ///   Intake -> pre-quiz -> exploration -> ("Finish exploring" button
-    ///   or F10) -> post-quiz
-    ///          -> value-ranking -> done
+    ///   Intake -> pre-quiz -> exploration (mid-study check-in pops up
+    ///   after the second explored zone) -> ("Finish exploring" button
+    ///   or F10) -> post-quiz -> done
+    ///
+    /// The quizzes are the IRB 26-285 approved SDG Knowledge Test
+    /// (ApprovedInstruments; R1-R3 pre only, K1-K3 pre and post) and the
+    /// Mid-Study Questionnaire (MidStudyCheckIn). The value ranking is not
+    /// an approved instrument and is skipped (StudyProtocol.RunValueRanking).
     ///
     /// Assignment sources, in priority order:
     ///   0. VERA, in a build connected to a VERA experiment: the participant
     ///      ID and Condition come from VERA's session (waits up to
     ///      veraWaitSeconds for it). In a VERA-hosted browser session VERA
     ///      runs the pre/post knowledge quiz as portal questionnaires, so the
-    ///      in-app quiz is skipped there; the value ranking still runs.
+    ///      in-app quiz is skipped there; the mid-study check-in still runs
+    ///      in-app.
     ///   1. URL parameters on WebGL/desktop: ?pid=P123&amp;cond=guided
     ///      (cond: passive|interactive|guided or a|b|c) — recruitment links
     ///      and VERA can encode assignment directly.
@@ -51,12 +57,23 @@ namespace NSFGrant.Session
         private bool _skipSurveys;
         private bool _confirmFinish;
         private bool _waitingForVera;
+        private QuizDefinition _knowledgeTest;
+        private MidStudyCheckIn _midStudy;
+        private float _explorationStart;
 
         private void Awake()
         {
             if (session == null) session = GetComponent<SessionController>();
             if (quiz == null) quiz = GetComponent<QuizRunner>();
             if (ranking == null) ranking = GetComponent<ValueRankingRunner>();
+            _knowledgeTest = ApprovedInstruments.KnowledgeTest();
+            _midStudy = GetComponent<MidStudyCheckIn>();
+            if (_midStudy == null) _midStudy = gameObject.AddComponent<MidStudyCheckIn>();
+        }
+
+        private void OnDestroy()
+        {
+            if (_knowledgeTest != null) Destroy(_knowledgeTest);
         }
 
         private void Start()
@@ -121,7 +138,7 @@ namespace NSFGrant.Session
             switch (_phase)
             {
                 case Phase.PreQuiz when quiz == null || quiz.IsComplete:
-                    _phase = Phase.Running;
+                    StartExploring();
                     break;
 
                 case Phase.Running when Input.GetKeyDown(endSessionKey):
@@ -156,15 +173,17 @@ namespace NSFGrant.Session
         /// </summary>
         public void RequestFinishExploration()
         {
-            if (_phase != Phase.Running)
+            // The mid-study check-in finishes first; it's four quick items.
+            if (_phase != Phase.Running || (_midStudy != null && _midStudy.IsShowing))
             {
                 return;
             }
             _confirmFinish = false;
             StudyEventLogger.Instance?.LogEvent("exploration_end_requested", "", "");
+            LogPaymentEligibility();
             if (!_skipSurveys && quiz != null)
             {
-                quiz.Show("post");
+                quiz.Show("post", _knowledgeTest);
                 _phase = Phase.PostQuiz;
             }
             else
@@ -176,7 +195,7 @@ namespace NSFGrant.Session
         /// <summary>Post-exploration value-ranking task, then finish.</summary>
         private void ShowRankingOrFinish()
         {
-            if (!_skipSurveys && ranking != null)
+            if (StudyProtocol.RunValueRanking && !_skipSurveys && ranking != null)
             {
                 ranking.Show();
                 _phase = Phase.Ranking;
@@ -202,13 +221,38 @@ namespace NSFGrant.Session
 
             if (!skipQuizzes && quiz != null)
             {
-                quiz.Show("pre");
+                quiz.Show("pre", _knowledgeTest);
                 _phase = Phase.PreQuiz;
             }
             else
             {
-                _phase = Phase.Running;
+                StartExploring();
             }
+        }
+
+        private void StartExploring()
+        {
+            _phase = Phase.Running;
+            _explorationStart = Time.unscaledTime;
+            StudyEventLogger.Instance?.LogEvent("exploration_start", "", "");
+        }
+
+        /// <summary>
+        /// The in-app half of the browser payment rule in the IRB 26-285
+        /// consent: 5+ minutes exploring, information used in 2+ distinct
+        /// SDG zones, M1-M4 answered or declined. (The post-survey core
+        /// items are checked wherever the post-survey runs.) Logged for the
+        /// team's reconciliation; nothing is withheld in-app.
+        /// </summary>
+        private void LogPaymentEligibility()
+        {
+            float explored = Time.unscaledTime - _explorationStart;
+            int zones = _midStudy != null ? _midStudy.ZonesInteracted : 0;
+            bool mid = _midStudy != null && _midStudy.Completed;
+            bool met = explored >= StudyProtocol.PaymentMinExplorationSeconds && zones >= 2 && mid;
+            StudyEventLogger.Instance?.LogEvent("payment_checkpoint", "",
+                $"exploration_s={explored:F0};zones_interacted={zones};mid_survey_done={(mid ? 1 : 0)};" +
+                $"in_app_requirements_met={(met ? 1 : 0)}");
         }
 
         private void FinishSession()

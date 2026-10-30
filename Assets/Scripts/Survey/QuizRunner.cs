@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using NSFGrant.Logging;
 using NSFGrant.UI;
@@ -22,6 +24,11 @@ namespace NSFGrant.Survey
         private int _currentQuestion;
         private int _correctCount;
 
+        // The definition being administered (the Inspector quiz unless
+        // Show was given another) and its questions for the current stage.
+        private QuizDefinition _running;
+        private readonly List<QuizDefinition.Question> _active = new List<QuizDefinition.Question>();
+
         public bool IsComplete { get; private set; }
 
         // --- Read/act API for non-IMGUI front ends (VRSurveyPanel). Same
@@ -29,11 +36,12 @@ namespace NSFGrant.Survey
         public bool IsVisible => _visible;
         public string StageLabel => stage?.ToLowerInvariant() == "pre" ? "PRE-SURVEY"
                                   : stage?.ToLowerInvariant() == "post" ? "POST-SURVEY"
+                                  : stage?.ToLowerInvariant() == "mid" ? "QUICK CHECK-IN"
                                   : (stage?.ToUpperInvariant() ?? "SURVEY");
         public int QuestionIndex => _currentQuestion;
-        public int QuestionCount => quiz != null && quiz.questions != null ? quiz.questions.Length : 0;
-        public string CurrentPrompt => _visible ? quiz.questions[_currentQuestion].prompt : "";
-        public string[] CurrentOptions => _visible ? quiz.questions[_currentQuestion].options : new string[0];
+        public int QuestionCount => _active.Count;
+        public string CurrentPrompt => _visible ? _active[_currentQuestion].prompt : "";
+        public string[] CurrentOptions => _visible ? _active[_currentQuestion].options : new string[0];
 
         /// <summary>Answers the current question with option <paramref name="index"/>.</summary>
         public void Choose(int index)
@@ -42,7 +50,7 @@ namespace NSFGrant.Survey
             {
                 return;
             }
-            var question = quiz.questions[_currentQuestion];
+            var question = _active[_currentQuestion];
             RecordResponse(question.questionId, index, question.correctIndex);
             NextQuestion();
         }
@@ -50,12 +58,40 @@ namespace NSFGrant.Survey
         /// <summary>Shows the IMGUI quiz panel (desktop/WebGL builds).</summary>
         public void Show(string quizStage)
         {
+            Show(quizStage, quiz);
+        }
+
+        /// <summary>
+        /// Administers <paramref name="definition"/>, asking only the items
+        /// whose stages include <paramref name="quizStage"/>.
+        /// </summary>
+        public void Show(string quizStage, QuizDefinition definition)
+        {
             stage = quizStage;
+            _running = definition;
+            _active.Clear();
+            if (definition != null && definition.questions != null)
+            {
+                foreach (var question in definition.questions)
+                {
+                    if (AskedAt(question, quizStage)) _active.Add(question);
+                }
+            }
             _currentQuestion = 0;
             _correctCount = 0;
-            _visible = quiz != null && quiz.questions != null && quiz.questions.Length > 0;
+            _visible = _active.Count > 0;
             IsComplete = !_visible;
-            StudyEventLogger.Instance?.LogEvent("quiz_start", quiz != null ? quiz.name : "", stage);
+            StudyEventLogger.Instance?.LogEvent("quiz_start", definition != null ? definition.name : "", stage);
+        }
+
+        private static bool AskedAt(QuizDefinition.Question question, string quizStage)
+        {
+            if (string.IsNullOrEmpty(question.stages)) return true;
+            foreach (string s in question.stages.Split(','))
+            {
+                if (string.Equals(s.Trim(), quizStage, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -86,9 +122,9 @@ namespace NSFGrant.Survey
             float btnH          = 52f * baseUnit;
             float btnGap        = 10f * baseUnit;
 
-            var question = quiz.questions[_currentQuestion];
+            var question = _active[_currentQuestion];
             int numOpts = question.options.Length;
-            int total = quiz.questions.Length;
+            int total = _active.Count;
 
             float cardW = Mathf.Min(660f * baseUnit, Screen.width - 60f);
             float cardH = Mathf.Min(
@@ -102,11 +138,8 @@ namespace NSFGrant.Survey
             StudyGuiKit.DrawCard(new Rect(cardX, cardY, cardW, cardH));
             StudyGuiKit.DrawHeader(new Rect(cardX, cardY, cardW, headerH));
 
-            string stageLabel = stage?.ToLowerInvariant() == "pre" ? "PRE-SURVEY"
-                              : stage?.ToLowerInvariant() == "post" ? "POST-SURVEY"
-                              : (stage?.ToUpperInvariant() ?? "SURVEY");
             GUI.Label(new Rect(cardX + pad, cardY, cardW * 0.65f, headerH),
-                      stageLabel, StudyGuiKit.HeaderStyle(baseUnit));
+                      StageLabel, StudyGuiKit.HeaderStyle(baseUnit));
             GUI.Label(new Rect(cardX, cardY, cardW - pad * 0.8f, headerH),
                       $"Q {_currentQuestion + 1} / {total}", StudyGuiKit.CounterStyle(baseUnit));
 
@@ -135,13 +168,13 @@ namespace NSFGrant.Survey
         private void NextQuestion()
         {
             _currentQuestion++;
-            if (_currentQuestion >= quiz.questions.Length)
+            if (_currentQuestion >= _active.Count)
             {
                 _visible = false;
                 IsComplete = true;
                 StudyEventLogger.Instance?.LogEvent(
-                    "quiz_complete", quiz.name,
-                    $"stage={stage};correct={_correctCount}/{quiz.questions.Length}");
+                    "quiz_complete", _running != null ? _running.name : "",
+                    $"stage={stage};correct={_correctCount}/{_active.Count}");
             }
         }
     }

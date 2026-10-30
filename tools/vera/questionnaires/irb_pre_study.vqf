@@ -1,0 +1,167 @@
+meta:
+  id: irb-pre-study
+  name: Pre-Study Questionnaire
+  version: 2.0.0
+  description: |
+    IRB 26-285 approved instrument (Survey Questionnaire 10.12.26 and
+    SDG Knowledge Test 9.10.26). Wording is verbatim; do not edit without
+    an IRB modification.
+    P2-P9 (demographics/background) then R1-R3 and K1-K3. P1 (18+ gate)
+    runs before consent in the recruitment/consent flow, not here.
+    P9 is browser-only: skip it for Quest sessions.
+  shortName: PreStudy
+  tags: [irb-26-285, pre]
+
+questions:
+  - id: P2
+    text: "What is your age range?"
+    type: multiple_choice
+    config:
+      options:
+        - "18–24"
+        - "25–34"
+        - "35–44"
+        - "45–54"
+        - "55–64"
+        - "65–74"
+        - "75 or older"
+        - "Prefer not to answer"
+
+  - id: P3
+    text: "How do you describe your gender?"
+    type: multiple_choice
+    config:
+      options:
+        - "Woman"
+        - "Man"
+        - "Nonbinary"
+        - "Another identity"
+        - "Prefer not to answer"
+
+  - id: P4
+    text: "Which of the following best describe you? Select all that apply."
+    type: selection
+    config:
+      options:
+        - "Library/information professional"
+        - "LIS student"
+        - "Student in another field"
+        - "Educator"
+        - "Other working professional"
+        - "Retired"
+        - "Other"
+        - "Prefer not to answer"
+
+  - id: P5
+    text: "How often have you used immersive virtual reality before today?"
+    type: multiple_choice
+    config:
+      options:
+        - "Never"
+        - "Once or twice"
+        - "Occasionally"
+        - "Frequently"
+
+  - id: P6
+    text: "How comfortable are you using virtual or 3D digital environments?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all comfortable"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely comfortable"
+
+  - id: P7
+    text: "How familiar are you with the United Nations Sustainable Development Goals?"
+    type: multiple_choice
+    config:
+      options:
+        - "1 - Not at all familiar"
+        - "2"
+        - "3"
+        - "4"
+        - "5 - Extremely familiar"
+
+  - id: P8
+    text: "Which device are you using for this study?"
+    type: multiple_choice
+    config:
+      options:
+        - "Mobile phone"
+        - "Desktop computer"
+        - "Laptop computer"
+        - "Meta Quest Pro"
+
+  - id: P9
+    text: "Browser only: How would you describe your internet connection while completing this study?"
+    type: multiple_choice
+    config:
+      options:
+        - "Very poor"
+        - "Poor"
+        - "Fair"
+        - "Good"
+        - "Very good"
+        - "Not sure"
+
+  - id: R1
+    text: "Which Sustainable Development Goal is Quality Education?"
+    type: multiple_choice
+    config:
+      options:
+        - "SDG 4"
+        - "SDG 11"
+        - "SDG 13"
+        - "Not sure"
+
+  - id: R2
+    text: "Which Sustainable Development Goal is Sustainable Cities and Communities?"
+    type: multiple_choice
+    config:
+      options:
+        - "SDG 4"
+        - "SDG 11"
+        - "SDG 13"
+        - "Not sure"
+
+  - id: R3
+    text: "Which Sustainable Development Goal is Climate Action?"
+    type: multiple_choice
+    config:
+      options:
+        - "SDG 4"
+        - "SDG 11"
+        - "SDG 13"
+        - "Not sure"
+
+  - id: K1
+    text: "SDG 4 - Quality Education. Which statement best describes how libraries can advance Quality Education?"
+    type: multiple_choice
+    config:
+      options:
+        - "By limiting learning services to formally enrolled students"
+        - "By expanding equitable access to education, information, digital technologies, and lifelong learning opportunities"
+        - "By focusing only on preservation of historical materials"
+        - "By providing emergency response services only"
+
+  - id: K2
+    text: "SDG 11 - Sustainable Cities and Communities. Which library activity is an example of strengthening sustainable and resilient communities?"
+    type: multiple_choice
+    config:
+      options:
+        - "Serving as a resilience hub that provides trusted information, internet connectivity, charging, safe space, and access to essential services during emergencies"
+        - "Restricting community partnerships during emergencies"
+        - "Reducing access to local cultural and historical information"
+        - "Limiting civic participation to government agencies"
+
+  - id: K3
+    text: "SDG 13 - Climate Action. Which approach is described as a way libraries can advance Climate Action?"
+    type: multiple_choice
+    config:
+      options:
+        - "Avoiding environmental topics because they are outside the library role"
+        - "Combining climate-literacy education with practical activities such as repair, reuse, makerspaces, and community partnerships"
+        - "Providing climate information only to environmental professionals"
+        - "Replacing community programs with building-efficiency projects alone"

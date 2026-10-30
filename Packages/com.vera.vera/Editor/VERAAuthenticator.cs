@@ -63,8 +63,9 @@ namespace VERA
                 return;
             }
 
-            // Open the authentication URL in the default browser
-            Application.OpenURL(VERAHost.hostUrl + "/Authenticate");
+            // Open the authentication URL in the default browser. The portal
+            // moved under /researcher (Oct 2026); /Authenticate now 404s.
+            Application.OpenURL(VERAHost.hostUrl + "/researcher/Authenticate");
         }
 
         // Starts the server
@@ -178,7 +179,9 @@ namespace VERA
         // Handles the authentication request
         private static void HandleAuthenticationRequest(IAsyncResult result)
         {
-            if (!isRunning || listener == null)
+            // A callback from a listener that was replaced (Authenticate
+            // clicked again) must not touch, or stop, the new one.
+            if (!isRunning || listener == null || !ReferenceEquals(result.AsyncState, listener))
                 return;
 
             HttpListenerContext context = null;

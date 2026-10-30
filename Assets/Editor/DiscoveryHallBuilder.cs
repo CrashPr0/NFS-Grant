@@ -2342,101 +2342,10 @@ namespace NSFGrant.EditorTools
 
         private static QuizDefinition CreateQuizAsset()
         {
-            var quiz = ScriptableObject.CreateInstance<QuizDefinition>();
-            quiz.questions = new[]
-            {
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg4_q1",
-                    prompt = "What is the aim of SDG 4?",
-                    options = new[]
-                    {
-                        "Ensure inclusive, equitable quality education and lifelong learning for all",
-                        "End hunger and improve nutrition",
-                        "Make cities inclusive, safe, resilient and sustainable",
-                        "Conserve the oceans and marine resources"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg4_q2",
-                    prompt = "According to the UN, accelerating progress on Goal 4 would have what effect?",
-                    options = new[]
-                    {
-                        "A catalytic effect on the whole 2030 Agenda",
-                        "No effect on other goals",
-                        "It only affects high-income countries",
-                        "It would slow progress on climate action"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg11_q1",
-                    prompt = "SDG 11 aims to make cities and human settlements...",
-                    options = new[]
-                    {
-                        "inclusive, safe, resilient and sustainable",
-                        "larger and denser",
-                        "centers of industrial production",
-                        "car-free by 2030"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg11_q2",
-                    prompt = "Helsinki's Oodi Central Library is notable as...",
-                    options = new[]
-                    {
-                        "a nearly zero-energy public space co-designed with residents",
-                        "the world's largest book archive",
-                        "a private members-only library",
-                        "a university research library"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg13_q1",
-                    prompt = "What does SDG 13 call for?",
-                    options = new[]
-                    {
-                        "Urgent action to combat climate change and its impacts",
-                        "Universal access to clean water",
-                        "Gender equality in education",
-                        "Reduced inequality among countries"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg13_q2",
-                    prompt = "Thammasat University Library's award-winning green program is built around...",
-                    options = new[]
-                    {
-                        "the circular economy (From Waste to Wealth)",
-                        "banning printed books",
-                        "solar-powered bookmobiles only",
-                        "closing the library to save energy"
-                    },
-                    correctIndex = 0
-                },
-                new QuizDefinition.Question
-                {
-                    questionId = "sdg13_q3",
-                    prompt = "A seed library primarily helps a community by...",
-                    options = new[]
-                    {
-                        "sharing and tracking seeds for local growing",
-                        "selling rare plants",
-                        "storing grain reserves",
-                        "replacing public gardens"
-                    },
-                    correctIndex = 0
-                }
-            };
+            // IRB 26-285 approved SDG Knowledge Test (R1-R3 pre, K1-K3 pre
+            // and post). StudyIntake runs ApprovedInstruments directly; the
+            // asset keeps the Inspector reference in step with it.
+            var quiz = ApprovedInstruments.KnowledgeTest();
 
             System.IO.Directory.CreateDirectory("Assets/StudyContent");
             const string assetPath = "Assets/StudyContent/SdgKnowledgeQuiz.asset";

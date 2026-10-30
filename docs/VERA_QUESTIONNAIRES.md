@@ -6,6 +6,42 @@ Content for the three "Surveys & Questionnaires" columns on the portal
 `docs/VERA_PLUGIN_REFERENCE.md` (phase semantics), `docs/VERA_PORTAL_PROGRESS.md`
 (live save status).
 
+## IRB 26-285 approved instruments (current — approved 2026-10-30)
+
+Everything below the line further down predates IRB approval and is
+**superseded** (files moved to `tools/vera/questionnaires/superseded/`).
+The approved PDFs live in Dr. Chow's working Drive folder; wording in
+these files is verbatim and must not change without an IRB modification.
+
+| File | Portal column | Items |
+|---|---|---|
+| `tools/vera/questionnaires/irb_pre_study.vqf` | Pre-VR | P2–P9, R1–R3, K1–K3 |
+| `tools/vera/questionnaires/irb_mid_study.vqf` | Mid-VR (optional) | M1–M4 |
+| `tools/vera/questionnaires/irb_post_study.vqf` | Post-VR | K1–K3, K4, E1–E8, A1–A2, F1–F2, AI0–AI2, B1–B4, T1–T3, O1–O5 |
+
+Not covered by the files:
+- **P1 (18+ gate) and consent** run before the study (recruitment form /
+  Qualtrics); the consent forms say Qualtrics administers consent and the
+  questionnaires, so the team should pick Qualtrics *or* these VERA cards.
+- **Branching** the importer can't express: P9, T3 and B1–B4 are browser
+  only; AI1–AI2 only if AI0 is a Yes; T2 only if T1 is a Yes.
+
+What the app does itself (`ApprovedInstruments`, `MidStudyCheckIn`):
+- Knowledge test R1–R3 (pre only) and K1–K3 (pre and post), when VERA
+  isn't running the Pre/Post cards.
+- **M1–M4 pop-up, always in-app**, once, after a second distinct SDG zone
+  is explored (30 s inside it, or interacting with information in it).
+  Each item has "Prefer not to answer".
+- `payment_checkpoint` event at "Finish exploring": exploration time,
+  zones interacted in, whether M1–M4 were done (consent payment rule:
+  5+ min, 2+ zones, M1–M4, plus post core items K4/E1–E5/E7).
+- Per the approved Quest measures, **no eye-gaze or fixation data**:
+  eye tracking is off and the per-frame file (`motion_*.csv`) keeps head
+  pose only (`StudyProtocol.CollectGazeMeasures`).
+- The value-ranking task is not approved and no longer runs.
+
+---
+
 ## Import via VQF (use this — confirmed 2026-07-14)
 
 The Surveys & Questionnaires screen has a **"Custom Questionnaire
@@ -15,9 +51,9 @@ files:
 
 | File | Column to import into | Content |
 |---|---|---|
-| `tools/vera/questionnaires/sdg_knowledge_quiz_pre.vqf` | Pre-VR | 7-question SDG knowledge quiz |
-| `tools/vera/questionnaires/sdg_knowledge_quiz_post.vqf` | Post-VR | Same 7 questions (separate `id`/card so it doesn't collide with the Pre-VR one) |
-| `tools/vera/questionnaires/comfort_check_in.vqf` | Mid-VR | **Draft** comfort self-report — needs team sign-off before real use, see below |
+| `tools/vera/questionnaires/superseded/sdg_knowledge_quiz_pre.vqf` | Pre-VR | 7-question SDG knowledge quiz |
+| `tools/vera/questionnaires/superseded/sdg_knowledge_quiz_post.vqf` | Post-VR | Same 7 questions (separate `id`/card so it doesn't collide with the Pre-VR one) |
+| `tools/vera/questionnaires/superseded/comfort_check_in.vqf` | Mid-VR | **Draft** comfort self-report — needs team sign-off before real use, see below |
 
 Drag-drop each file into the importer, click **Import & Preview**, verify
 the preview matches the tables below, then confirm the import into the
