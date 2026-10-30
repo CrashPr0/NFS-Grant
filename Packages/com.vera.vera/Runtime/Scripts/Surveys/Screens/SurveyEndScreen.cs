@@ -1,3 +1,7 @@
+// Copyright (c) 2024-2026 University of Central Florida for VERA. All rights reserved. <https://vera-xr.io>
+// SPDX-FileCopyrightText: 2024-2026 University of Central Florida for VERA <https://vera-xr.io>
+// SPDX-License-Identifier: LicenseRef-VERA
+
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -86,7 +90,7 @@ namespace VERA
 
             // Wait, then finish the survey and continue with the experiment
             yield return new WaitForSeconds(3.5f);
-            surveyDisplay.FinishSurvey();
+            surveyDisplay.FinishSurvey(surveyInterfaceIO.submittedResults);
         }
 
 

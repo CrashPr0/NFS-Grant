@@ -62,8 +62,11 @@ The plugin is a public UPM package (already added to
 `Packages/manifest.json` in this project):
 
 ```
-https://github.com/ucf-research/vera-package.git
+https://github.com/ucf-research/vera-package.git#v0.4.3
 ```
+
+(It is also embedded at `Packages/com.vera.vera`, which takes precedence —
+see "VERA package version" below.)
 
 It requires **Unity 6000.0+** — this project targets **6000.3.9f1**
 (see `ProjectSettings/ProjectVersion.txt`). Authentication is interactive:
@@ -151,21 +154,149 @@ Fix, in order:
    `CiTools.SetupProject` now sets Both automatically.
 
    **VERA is now embedded and patched** at `Packages/com.vera.vera`
-   (v0.4.2, copied from the git package minus the 404 MB `Samples~`
-   demo). The three methods taking `InputActionProperty`
+   (v0.4.3, copied from the upstream `v0.4.3` tag minus the `Samples~`
+   demo; see "VERA package version" below). The three methods taking
+   `InputActionProperty`
    (`GetFloatInputState`, `GetInputState`, `GetVector2InputState`) are
    wrapped whole in `#if ENABLE_INPUT_SYSTEM`; they are only called from
    code already under that guard, so it compiles with any input setting.
-   An embedded package overrides the git URL still in `manifest.json`.
-   **To update VERA:** delete `Packages/com.vera.vera`, let Unity fetch
-   the new git version, and if upstream hasn't fixed the guard yet,
-   re-embed and re-apply the patch (search for `NSF-Grant patch`). Worth
-   reporting upstream so the patch can be dropped.
+   Upstream 0.4.3 still guards only the method *bodies*, so the patch is
+   still needed. An embedded package overrides the git URL in
+   `manifest.json` (now pinned to `#v0.4.3`).
+   **To update VERA:** follow "Updating the embedded package" below.
+   Worth reporting upstream so the patch can be dropped.
 5. **If duplicate-TextMeshPro type errors appear next:** VERA declares
    `com.unity.textmeshpro 3.0.6`, but Unity 6 merged TMP into
    `com.unity.ugui 2.0.0`. If Unity doesn't reconcile this on its own,
    report it — a single manifest override addresses it (do not download
    anything extra for this).
+
+## VERA package version (0.4.3, updated 2026-10-29)
+
+**Embedded version:** upstream tag `v0.4.3` (released 2026-10-23,
+commit `5a4ad95`). The previous embed was labelled 0.4.2 but was actually
+the unreleased upstream commit `3235047` (2026-09-23).
+`Packages/manifest.json` pins the git URL to `#v0.4.3`. So if the embed
+is ever deleted, Unity fetches the same version instead of `main`.
+
+**Decision: pin to 0.4.3; don't take the post-0.4.3 commits on `main`.**
+On 2026-10-27, upstream commit `b023b66` ("SwapOculusDependency")
+replaced VERA's `com.unity.xr.oculus 4.2.0` dependency with
+`com.unity.xr.openxr 1.15.1` and bumped `com.unity.inputsystem` to
+1.14.2. This project runs Quest through the **Oculus XR plugin**:
+`Assets/XR/Loaders/OculusLoader.asset`, plus `com.unity.xr.oculus` and
+`com.meta.xr.sdk.core 71` in the manifest. Our gaze pipeline also uses OVR
+APIs (`OVRCameraRig`, `OVREyeGaze`). Taking `main` would install OpenXR
+next to the Oculus plugin. Unity supports only one active loader per
+platform, and switching the gaze/eye-tracking path to OpenXR is a
+separate, device-tested migration. It shouldn't ride along with an SDK
+bump. The Input System bump alone is harmless: Unity 6.3 already
+resolves 1.18.0.
+VERA's runtime code doesn't reference OpenXR at all. The swap only
+touches `package.json` and the sandbox sample. So nothing in 0.4.3 depends
+on Oculus vs OpenXR either way.
+
+What we skip by pinning, all from 2026-10-26 to 2026-10-29: experiment-wide
+memory (`VERAExperimentMemory`), success/error callbacks on generated
+`VERAFile_*.UploadFile`, a 50 → 500 MB upload limit, and a 30-minute
+`HttpClient` timeout for WebXR build uploads. We use none of these APIs.
+If WebXR build uploads time out at about 100 s, backport that one-line
+timeout from `Editor/VERABuildUploader.cs` on upstream `main`.
+
+**Local patches on top of v0.4.3** (search `NSF-Grant patch`):
+
+1. `Runtime/Scripts/Logger/ExperimentTelemetry/VERABaselineDataLogger.cs`:
+   the `InputActionProperty` guard described above. Still needed in
+   0.4.3.
+2. `Runtime/Scripts/Logger/WebXRQuery.cs.meta`: the v0.4.3 tag shipped
+   `WebXRQuery.cs` without a `.meta`. This copies upstream's own fix
+   (commit `cf41e83`), so the GUID matches future versions.
+
+`Samples~` (the 404 MB demo), `.gitignore` and `.vscode` are left out of
+the embed, as before.
+
+**What changed in 0.4.3 that touches this project:**
+
+- *API we call:* unchanged. `VERASessionManager.initialized`,
+  `collecting`, `participantID`, `GetSelectedIVValue`,
+  `CreateArbitraryCsvEntry` and `FinalizeSession` keep the same
+  signatures. The `VERABuildAuthentication` resource still has
+  `authenticated` / `activeExperimentName`. `VeraSession`,
+  `VeraPluginAdapter`, `VeraBridge` and `StudyIntake` need no code
+  changes.
+- *Generated code:* VERA no longer generates a wrapper for
+  `Experiment_Telemetry`. Its own `VERABaselineDataLogger` writes that
+  file. On the next experiment sync it **deletes**
+  `Assets/VERA/Filetypes/GeneratedCode/VERAFile_Experiment_Telemetry.cs`.
+  This is expected; commit the deletion. The
+  `VERAFile_Experiment_Telemetry` **scripting define** is still set, so
+  `VeraSession`'s `#if VERAFile_Experiment_Telemetry` gates keep working.
+  Nothing in our code calls the wrapper class.
+- *Auth:* the "silent authentication failure" fix (PR #52) is editor-side
+  (`VERAAuthenticator`, `VERASettingsWindow`). A stale sign-in now shows
+  as signed out instead of silently producing an unconnected build.
+- *New, additive:* participant memory keys, survey results callbacks
+  (`VERASurveyResults`), and WebXR URL-parameter forwarding
+  (`VERASessionManager.GetUrlParameter` / `onUrlParametersReceived`).
+  `StudyIntake` still reads `?pid=` / `?cond=` itself. That's unchanged,
+  but the VERA accessor is now an option for VERA-hosted links.
+- *Surveys:* open-response questions and a spatial keyboard. On first
+  editor load, VERA imports XRI's **Spatial Keyboard** sample into
+  `Assets/Samples/XR Interaction Toolkit/…`. It also copies
+  `XRI Global Keyboard Manager.prefab` into `Assets/VERA/Resources/`.
+  Commit both.
+
+**Risks**
+
+- *Upstream is moving to OpenXR.* Future VERA releases will likely
+  require it, so pinning delays the Oculus → OpenXR migration rather than
+  avoiding it. Plan that migration separately, with Quest Pro eye-tracking
+  tests for `OVREyeGaze` under OpenXR.
+- *Survey UI changes* (prefab, keyboard, open-response) are untested
+  here. Re-run any VERA questionnaire flow (`docs/VERA_QUESTIONNAIRES.md`).
+- *WebXR session start* now waits for the hosting page's URL parameters,
+  then auto-starts. Check that a VERA participant link still reaches
+  `[StudyIntake] VERA session: pID …` within `veraWaitSeconds`.
+- The embed is a fork, so every update means re-applying the patches
+  above.
+
+**What Chris must do in the Unity editor after merging**
+
+1. Pull, then open in **Unity 6000.3.9f1**. Let packages resolve; the
+   Meta npm registry caveats above still apply. In Package Manager, VERA
+   should show **0.4.3** (embedded/Custom).
+2. Wait for VERA's first-load automation (the XRI sample import and
+   keyboard prefab copy), then confirm the Console has **no compile
+   errors**.
+3. Leave `Project Settings > Player > Active Input Handling` on **Both**.
+4. In `Project Settings > XR Plug-in Management`, the **Android** tab
+   must still have only **Oculus** checked. **OpenXR** must be absent or
+   unchecked.
+5. Open `VERA > Settings`. If it shows signed out, click
+   **Authenticate** again (expected after the auth fix). Then re-select
+   the Discovery Hall experiment so VERA re-syncs file types and defines.
+6. In `Project Settings > Player > Scripting Define Symbols`, check
+   Android, Web and Standalone. Each should still list
+   `VERAFile_Experiment_Telemetry`, `VERAFile_Gaze_Samples`,
+   `VERAFile_StudyEvents` and `VERAIV_Condition`.
+7. Commit the editor-generated changes: deletion of
+   `VERAFile_Experiment_Telemetry.cs(.meta)`, the Spatial Keyboard
+   sample, the keyboard prefab in `Assets/VERA/Resources/`, and any
+   `packages-lock.json` rewrite.
+8. Run the Unity + Quest checklist in the PR description
+   (`SUMMARY.md`).
+
+### Updating the embedded package
+
+1. Clone `https://github.com/ucf-research/vera-package` and check out the
+   wanted tag.
+2. Replace `Packages/com.vera.vera` with that tree minus `Samples~`,
+   `.gitignore` and `.vscode`.
+3. Re-apply each `NSF-Grant patch` that upstream hasn't fixed. Drop the
+   `.meta` backport once the tag includes it.
+4. Update the `#vX.Y.Z` pin in `Packages/manifest.json`.
+5. Diff `package.json` dependencies against our manifest. Watch for
+   `com.unity.xr.openxr` or any change to the XR loader.
 
 ## Note for Claude Code sessions
 

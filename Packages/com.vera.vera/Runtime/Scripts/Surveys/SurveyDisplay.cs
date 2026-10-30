@@ -1,3 +1,7 @@
+// Copyright (c) 2024-2026 University of Central Florida for VERA. All rights reserved. <https://vera-xr.io>
+// SPDX-FileCopyrightText: 2024-2026 University of Central Florida for VERA <https://vera-xr.io>
+// SPDX-License-Identifier: LicenseRef-VERA
+
 using System;
 using System.Collections.Generic;
 using TMPro;
@@ -52,7 +56,7 @@ namespace VERA
         #region VARIABLES
 
         private VERASurveyInfo activeSurveyInfo;
-        private Action onSurveyComplete;
+        private Action<VERASurveyResults> onSurveyComplete;
 
         private VERAFocusUI focusUi;
         [SerializeField] private VERASurveyComponents surveyComponents;
@@ -66,7 +70,7 @@ namespace VERA
 
         private SurveyDisplayState currentSurveyState = SurveyDisplayState.StartingScreen;
         private SurveyScreen activeSurveyScreen;
-        private KeyValuePair<string, string>[] surveyResponses;
+        private SurveyQuestionAnswer[] surveyResponses;
         private int currentQuestionIndex = 0;
 
 
@@ -123,10 +127,10 @@ namespace VERA
         /// Start a survey by VERASurveyInfo. Triggers the display of the survey in VR, and the collection of responses.
         /// </summary>
         /// <param name="surveyToStart">The VERASurveyInfo object containing the survey details to start.</param>
-        /// <param name="onSurveyComplete">A callback Action that will be invoked when the survey is completed by the participant.</param>
+        /// <param name="onSurveyComplete">Invoked when the survey is completed. The argument is that submission's responses.</param>
         /// <param name="heightOffset">How far the survey will be offset vertically from the user's head position. Default is 0.</param>
         /// <param name="distanceOffset">How far the survey will be offset horizontally from the user's head position. Default is 3.</param>
-        public void StartSurvey(VERASurveyInfo surveyToStart, Action onSurveyComplete, float heightOffset = 0f, float distanceOffset = 3f)
+        public void StartSurvey(VERASurveyInfo surveyToStart, Action<VERASurveyResults> onSurveyComplete, float heightOffset = 0f, float distanceOffset = 3f)
         {
             VERATween.Cancel(surveyComponents.mainCanvasGroup.gameObject);
             surveyComponents.mainCanvasGroup.TweenAlpha(1f, SurveyDisplay.SCREEN_FADE_DURATION);
@@ -135,7 +139,7 @@ namespace VERA
             this.onSurveyComplete = onSurveyComplete;
 
             // Reset responses and question index
-            surveyResponses = new KeyValuePair<string, string>[activeSurveyInfo.surveyQuestions.Count];
+            surveyResponses = new SurveyQuestionAnswer[activeSurveyInfo.surveyQuestions.Count];
             currentQuestionIndex = 0;
 
             // Apply height and distance offset parameters
@@ -151,12 +155,12 @@ namespace VERA
         /// Finishes the survey; should be called when the participant has fully completed the survey, 
         /// and the results have been successfully uploaded (i.e. ready to move on).
         /// </summary>
-        public void FinishSurvey()
+        public void FinishSurvey(VERASurveyResults results)
         {
             // If we have a stored callback for when the survey is complete, invoke it to trigger any necessary follow-up actions
             if (onSurveyComplete != null)
             {
-                onSurveyComplete.Invoke();
+                onSurveyComplete.Invoke(results);
 
                 VERATween.Cancel(surveyComponents.mainCanvasGroup.gameObject);
                 surveyComponents.mainCanvasGroup.TweenAlpha(0f, SurveyDisplay.SCREEN_FADE_DURATION).SetOnComplete(() => Destroy(gameObject));
@@ -188,7 +192,7 @@ namespace VERA
                     if (currentQuestionIndex > 0)
                     {
                         currentQuestionIndex--;
-                        surveyComponents.questionScreen.DisplayQuestion(activeSurveyInfo.surveyQuestions[currentQuestionIndex]);
+                        DisplayCurrentQuestion();
                         SetProgressText(true, currentQuestionIndex);
                     }
                     else
@@ -234,7 +238,7 @@ namespace VERA
                     if (currentQuestionIndex < activeSurveyInfo.surveyQuestions.Count - 1)
                     {
                         currentQuestionIndex++;
-                        surveyComponents.questionScreen.DisplayQuestion(activeSurveyInfo.surveyQuestions[currentQuestionIndex]);
+                        DisplayCurrentQuestion();
                         SetProgressText(true, currentQuestionIndex);
                     }
                     else
@@ -281,11 +285,30 @@ namespace VERA
         {
             currentSurveyState = SurveyDisplayState.InSurvey;
             surveyComponents.questionScreen.ShowQuestionScreen();
-            surveyComponents.questionScreen.DisplayQuestion(activeSurveyInfo.surveyQuestions[currentQuestionIndex]);
+            DisplayCurrentQuestion();
             activeSurveyScreen = surveyComponents.questionScreen;
 
             SetNavButtons(true, NEXT_BUTTON_DEFAULT_TEXT, true, PREVIOUS_BUTTON_DEFAULT_TEXT);
             SetProgressText(true, currentQuestionIndex);
+        }
+
+
+        /// <summary>
+        /// Shows the question at <see cref="currentQuestionIndex"/>, restoring any previously saved answer.
+        /// </summary>
+        private void DisplayCurrentQuestion()
+        {
+            SurveyQuestionAnswer savedAnswer = null;
+            if (surveyResponses != null
+                && currentQuestionIndex >= 0
+                && currentQuestionIndex < surveyResponses.Length)
+            {
+                savedAnswer = surveyResponses[currentQuestionIndex];
+            }
+
+            surveyComponents.questionScreen.DisplayQuestion(
+                activeSurveyInfo.surveyQuestions[currentQuestionIndex],
+                savedAnswer);
         }
 
 
@@ -324,15 +347,20 @@ namespace VERA
             }
 
             // Save the response for the current question
-            surveyResponses[currentQuestionIndex] = new KeyValuePair<string, string>(activeSurveyInfo.surveyQuestions[currentQuestionIndex].questionId, surveyComponents.questionScreen.GetCurrentResponse());
+            surveyResponses[currentQuestionIndex] = new SurveyQuestionAnswer
+            {
+                questionId = activeSurveyInfo.surveyQuestions[currentQuestionIndex].questionId,
+                answer = surveyComponents.questionScreen.GetCurrentResponse(),
+                otherText = surveyComponents.questionScreen.GetCurrentOtherText()
+            };
         }
 
 
         /// <summary>
         /// Returns the survey responses collected from the participant.
         /// </summary>
-        /// <returns>A KeyValuePair containing the survey ID and the participant's responses.</returns>
-        public KeyValuePair<string, string>[] GetSurveyResults()
+        /// <returns>An array of survey question answers including optional Other free-text.</returns>
+        public SurveyQuestionAnswer[] GetSurveyResults()
         {
             return surveyResponses;
         }
