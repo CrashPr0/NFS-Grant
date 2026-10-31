@@ -687,9 +687,15 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: URP_COMPATIBILITY_MODE
-    Standalone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE
-    WebGL: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE
+    Android: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition
+    Nintendo Switch: 
+    PS4: 
+    Standalone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition
+    WebGL: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition
+    Windows Store Apps: 
+    XboxOne: 
+    iPhone: 
+    tvOS: 
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}

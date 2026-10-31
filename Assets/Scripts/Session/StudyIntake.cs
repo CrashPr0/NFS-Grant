@@ -22,6 +22,12 @@ namespace NSFGrant.Session
     /// Mid-Study Questionnaire (MidStudyCheckIn). The value ranking is not
     /// an approved instrument and is skipped (StudyProtocol.RunValueRanking).
     ///
+    /// With questionnairesInQualtrics (default, per the approved consent
+    /// forms) Qualtrics runs consent and the pre/post questionnaires: its
+    /// pre-survey redirects here with ?pid=, the in-app pre/post test is
+    /// skipped, and the done screen links to the post-survey (postSurveyUrl,
+    /// {pid} filled in). In the headset the researcher opens it instead.
+    ///
     /// Assignment sources, in priority order:
     ///   0. VERA, in a build connected to a VERA experiment: the participant
     ///      ID and Condition come from VERA's session (waits up to
@@ -51,6 +57,17 @@ namespace NSFGrant.Session
         [Tooltip("In a VERA-connected build, how long to wait for VERA's session " +
                  "before falling back to the Inspector/URL/intake-panel ID.")]
         [SerializeField] private float veraWaitSeconds = 20f;
+
+        [Header("Qualtrics (IRB 26-285: consent and questionnaires)")]
+        [Tooltip("Qualtrics runs consent and the pre/post questionnaires (the approved " +
+                 "consent forms say so), so the in-app pre/post knowledge test is " +
+                 "skipped. The in-app mid-study check-in still runs.")]
+        [SerializeField] private bool questionnairesInQualtrics = true;
+
+        [Tooltip("Qualtrics post-study survey link. {pid} is replaced with the " +
+                 "participant's study ID, e.g. https://sjsu.qualtrics.com/jfe/form/SV_xxx?pid={pid}. " +
+                 "Empty = the done screen tells the participant the team will send it.")]
+        [SerializeField] private string postSurveyUrl = "";
 
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
@@ -216,10 +233,10 @@ namespace NSFGrant.Session
             }
 
             session.ParticipantId = participantId;
-            _skipSurveys = skipQuizzes;
+            _skipSurveys = skipQuizzes || questionnairesInQualtrics;
             session.StartSession();
 
-            if (!skipQuizzes && quiz != null)
+            if (!_skipSurveys && quiz != null)
             {
                 quiz.Show("pre", _knowledgeTest);
                 _phase = Phase.PreQuiz;
@@ -457,6 +474,43 @@ namespace NSFGrant.Session
         /// not close the page until their data has actually reached the
         /// study's Drive. Shared with the in-headset panel.
         /// </summary>
+        /// <summary>
+        /// The Qualtrics post-study link for this participant, or null when
+        /// questionnaires aren't in Qualtrics or no link is set.
+        /// </summary>
+        public string PostSurveyLink
+        {
+            get
+            {
+                if (!questionnairesInQualtrics || string.IsNullOrWhiteSpace(postSurveyUrl))
+                {
+                    return null;
+                }
+                return postSurveyUrl.Trim().Replace("{pid}", Uri.EscapeDataString(session.ParticipantId ?? ""));
+            }
+        }
+
+        /// <summary>
+        /// Done-screen text: upload status, then where the post-study
+        /// survey is when Qualtrics runs it.
+        /// </summary>
+        public string DoneMessage(bool inHeadset)
+        {
+            string message = CompletionMessage();
+            if (!questionnairesInQualtrics)
+            {
+                return message;
+            }
+            message = message.Replace(" You may close this window.", "");
+            if (inHeadset)
+            {
+                return message + " Please remove the headset; the researcher will start the final questions.";
+            }
+            return PostSurveyLink != null
+                ? message + " Please continue to the final survey."
+                : message + " The study team will send you the final survey.";
+        }
+
         public static string CompletionMessage()
         {
             switch (RemoteDataUploader.FinalStatus)
@@ -480,10 +534,12 @@ namespace NSFGrant.Session
 
             float pad     = 30f * baseUnit;
             float headerH = 64f * baseUnit;
-            float bodyH   = 80f * baseUnit;
+            float bodyH   = 100f * baseUnit;
+            float btnH    = 52f * baseUnit;
+            string link   = PostSurveyLink;
 
             float cardW = Mathf.Min(520f * baseUnit, Screen.width - 60f);
-            float cardH = headerH + pad + bodyH + pad;
+            float cardH = headerH + pad + bodyH + pad + (link != null ? btnH + pad : 0f);
             float cardX = (Screen.width - cardW) * 0.5f;
             float cardY = (Screen.height - cardH) * 0.5f;
 
@@ -495,7 +551,15 @@ namespace NSFGrant.Session
 
             var bodyStyle = StudyGuiKit.BodyStyle(baseUnit);
             GUI.Label(new Rect(cardX + pad, cardY + headerH + pad, cardW - pad * 2f, bodyH),
-                      CompletionMessage(), bodyStyle);
+                      DoneMessage(inHeadset: false), bodyStyle);
+
+            if (link != null &&
+                GUI.Button(new Rect(cardX + pad, cardY + headerH + pad + bodyH + pad, cardW - pad * 2f, btnH),
+                           "Continue to the final survey", StudyGuiKit.ButtonStyle(baseUnit)))
+            {
+                StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "");
+                Application.OpenURL(link);
+            }
         }
     }
 }

@@ -19,16 +19,33 @@ these files is verbatim and must not change without an IRB modification.
 | `tools/vera/questionnaires/irb_mid_study.vqf` | Mid-VR (optional) | M1–M4 |
 | `tools/vera/questionnaires/irb_post_study.vqf` | Post-VR | K1–K3, K4, E1–E8, A1–A2, F1–F2, AI0–AI2, B1–B4, T1–T3, O1–O5 |
 
+**Decision (2026-10-30): Qualtrics, not the VERA portal.** Both approved
+consent forms say "Qualtrics administers the consent and questionnaires"
+and that VERA gets eligibility confirmation "without individual
+questionnaire answers". Do **not** import these `.vqf` files into VERA;
+keep them as the verbatim item list for building the Qualtrics surveys.
+
+Qualtrics hand-off (StudyIntake, `questionnairesInQualtrics` on by default):
+1. Qualtrics: consent → P1 → pre-study survey. Its end-of-survey redirect
+   sends the participant to the app with their study ID, e.g.
+   `https://crashpr0.github.io/NFS-Grant/?pid=${e://Field/pid}`
+   (use whatever embedded-data field holds the study ID).
+2. The app skips its own pre/post test, runs exploration and M1–M4.
+3. "Finish exploring" → done screen with a **Continue to the final
+   survey** button opening `postSurveyUrl` (set on the StudyIntake
+   component; `{pid}` is replaced with the study ID, so the post-survey
+   needs a `pid` embedded-data field captured from the URL).
+4. Quest (in person): the headset says to remove it; the researcher opens
+   the post-survey on a lab device with the participant's study ID.
+
 Not covered by the files:
-- **P1 (18+ gate) and consent** run before the study (recruitment form /
-  Qualtrics); the consent forms say Qualtrics administers consent and the
-  questionnaires, so the team should pick Qualtrics *or* these VERA cards.
+- **P1 (18+ gate) and consent** run in Qualtrics before the study.
 - **Branching** the importer can't express: P9, T3 and B1–B4 are browser
   only; AI1–AI2 only if AI0 is a Yes; T2 only if T1 is a Yes.
 
 What the app does itself (`ApprovedInstruments`, `MidStudyCheckIn`):
-- Knowledge test R1–R3 (pre only) and K1–K3 (pre and post), when VERA
-  isn't running the Pre/Post cards.
+- Knowledge test R1–R3 (pre only) and K1–K3 (pre and post) — only when
+  `questionnairesInQualtrics` is off (fallback for offline/lab tests).
 - **M1–M4 pop-up, always in-app**, once, after a second distinct SDG zone
   is explored (30 s inside it, or interacting with information in it).
   Each item has "Prefer not to answer".

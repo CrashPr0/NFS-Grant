@@ -193,7 +193,7 @@ namespace NSFGrant.Interaction
             else if (intake != null && intake.IsDone)
             {
                 c.Header = "SESSION COMPLETE";
-                c.Body = StudyIntake.CompletionMessage()
+                c.Body = intake.DoneMessage(inHeadset: true)
                     .Replace("close this window", "remove the headset")
                     .Replace("keep this page open", "keep the headset on");
             }

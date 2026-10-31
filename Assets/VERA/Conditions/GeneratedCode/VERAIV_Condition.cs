@@ -1,0 +1,87 @@
+// Copyright (c) 2024-2026 University of Central Florida for VERA. All rights reserved. <https://vera-xr.io>
+// SPDX-FileCopyrightText: 2024-2026 University of Central Florida for VERA <https://vera-xr.io>
+// SPDX-License-Identifier: LicenseRef-VERA
+
+#if VERAIV_Condition
+using UnityEngine;
+using UnityEngine.Networking;
+using System;
+using System.Collections;
+
+namespace VERA
+{
+	/// <summary>
+	/// Static class for accessing and modifying the Condition independent variable and its possible values.
+	/// <br/><br/>This class has been generated based on the condition values defined for this variable in the VERA portal.
+	/// This class should be the only way you access or modify the Condition independent variable.
+	/// <br/><br/>Notably, use the GetSelectedValue() method to get the currently selected value of this independent variable, and the SetSelectedValue() method to change it.
+	/// </summary>
+	public static class VERAIV_Condition
+	{
+
+		/// <summary>
+		/// Enum of possible values for the Condition independent variable.
+		/// <br/><br/>This enum has been generated based on the condition values defined for this variable in the VERA portal.
+		/// Each enum value is prefixed with V_ to avoid issues with names starting with numbers or other invalid enum names.
+		/// <br/><br/>For this particular independent variable (Condition), the possible values are:<list type="bullet">
+		/// <item><description>Passive</description></item>
+		/// <item><description>Interactive</description></item>
+		/// <item><description>Guided</description></item>
+		/// </list>
+		/// </summary>
+		public enum IVValue
+		{
+			V_Passive,
+			V_Interactive,
+			V_Guided,
+		}
+
+		/// <summary>
+		/// Gets the currently selected condition value of the Condition independent variable.
+		/// (Note - This method uses a cached value stored locally on the client. As such, it may be out of date if you have manually changed the condition value on the server externally.)
+		/// <br/><br/>This method has been generated based on the condition values defined for this variable in the VERA portal.
+		/// </summary>
+		/// <returns>The current selected value of the Condition independent variable</returns>
+		public static IVValue GetSelectedValue()
+		{
+			// Get the value - will be a string, needs to be converted to enum
+			string selectedValue = VERASessionManager.GetSelectedIVValue("Condition");
+
+			if (string.IsNullOrEmpty(selectedValue))
+			{
+				Debug.LogError("[VERA IVGroup_Condition] Error while getting selected IV value, got empty or null string as response");
+				throw new InvalidOperationException("Unknown selected condition value");
+			}
+
+			// Direct conversion from string value to enum
+			return selectedValue switch
+			{
+				"Passive" => IVValue.V_Passive,
+				"Interactive" => IVValue.V_Interactive,
+				"Guided" => IVValue.V_Guided,
+				_ => throw new InvalidOperationException($"Unknown selected condition value: {selectedValue}")
+			};
+		}
+
+		/// <summary>
+		/// Sets the currently selected condition value of the Condition independent variable.
+		/// <br/><br/>This method has been generated based on the condition values defined for this variable in the VERA portal.
+		/// </summary>
+		/// <param name="value">The new selected value for the Condition independent variable</param>
+		public static void SetSelectedValue(IVValue value)
+		{
+			// Convert enum to server value
+			string valueStr = value switch
+			{
+				IVValue.V_Passive => "Passive",
+				IVValue.V_Interactive => "Interactive",
+				IVValue.V_Guided => "Guided",
+				_ => throw new InvalidOperationException($"Unknown enum value: {value}")
+			};
+
+			VERASessionManager.SetSelectedIVValue("Condition", valueStr);
+		}
+
+	}
+}
+#endif
