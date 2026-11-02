@@ -40,6 +40,14 @@ Nothing validates the instrumentation like one real session.
 
 - [ ] Desktop Play mode: intake panel → pre-quiz → visit all 3 stations →
       click CTAs → F10 → post-quiz.
+- [ ] Walk into every sign/post (hub welcome sign, exhibit panel legs,
+      call-to-action wall legs): each should stop you. Rebuild the scene
+      first (**NSF Grant > Build Discovery Hall Scene**) - colliders are
+      added by the builder, not at runtime.
+- [ ] Headset (native and Quest-browser WebXR): the "Finish exploring" tab
+      floats low in front of you during exploration; point + trigger opens
+      "End exploring?". After Yes, on a browser run with a post-survey URL
+      set, the final survey opens in a browser tab.
 - [ ] Open the three CSVs in `Application.persistentDataPath/StudyData`
       (`gaze_*`, `events_*`, `summary_*`) and sanity-check: AOI ids look
       right, station enter/exit pair up, quiz responses logged,

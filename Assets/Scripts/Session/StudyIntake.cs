@@ -288,8 +288,22 @@ namespace NSFGrant.Session
 
         private void FinishSession()
         {
+            // Headset in a browser (WebXR): the participant can't see the
+            // done screen's button until they leave VR (ending the session
+            // closes the immersive view), so open the final survey in a
+            // browser tab now. If the popup blocker refuses, it opens on
+            // their next click on the page.
+            string link = PostSurveyLink;
+            bool openSurveyTab = link != null && BrowserTab.IsSupported && PlatformDetector.IsXRActive;
+
             session.StopSession();
             _phase = Phase.Done;
+
+            if (openSurveyTab)
+            {
+                StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "source=headset_auto");
+                BrowserTab.Open(link);
+            }
         }
 
         private static bool TryParseCondition(string value, out StudyCondition condition)
@@ -518,7 +532,12 @@ namespace NSFGrant.Session
             message = message.Replace(" You may close this window.", "");
             if (inHeadset)
             {
-                return message + " Please remove the headset; the researcher will start the final questions.";
+                // A browser headset run (WebXR) has the survey waiting in a
+                // tab of the same browser; the native Quest app has no
+                // browser, so the researcher starts it.
+                return PostSurveyLink != null && BrowserTab.IsSupported
+                    ? message + " Please remove the headset - your final survey is open in a browser tab."
+                    : message + " Please remove the headset; the researcher will start the final questions.";
             }
             return PostSurveyLink != null
                 ? message + " Please continue to the final survey."
@@ -571,8 +590,8 @@ namespace NSFGrant.Session
                 GUI.Button(new Rect(cardX + pad, cardY + headerH + pad + bodyH + pad, cardW - pad * 2f, btnH),
                            "Continue to the final survey", StudyGuiKit.ButtonStyle(baseUnit)))
             {
-                StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "");
-                Application.OpenURL(link);
+                StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "source=button");
+                BrowserTab.Open(link);
             }
         }
     }

@@ -20,9 +20,10 @@ namespace NSFGrant.Interaction
     /// height and re-centres if you turn more than 60 degrees away (never
     /// head-locked, for comfort).
     ///
-    /// Ending exploration in VR (there is no F10 key): hold BOTH triggers
-    /// for <see cref="finishHoldSeconds"/> to open an "End exploring?"
-    /// Yes/No confirmation.
+    /// Ending exploration in VR (there is no F10 key): point at the
+    /// "Finish exploring" tab floating low in front of you and pull the
+    /// trigger, or hold BOTH triggers for <see cref="finishHoldSeconds"/>.
+    /// Either opens an "End exploring?" Yes/No confirmation.
     ///
     /// Built at runtime from primitives + the NSFGrant/UnlitTransparentColor
     /// shader already in the build; not an AttentionTarget, so it never
@@ -91,6 +92,7 @@ namespace NSFGrant.Interaction
         private void OnDisable()
         {
             Hide();
+            HideFinishTab();
         }
 
         private void Update()
@@ -99,12 +101,16 @@ namespace NSFGrant.Interaction
             {
                 _confirmOpen = false;
                 Hide();
+                HideFinishTab();
                 return;
             }
 
             UpdateFinishGesture();
 
             Content content = BuildContent();
+            // The always-available "Finish exploring" tab, only while
+            // exploring with no survey panel in the way.
+            UpdateFinishTab(content == null && intake != null && intake.IsExploring);
             if (content == null)
             {
                 Hide();
@@ -294,12 +300,13 @@ namespace NSFGrant.Interaction
             _root.gameObject.SetActive(true);
         }
 
-        private GameObject Quad(string name, Vector3 localPos, Vector2 size, Material mat)
+        private GameObject Quad(string name, Vector3 localPos, Vector2 size, Material mat,
+            Transform parent = null)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
             go.name = name;
             Destroy(go.GetComponent<Collider>());
-            go.transform.SetParent(_root, false);
+            go.transform.SetParent(parent != null ? parent : _root, false);
             go.transform.localPosition = localPos;
             go.transform.localScale = new Vector3(size.x, size.y, 1f);
             var r = go.GetComponent<Renderer>();
@@ -310,10 +317,10 @@ namespace NSFGrant.Interaction
         }
 
         private void Label(string text, Vector3 localPos, float lineHeight, TextAnchor anchor,
-            FontStyle style, Color? color = null)
+            FontStyle style, Color? color = null, Transform parent = null)
         {
             var go = new GameObject("Text");
-            go.transform.SetParent(_root, false);
+            go.transform.SetParent(parent != null ? parent : _root, false);
             go.transform.localPosition = localPos;
             // TextMeshPro (SDF): crisp in the headset. fontSize = lineHeight
             // x 10 matches the old TextMesh sizing (see DiscoveryHallBuilder).
@@ -331,6 +338,7 @@ namespace NSFGrant.Interaction
             {
                 case TextAnchor.MiddleRight: tm.alignment = TMPro.TextAlignmentOptions.Right; break;
                 case TextAnchor.UpperLeft: tm.alignment = TMPro.TextAlignmentOptions.TopLeft; break;
+                case TextAnchor.MiddleCenter: tm.alignment = TMPro.TextAlignmentOptions.Center; break;
                 default: tm.alignment = TMPro.TextAlignmentOptions.Left; break; // MiddleLeft
             }
             tm.text = text;
@@ -495,6 +503,119 @@ namespace NSFGrant.Interaction
                 }
             }
             return found;
+        }
+
+        // ------------------------------------------------------ finish tab
+
+        // A small button floating low in front of the participant for the
+        // whole exploration, so ending the study never depends on knowing
+        // the hold-both-triggers gesture. It opens the same "End exploring?"
+        // confirmation. Not head-locked: it stays put and re-centres when
+        // the participant turns away. Lives on the Ignore Raycast layer so
+        // it never intercepts exhibit selection, gaze or teleport aiming;
+        // the pointer test below hits its collider directly.
+        private Transform _tab;
+        private Collider _tabCollider;
+        private Renderer _tabRenderer;
+
+        private void UpdateFinishTab(bool show)
+        {
+            if (!show)
+            {
+                HideFinishTab();
+                return;
+            }
+            var head = Camera.main != null ? Camera.main.transform : null;
+            if (head == null) return;
+
+            EnsureBuilt();
+            if (_tab == null) BuildFinishTab();
+
+            if (!_tab.gameObject.activeSelf)
+            {
+                _tab.gameObject.SetActive(true);
+                PlaceFinishTab(head);
+            }
+            else
+            {
+                Vector3 toTab = _tab.position - head.position;
+                Vector3 flatToTab = new Vector3(toTab.x, 0f, toTab.z);
+                Vector3 fwd = new Vector3(head.forward.x, 0f, head.forward.z);
+                if (flatToTab.sqrMagnitude < 1e-4f || fwd.sqrMagnitude < 1e-4f ||
+                    Vector3.Angle(fwd, flatToTab) > 75f || toTab.magnitude > 2.5f ||
+                    Mathf.Abs(toTab.y + 0.55f) > 0.5f)
+                {
+                    PlaceFinishTab(head);
+                }
+            }
+            HandleFinishTabPointer();
+        }
+
+        private void BuildFinishTab()
+        {
+            _tab = new GameObject("VRFinishTab").transform;
+            _tab.gameObject.layer = 2; // Ignore Raycast
+            const float w = 0.5f, h = 0.13f;
+            var quad = Quad("TabButton", Vector3.zero, new Vector2(w, h), _buttonMat, _tab);
+            quad.layer = 2;
+            var box = quad.AddComponent<BoxCollider>();
+            box.size = new Vector3(1f, 1f, 0.02f);
+            _tabCollider = box;
+            _tabRenderer = quad.GetComponent<Renderer>();
+            Label("Finish exploring", new Vector3(0f, 0f, -0.005f), 0.03f,
+                TextAnchor.MiddleCenter, FontStyle.Bold, null, _tab);
+        }
+
+        private void PlaceFinishTab(Transform head)
+        {
+            Vector3 fwd = head.forward;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
+            fwd.Normalize();
+            _tab.position = head.position + fwd * 1.1f + Vector3.down * 0.55f;
+            // Quad faces -Z: aim that face at the participant, tilted up.
+            _tab.rotation = Quaternion.LookRotation(fwd, Vector3.up) * Quaternion.Euler(20f, 0f, 0f);
+        }
+
+        private void HandleFinishTabPointer()
+        {
+            bool hovered = false, clicked = false;
+            foreach (var pointer in FindObjectsByType<VRLaserPointer>(FindObjectsSortMode.None))
+            {
+                XRInputBridge.Hand hand = pointer.Hand;
+                if (!XRInputBridge.IsConnected(hand)) continue;
+                var ray = new Ray(pointer.transform.position, pointer.transform.forward);
+                if (_tabCollider.Raycast(ray, out _, maxRayDistance))
+                {
+                    hovered = true;
+                    clicked |= XRInputBridge.GetTriggerDown(hand);
+                }
+            }
+            if (!hovered && Camera.main != null)
+            {
+                var gaze = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+                if (_tabCollider.Raycast(gaze, out _, maxRayDistance))
+                {
+                    hovered = true;
+                    clicked = XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Right) ||
+                              XRInputBridge.GetTriggerDown(XRInputBridge.Hand.Left);
+                }
+            }
+
+            _tabRenderer.sharedMaterial = hovered ? _hoverMat : _buttonMat;
+            if (clicked)
+            {
+                _confirmOpen = true;
+                XRInputBridge.SendHaptic(XRInputBridge.Hand.Right, 0.4f, 0.05f);
+            }
+        }
+
+        private void HideFinishTab()
+        {
+            if (_tab != null && _tab.gameObject.activeSelf)
+            {
+                _tab.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>Hold both triggers to open the "End exploring?" confirmation.</summary>

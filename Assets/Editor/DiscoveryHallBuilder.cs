@@ -886,7 +886,7 @@ namespace NSFGrant.EditorTools
             {
                 foreach (float x in new[] { -(panelSize.x / 2f - 0.12f), panelSize.x / 2f - 0.12f })
                 {
-                    CreateVisualCube(go.transform, "Leg",
+                    CreateSolidCube(go.transform, "Leg",
                         new Vector3(x, -(panelSize.y / 2f + legHeight / 2f), -0.02f),
                         new Vector3(0.07f, legHeight, 0.07f), FrameColor);
                 }
@@ -931,7 +931,7 @@ namespace NSFGrant.EditorTools
 
             // Backing board + theme header bar, matching the framed zone
             // panels; the option buttons keep their own colliders in front.
-            CreateVisualCube(wall.transform, "Backing", new Vector3(0f, 0.3f, -0.06f),
+            CreateSolidCube(wall.transform, "Backing", new Vector3(0f, 0.3f, -0.06f),
                 new Vector3(2.9f, 2.9f, 0.05f), PanelFaceColor);
             CreateVisualCube(wall.transform, "Header", new Vector3(0f, 1.45f, -0.07f),
                 new Vector3(2.9f, 0.55f, 0.05f), color);
@@ -939,7 +939,7 @@ namespace NSFGrant.EditorTools
                 new Vector3(0f, 1.45f, -0.03f), 0.022f, 30, TextAnchor.MiddleCenter);
             foreach (float x in new[] { -1.25f, 1.25f })
             {
-                CreateVisualCube(wall.transform, "Leg", new Vector3(x, -1.325f, -0.06f),
+                CreateSolidCube(wall.transform, "Leg", new Vector3(x, -1.325f, -0.06f),
                     new Vector3(0.08f, 0.35f, 0.08f), FrameColor);
             }
 
@@ -1548,10 +1548,10 @@ namespace NSFGrant.EditorTools
 
             CreateVisualPrimitive(plinth.transform, PrimitiveType.Cylinder, "Dais",
                 new Vector3(0f, 0.03f, 0f), new Vector3(1.6f, 0.03f, 1.6f), FrameColor);
-            CreateVisualCube(plinth.transform, "Column",
+            CreateSolidCube(plinth.transform, "Column",
                 new Vector3(0f, 0.5f, 0f), new Vector3(0.12f, 1f, 0.12f), FrameColor);
 
-            var sign = CreateVisualCube(plinth.transform, "Sign",
+            var sign = CreateSolidCube(plinth.transform, "Sign",
                 new Vector3(0f, 1.1f, 0f), new Vector3(1.5f, 0.6f, 0.04f),
                 PanelFaceColor);
             sign.transform.localRotation = Quaternion.Euler(-22f, 0f, 0f);
@@ -2304,6 +2304,21 @@ namespace NSFGrant.EditorTools
         {
             return CreateVisualPrimitive(parent, PrimitiveType.Cube, name,
                 localPos, localScale, color);
+        }
+
+        /// <summary>
+        /// Sign post / stand / backing board the player must not walk
+        /// through: a cube that KEEPS its box collider so the desktop and
+        /// smooth-locomotion CharacterControllers (and the teleport arc)
+        /// stop at it. Carries no AttentionTarget, so gaze lands on it as
+        /// plain scenery, never as an area of interest.
+        /// </summary>
+        private static GameObject CreateSolidCube(Transform parent, string name,
+            Vector3 localPos, Vector3 localScale, Color color)
+        {
+            var go = CreateVisualCube(parent, name, localPos, localScale, color);
+            go.AddComponent<BoxCollider>();
+            return go;
         }
 
         /// <summary>
