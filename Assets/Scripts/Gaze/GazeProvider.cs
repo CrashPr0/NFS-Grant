@@ -51,6 +51,17 @@ namespace NSFGrant.Gaze
 
         public Transform CenterEyeAnchor => centerEyeAnchor;
 
+        private void Start()
+        {
+            // IRB 26-285: the OVREyeGaze components start the eye tracker on
+            // their own (OnEnable), so switch them off, not just ignore them.
+            if (!Core.StudyProtocol.CollectGazeMeasures)
+            {
+                if (leftEyeGaze != null) leftEyeGaze.enabled = false;
+                if (rightEyeGaze != null) rightEyeGaze.enabled = false;
+            }
+        }
+
         private void Update()
         {
             // Resolve the head transform lazily: the PlatformRigSwitcher

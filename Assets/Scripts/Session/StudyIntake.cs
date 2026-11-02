@@ -225,9 +225,17 @@ namespace NSFGrant.Session
 
         private void Begin(string participantId, string conditionParam, bool skipQuizzes)
         {
-            if (!string.IsNullOrEmpty(conditionParam) &&
-                StudyConditionManager.Instance != null &&
-                TryParseCondition(conditionParam, out var condition))
+            var fixedCondition = StudyProtocol.FixedCondition;
+            if (fixedCondition.HasValue && StudyConditionManager.Instance != null)
+            {
+                StudyConditionManager.Instance.Condition = fixedCondition.Value;
+                // Before StartSession, so VERA's conditions column is right
+                // from the first row.
+                VeraSession.SetCondition(fixedCondition.Value.ToString());
+            }
+            else if (!string.IsNullOrEmpty(conditionParam) &&
+                     StudyConditionManager.Instance != null &&
+                     TryParseCondition(conditionParam, out var condition))
             {
                 StudyConditionManager.Instance.Condition = condition;
             }
@@ -235,6 +243,12 @@ namespace NSFGrant.Session
             session.ParticipantId = participantId;
             _skipSurveys = skipQuizzes || questionnairesInQualtrics;
             session.StartSession();
+
+            if (fixedCondition.HasValue && !string.IsNullOrEmpty(conditionParam))
+            {
+                StudyEventLogger.Instance?.LogEvent("condition_ignored", "",
+                    $"assigned={conditionParam};used={fixedCondition.Value}");
+            }
 
             if (!_skipSurveys && quiz != null)
             {

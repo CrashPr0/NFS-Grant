@@ -124,6 +124,21 @@ namespace NSFGrant.Vera
         }
 
         /// <summary>
+        /// Tells VERA which Condition level this session actually runs, so
+        /// its "conditions" column matches (StudyProtocol.FixedCondition
+        /// overrides what the portal assigned). No-op without a session.
+        /// </summary>
+        public static void SetCondition(string portalLevelName)
+        {
+#if VERAIV_Condition
+            if (IsReady && !string.IsNullOrEmpty(portalLevelName))
+            {
+                VERASessionManager.SetSelectedIVValue("Condition", portalLevelName);
+            }
+#endif
+        }
+
+        /// <summary>
         /// Ends VERA's session: stops collection, flushes to the portal and
         /// marks the participant Completed (skipping it leaves them
         /// Incomplete). In a browser it also closes the WebXR session, so call

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using NSFGrant.Core;
 #if VERAFile_Gaze_Samples || VERAFile_StudyEvents
 using VERA;
 #endif
@@ -70,6 +71,12 @@ namespace NSFGrant.Vera
                       $"platform={platform}, condition={condition}); VERA {vera}.");
         }
 
+        // session_start and the counterbalance row are logged before
+        // OnSessionStarted sets _platform, so fall back to the live rig.
+        private string Platform => string.IsNullOrEmpty(_platform)
+            ? PlatformDetector.TagFor(PlatformDetector.IsXRActive)
+            : _platform;
+
         private void OnPlatformChanged(string platform)
         {
             _platform = platform;
@@ -87,7 +94,7 @@ namespace NSFGrant.Vera
             Vector3 w = worldPos ?? new Vector3(float.NaN, float.NaN, float.NaN);
             Vector2 s = screenPos ?? new Vector2(float.NaN, float.NaN);
             VERASessionManager.CreateArbitraryCsvEntry(EventsFile,
-                UtcMs(), _platform, eventType, targetId ?? "", detail ?? "",
+                UtcMs(), Platform, eventType, targetId ?? "", detail ?? "",
                 w.x, w.y, w.z, s.x, s.y);
 #endif
         }
@@ -120,6 +127,8 @@ namespace NSFGrant.Vera
             VeraSession.FinalizeSession();
         }
 
-        private static float UtcMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        // double, not float: a float keeps ~7 digits, so 13-digit epoch
+        // milliseconds came out as 1.793652E+12 (~15 minutes of resolution).
+        private static double UtcMs() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 }

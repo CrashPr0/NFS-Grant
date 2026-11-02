@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Experiment_TelemetryColumnDefinition
   m_EditorClassIdentifier: VERA::VERA.VERAColumnDefinition
   fileType:
-    fileTypeId: Experiment_Telemetry
+    fileTypeId: 6a55ce670ce41dfc5f918f46
     name: Experiment_Telemetry
     description: Baseline VR tracking and input data
     extension: 

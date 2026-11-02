@@ -91,3 +91,7 @@ RuntimeActionBindings.json
 # Tool output / OS noise
 /Screenshots/
 .DS_Store
+
+# --- VERA's local copy of each participant session (test or real data) ---
+/[Aa]ssets/VERA/data/
+/[Aa]ssets/VERA/data.meta

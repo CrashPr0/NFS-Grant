@@ -30,6 +30,16 @@ namespace NSFGrant.Core
         public static readonly bool RunValueRanking = false;
 
         /// <summary>
+        /// The approved protocol has no experimental conditions: everyone
+        /// explores the full hall (interactive content, the optional AI
+        /// docent) with no guided route, and payment requires interacting
+        /// in two zones - impossible under Passive. So every session runs
+        /// as Interactive; a condition from VERA or ?cond= is logged and
+        /// ignored. Null restores the three-condition design.
+        /// </summary>
+        public static readonly StudyCondition? FixedCondition = StudyCondition.Interactive;
+
+        /// <summary>
         /// A zone counts as "explored" for the mid-study questionnaire
         /// trigger after this much time inside it, or after interacting
         /// with information in it.
