@@ -1,0 +1,167 @@
+[[AdvancedFormat]]
+
+[[Block:Consent]]
+
+[[Question:DB]]
+[[ID:CONSENT_TEXT]]
+PASTE THE IRB-STAMPED CONSENT TEXT HERE, word for word, with a link to the stamped PDF (IRB 26-285 requirement). Use the Browser consent for remote participants and the Meta Quest Pro consent for lab participants.
+
+[[Question:MC:SingleAnswer]]
+[[ID:CONSENT]]
+CONSENT. Do you agree to participate?
+[[Choices]]
+I agree to participate
+I do not agree
+
+[[Block:Eligibility]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:P1]]
+P1. Are you 18 years of age or older?
+[[Choices]]
+Yes
+No
+
+[[Block:Pre-Study Questionnaire]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:P2]]
+P2. What is your age range?
+[[Choices]]
+18–24
+25–34
+35–44
+45–54
+55–64
+65–74
+75 or older
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:P3]]
+P3. How do you describe your gender?
+[[Choices]]
+Woman
+Man
+Nonbinary
+Another identity
+Prefer not to answer
+
+[[Question:MC:MultipleAnswer]]
+[[ID:P4]]
+P4. Which of the following best describe you? Select all that apply.
+[[Choices]]
+Library/information professional
+LIS student
+Student in another field
+Educator
+Other working professional
+Retired
+Other
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:P5]]
+P5. How often have you used immersive virtual reality before today?
+[[Choices]]
+Never
+Once or twice
+Occasionally
+Frequently
+
+[[Question:MC:SingleAnswer]]
+[[ID:P6]]
+P6. How comfortable are you using virtual or 3D digital environments?
+[[Choices]]
+1 - Not at all comfortable
+2
+3
+4
+5 - Extremely comfortable
+
+[[Question:MC:SingleAnswer]]
+[[ID:P7]]
+P7. How familiar are you with the United Nations Sustainable Development Goals?
+[[Choices]]
+1 - Not at all familiar
+2
+3
+4
+5 - Extremely familiar
+
+[[Question:MC:SingleAnswer]]
+[[ID:P8]]
+P8. Which device are you using for this study?
+[[Choices]]
+Mobile phone
+Desktop computer
+Laptop computer
+Meta Quest Pro
+
+[[Question:MC:SingleAnswer]]
+[[ID:P9]]
+P9. How would you describe your internet connection while completing this study?
+[[Choices]]
+Very poor
+Poor
+Fair
+Good
+Very good
+Not sure
+
+[[Block:SDG Knowledge Test (Pre)]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:R1]]
+R1. Which Sustainable Development Goal is Quality Education?
+[[Choices]]
+SDG 4
+SDG 11
+SDG 13
+Not sure
+
+[[Question:MC:SingleAnswer]]
+[[ID:R2]]
+R2. Which Sustainable Development Goal is Sustainable Cities and Communities?
+[[Choices]]
+SDG 4
+SDG 11
+SDG 13
+Not sure
+
+[[Question:MC:SingleAnswer]]
+[[ID:R3]]
+R3. Which Sustainable Development Goal is Climate Action?
+[[Choices]]
+SDG 4
+SDG 11
+SDG 13
+Not sure
+
+[[Question:MC:SingleAnswer]]
+[[ID:K1]]
+K1. SDG 4 - Quality Education. Which statement best describes how libraries can advance Quality Education?
+[[Choices]]
+By limiting learning services to formally enrolled students
+By expanding equitable access to education, information, digital technologies, and lifelong learning opportunities
+By focusing only on preservation of historical materials
+By providing emergency response services only
+
+[[Question:MC:SingleAnswer]]
+[[ID:K2]]
+K2. SDG 11 - Sustainable Cities and Communities. Which library activity is an example of strengthening sustainable and resilient communities?
+[[Choices]]
+Serving as a resilience hub that provides trusted information, internet connectivity, charging, safe space, and access to essential services during emergencies
+Restricting community partnerships during emergencies
+Reducing access to local cultural and historical information
+Limiting civic participation to government agencies
+
+[[Question:MC:SingleAnswer]]
+[[ID:K3]]
+K3. SDG 13 - Climate Action. Which approach is described as a way libraries can advance Climate Action?
+[[Choices]]
+Avoiding environmental topics because they are outside the library role
+Combining climate-literacy education with practical activities such as repair, reuse, makerspaces, and community partnerships
+Providing climate information only to environmental professionals
+Replacing community programs with building-efficiency projects alone
+

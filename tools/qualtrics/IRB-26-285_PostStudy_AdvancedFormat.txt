@@ -1,0 +1,287 @@
+[[AdvancedFormat]]
+
+[[Block:SDG Knowledge Test (Post)]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:K1]]
+K1. SDG 4 - Quality Education. Which statement best describes how libraries can advance Quality Education?
+[[Choices]]
+By limiting learning services to formally enrolled students
+By expanding equitable access to education, information, digital technologies, and lifelong learning opportunities
+By focusing only on preservation of historical materials
+By providing emergency response services only
+
+[[Question:MC:SingleAnswer]]
+[[ID:K2]]
+K2. SDG 11 - Sustainable Cities and Communities. Which library activity is an example of strengthening sustainable and resilient communities?
+[[Choices]]
+Serving as a resilience hub that provides trusted information, internet connectivity, charging, safe space, and access to essential services during emergencies
+Restricting community partnerships during emergencies
+Reducing access to local cultural and historical information
+Limiting civic participation to government agencies
+
+[[Question:MC:SingleAnswer]]
+[[ID:K3]]
+K3. SDG 13 - Climate Action. Which approach is described as a way libraries can advance Climate Action?
+[[Choices]]
+Avoiding environmental topics because they are outside the library role
+Combining climate-literacy education with practical activities such as repair, reuse, makerspaces, and community partnerships
+Providing climate information only to environmental professionals
+Replacing community programs with building-efficiency projects alone
+
+[[Block:Post-Study Experience]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:K4]]
+K4. I learned something new from this experience.
+[[Choices]]
+1 - Strongly disagree
+2
+3
+4
+5 - Strongly agree
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E1]]
+E1. Overall, how engaging was this experience?
+[[Choices]]
+1 - Not at all engaging
+2
+3
+4
+5 - Extremely engaging
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E2]]
+E2. Overall, how easy was it to navigate the environment?
+[[Choices]]
+1 - Very difficult
+2
+3
+4
+5 - Very easy
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E3]]
+E3. How mentally demanding was the experience?
+[[Choices]]
+1 - Not at all demanding
+2
+3
+4
+5 - Extremely demanding
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E4]]
+E4. How useful were the information presentations for understanding the SDGs?
+[[Choices]]
+1 - Not at all useful
+2
+3
+4
+5 - Extremely useful
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E5]]
+E5. Overall, how satisfied were you with the experience?
+[[Choices]]
+1 - Very dissatisfied
+2
+3
+4
+5 - Very satisfied
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E6]]
+E6. How likely would you be to use a similar learning experience again?
+[[Choices]]
+1 - Very unlikely
+2
+3
+4
+5 - Very likely
+
+[[Question:MC:SingleAnswer]]
+[[ID:E7]]
+E7. After this experience, how motivated are you to learn more about the SDGs?
+[[Choices]]
+1 - Not at all motivated
+2
+3
+4
+5 - Extremely motivated
+Prefer not to answer
+
+[[Question:MC:SingleAnswer]]
+[[ID:E8]]
+E8. After this experience, how willing are you to take an action related to one or more of the SDGs?
+[[Choices]]
+1 - Not at all willing
+2
+3
+4
+5 - Extremely willing
+
+[[Block:Initial Attention and Format Preference]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:A1]]
+A1. Thinking back to when you first entered the SDG Discovery Hall, what type of information first caught your attention?
+[[Choices]]
+Written/text
+Data visualization/interactive infographic
+Narrative video/audio
+Interactive activity/simulation
+AI-enabled virtual docent
+Something else
+Do not remember
+
+[[Question:TE:Essay]]
+[[ID:A2]]
+A2. What is the first specific thing you remember noticing? (Optional)
+
+[[Question:MC:SingleAnswer]]
+[[ID:F1]]
+F1. Which type of information helped you learn the most?
+[[Choices]]
+Written/text
+Data visualization/interactive infographic
+Narrative video/audio
+Interactive activity/simulation
+AI docent
+No single format
+Other
+
+[[Question:MC:SingleAnswer]]
+[[ID:F2]]
+F2. Which type of information held your attention the most?
+[[Choices]]
+Written/text
+Data visualization/interactive infographic
+Narrative video/audio
+Interactive activity/simulation
+AI docent
+No single format
+Other
+
+[[Block:AI Docent Use]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:AI0]]
+AI0. Did you use the optional AI-enabled virtual docent during this study?
+[[Choices]]
+No
+Yes, once
+Yes, more than once
+Not sure / do not remember
+
+[[Question:MC:SingleAnswer]]
+[[ID:AI1]]
+AI1. How useful was the AI-enabled virtual docent?
+[[Choices]]
+1 - Not at all useful
+2
+3
+4
+5 - Extremely useful
+
+[[Question:TE:Essay]]
+[[ID:AI2]]
+AI2. What, if anything, was useful or not useful about the AI docent? (Optional)
+
+[[Block:Browser Experience Self-Report]]
+
+[[Question:MC:MultipleAnswer]]
+[[ID:B1]]
+B1. Which SDG zones did you visit during your exploration? Select all that apply.
+[[Choices]]
+SDG 4 – Quality Education
+SDG 11 – Sustainable Cities and Communities
+SDG 13 – Climate Action
+Not sure / do not remember
+
+[[Question:MC:SingleAnswer]]
+[[ID:B2]]
+B2. What was the first information element you selected or interacted with?
+[[Choices]]
+Written/text information
+Data visualization/interactive infographic
+Narrative video/audio
+Interactive activity/simulation
+AI-enabled virtual docent
+Something else
+Do not remember
+
+[[Question:MC:MultipleAnswer]]
+[[ID:B3]]
+B3. Which types of objects or interactive elements did you use? Select all that apply.
+[[Choices]]
+Text/information panels
+Data visualizations/interactive infographics
+Narrative video/audio
+Interactive activities/simulations
+AI-enabled virtual docent
+Other
+None / do not remember
+
+[[Question:MC:SingleAnswer]]
+[[ID:B4]]
+B4. Before beginning this post-study questionnaire, how would you describe the status of your exploration?
+[[Choices]]
+I considered my exploration complete
+I chose to stop before I was finished
+A technical or connection problem caused me to stop early
+Another reason caused me to stop early
+Not sure
+
+[[Block:Technical Experience]]
+
+[[Question:MC:SingleAnswer]]
+[[ID:T1]]
+T1. Did you experience any technical difficulties?
+[[Choices]]
+No
+Yes – minor, but I was able to continue
+Yes – significant
+
+[[Question:TE:Essay]]
+[[ID:T2]]
+T2. If yes, please briefly describe the technical difficulty. (Optional)
+
+[[Question:MC:SingleAnswer]]
+[[ID:T3]]
+T3. During the study, did you experience connection-related problems such as slow loading, buffering, freezing, or disconnection?
+[[Choices]]
+No
+Yes – minor, but I was able to continue
+Yes – significant
+Not sure whether the problem was my internet connection or the study itself
+
+[[Block:Open-Ended Questions]]
+
+[[Question:TE:Essay]]
+[[ID:O1]]
+O1. What stood out most to you during the experience?
+
+[[Question:TE:Essay]]
+[[ID:O2]]
+O2. What, if anything, did you learn that was new to you?
+
+[[Question:TE:Essay]]
+[[ID:O3]]
+O3. Was anything difficult, confusing, or frustrating?
+
+[[Question:TE:Essay]]
+[[ID:O4]]
+O4. What would you change to improve the experience?
+
+[[Question:TE:Essay]]
+[[ID:O5]]
+O5. Is there anything else you would like to share?
+

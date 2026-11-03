@@ -699,15 +699,15 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Android: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    Nintendo Switch: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    PS4: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    Standalone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    WebGL: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    Windows Store Apps: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    XboxOne: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    iPhone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
-    tvOS: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAIV_Condition;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    Android: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    Nintendo Switch: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    PS4: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    Standalone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    WebGL: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    Windows Store Apps: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    XboxOne: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    iPhone: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
+    tvOS: VERAFile_Experiment_Telemetry;URP_COMPATIBILITY_MODE;VERAFile_Gaze_Samples;VERAFile_StudyEvents;VERAFile_Survey_Responses
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}
