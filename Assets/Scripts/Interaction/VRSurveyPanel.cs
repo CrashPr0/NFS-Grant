@@ -70,13 +70,18 @@ namespace NSFGrant.Interaction
             public string Body = "";
             public readonly List<Option> Options = new List<Option>();
             public string Signature;
+            // A picture (e.g. a PDF page) in place of Body text, with the
+            // options laid out as one row under it.
+            public Texture Image;
+            public float ImageAspect = 1.4f; // height / width
+            public bool RowOptions;
         }
 
         private Transform _root;
         private string _shownSignature;
         private readonly List<(Collider collider, Renderer renderer, Option option)> _buttons =
             new List<(Collider, Renderer, Option)>();
-        private Material _panelMat, _headerMat, _buttonMat, _hoverMat, _doneMat, _accentMat, _textMat;
+        private Material _panelMat, _headerMat, _buttonMat, _hoverMat, _doneMat, _accentMat, _textMat, _pageMat;
         private TMPro.TMP_FontAsset _font;
 
         private bool _confirmOpen;
@@ -101,11 +106,13 @@ namespace NSFGrant.Interaction
             {
                 _confirmOpen = false;
                 BrowserTab.CancelPending();
+                PdfBridge.Close();
                 Hide();
                 HideFinishTab();
                 return;
             }
 
+            PdfBridge.Tick(); // follow the PDF loader, upload a freshly drawn page
             UpdateFinishGesture();
 
             Content content = BuildContent();
@@ -152,6 +159,10 @@ namespace NSFGrant.Interaction
                     OnChoose = () => { _confirmOpen = false; intake.RequestFinishExploration(); } });
                 c.Options.Add(new Option { Label = "No, keep exploring", Enabled = true,
                     OnChoose = () => _confirmOpen = false });
+            }
+            else if (PdfBridge.IsActive)
+            {
+                AddPdfContent(c);
             }
             else if (BrowserTab.PendingUrl != null)
             {
@@ -223,10 +234,66 @@ namespace NSFGrant.Interaction
             }
 
             var sig = new System.Text.StringBuilder();
-            sig.Append(c.Header).Append('|').Append(c.Counter).Append('|').Append(c.Body);
+            sig.Append(c.Header).Append('|').Append(c.Counter).Append('|').Append(c.Body)
+               .Append(c.Image != null ? "|img" : "");
             foreach (var o in c.Options) sig.Append('|').Append(o.Label).Append(o.Enabled ? '+' : '-');
             c.Signature = sig.ToString();
             return c;
+        }
+
+        /// <summary>
+        /// The in-headset PDF reader (PdfBridge draws the page into a
+        /// texture): page picture plus Previous / Next / Open in browser /
+        /// Close. If the PDF can't be loaded, offers the browser reader.
+        /// </summary>
+        private static void AddPdfContent(Content c)
+        {
+            string title = PdfBridge.Title ?? "PDF";
+            if (title.Length > 40) title = title.Substring(0, 40) + "...";
+            c.Header = title.ToUpperInvariant();
+
+            switch (PdfBridge.State)
+            {
+                case PdfBridge.Status.Ready:
+                    int page = PdfBridge.Page, count = PdfBridge.PageCount;
+                    c.Image = PdfBridge.Texture;
+                    c.ImageAspect = (float)PdfBridge.TexHeight / PdfBridge.TexWidth;
+                    c.RowOptions = true;
+                    c.Counter = $"Page {page} / {count}";
+                    c.Progress = count > 0 ? (float)page / count : 0f;
+                    c.Options.Add(new Option { Label = "Previous", Enabled = page > 1,
+                        OnChoose = PdfBridge.Previous });
+                    c.Options.Add(new Option { Label = "Next", Enabled = page < count,
+                        OnChoose = PdfBridge.Next });
+                    c.Options.Add(new Option { Label = "Open in browser", Enabled = true,
+                        OnChoose = OpenPdfInBrowser });
+                    c.Options.Add(new Option { Label = "Close", Enabled = true,
+                        OnChoose = PdfBridge.Close });
+                    break;
+
+                case PdfBridge.Status.Error:
+                    c.Body = "This PDF can't be shown inside VR (it could not be loaded here). " +
+                             "You can read it in the browser instead, which takes you out of VR " +
+                             "for a moment.";
+                    c.Options.Add(new Option { Label = "Open in browser (leave VR)", Enabled = true,
+                        OnChoose = OpenPdfInBrowser });
+                    c.Options.Add(new Option { Label = "Close", Enabled = true,
+                        OnChoose = PdfBridge.Close });
+                    break;
+
+                default: // Loading
+                    c.Body = "Loading the PDF...";
+                    c.Options.Add(new Option { Label = "Close", Enabled = true,
+                        OnChoose = PdfBridge.Close });
+                    break;
+            }
+        }
+
+        private static void OpenPdfInBrowser()
+        {
+            string url = PdfBridge.Url, title = PdfBridge.Title;
+            PdfBridge.Close();
+            BrowserTab.OpenReader(url, title);
         }
 
         // ------------------------------------------------------------ visuals
@@ -259,11 +326,14 @@ namespace NSFGrant.Interaction
             _buttons.Clear();
 
             const float pad = 0.06f, headerH = 0.12f, progressH = 0.012f, buttonH = 0.1f, gap = 0.022f;
-            float bodyH = EstimateBodyHeight(c.Body);
-            float h = headerH + progressH + pad + bodyH + pad * 0.5f
-                      + c.Options.Count * (buttonH + gap) + pad * 0.5f;
+            bool img = c.Image != null;
+            const float imageW = 0.95f;
+            float imageH = imageW * c.ImageAspect;
+            float bodyH = img ? imageH : EstimateBodyHeight(c.Body);
+            float optionsH = c.RowOptions ? buttonH + gap : c.Options.Count * (buttonH + gap);
+            float h = headerH + progressH + pad + bodyH + pad * 0.5f + optionsH + pad * 0.5f;
             float top = h / 2f;
-            float w = panelWidth;
+            float w = img ? imageW + pad : panelWidth;
 
             Quad("Panel", new Vector3(0f, 0f, 0.01f), new Vector2(w, h), _panelMat);
             Quad("Header", new Vector3(0f, top - headerH / 2f, 0f), new Vector2(w, headerH), _headerMat);
@@ -288,9 +358,49 @@ namespace NSFGrant.Interaction
             }
             y -= progressH + pad;
 
-            Label(Wrap(c.Body, 46), new Vector3(-w / 2f + pad, y, -0.005f), 0.03f,
-                TextAnchor.UpperLeft, FontStyle.Normal);
+            if (img)
+            {
+                if (_pageMat == null)
+                {
+                    _pageMat = new Material(Shader.Find("Sprites/Default"));
+                    // After the panel/option quads (3100), before the text (3200).
+                    _pageMat.renderQueue = 3150;
+                }
+                _pageMat.mainTexture = c.Image;
+                Quad("Page", new Vector3(0f, y - imageH / 2f, -0.002f), new Vector2(imageW, imageH), _pageMat);
+            }
+            else
+            {
+                Label(Wrap(c.Body, 46), new Vector3(-w / 2f + pad, y, -0.005f), 0.03f,
+                    TextAnchor.UpperLeft, FontStyle.Normal);
+            }
             y -= bodyH + pad * 0.5f;
+
+            if (c.RowOptions && c.Options.Count > 0)
+            {
+                // One row of buttons under the picture.
+                int n = c.Options.Count;
+                float rowW = w - pad;
+                float bw = (rowW - gap * (n - 1)) / n;
+                float cy = y - buttonH / 2f;
+                for (int i = 0; i < n; i++)
+                {
+                    var option = c.Options[i];
+                    float cx = -rowW / 2f + bw / 2f + i * (bw + gap);
+                    var quad = Quad("Option", new Vector3(cx, cy, 0f), new Vector2(bw, buttonH),
+                        option.Enabled ? _buttonMat : _doneMat);
+                    var box = quad.AddComponent<BoxCollider>();
+                    box.size = new Vector3(1f, 1f, 0.02f);
+                    Label(option.Label, new Vector3(cx, cy, -0.005f), 0.022f,
+                        TextAnchor.MiddleCenter, FontStyle.Normal,
+                        option.Enabled ? Color.white : new Color(0.6f, 0.66f, 0.75f));
+                    if (option.Enabled)
+                    {
+                        _buttons.Add((box, quad.GetComponent<Renderer>(), option));
+                    }
+                }
+                c.Options.Clear(); // drawn; skip the vertical list below
+            }
 
             foreach (var option in c.Options)
             {

@@ -48,7 +48,13 @@ Nothing validates the instrumentation like one real session.
       floats low in front of you during exploration; point + trigger opens
       "End exploring?". After Yes, on a browser run with a post-survey URL
       set, VR ends and the final survey shows in the page's reader.
-- [ ] Quest-browser WebXR: click a PDF/link exhibit in VR -> "Open this
+- [ ] Quest-browser WebXR, PDFs: run `scripts/fetch-exhibit-pdfs.sh`
+      (after checking reuse terms), rebuild, click the SDG 4 report in VR:
+      the PDF shows on a panel in VR with Previous/Next/Close (text legible
+      at arm's length?). Without the mirror copies it should say it can't
+      be shown and offer "Open in browser (leave VR)". Check the
+      `pdf_open` / `pdf_page` / `pdf_close` event rows.
+- [ ] Quest-browser WebXR: click a non-PDF link exhibit in VR -> "Open this
       link?" panel -> "Open it" leaves VR and shows the page in the reader
       (YouTube links use the embed form). "Open in new tab" works for
       sites that refuse framing; "Back to the hall" + the VR button

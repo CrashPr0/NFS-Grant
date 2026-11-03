@@ -20,7 +20,9 @@ namespace NSFGrant.Core
     /// flat browser view shows; the participant presses VR to come back.
     /// Because that drops them out of VR, <see cref="Open"/> only QUEUES the
     /// request there; VRSurveyPanel asks "Leave VR to open this?" and calls
-    /// <see cref="ConfirmPending"/>.
+    /// <see cref="ConfirmPending"/>. PDFs are the exception: PdfBridge draws
+    /// them on a panel inside the headset, so they never leave VR (unless
+    /// the PDF can't be loaded - see VRSurveyPanel's "Open in browser").
     /// </summary>
     public static class BrowserTab
     {
@@ -47,6 +49,13 @@ namespace NSFGrant.Core
             }
             if (IsSupported && PlatformDetector.IsXRActive)
             {
+                // A PDF can be read right inside the headset (PdfBridge), so
+                // it needs no trip out of VR. Anything else can't.
+                if (PdfBridge.CanOpen(url))
+                {
+                    PdfBridge.Open(url, title);
+                    return;
+                }
                 PendingUrl = url;
                 PendingTitle = title;
                 return;

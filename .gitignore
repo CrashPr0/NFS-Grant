@@ -95,3 +95,6 @@ RuntimeActionBindings.json
 # --- VERA's local copy of each participant session (test or real data) ---
 /[Aa]ssets/VERA/data/
 /[Aa]ssets/VERA/data.meta
+
+# Mirrored exhibit PDFs: fetched by scripts/fetch-exhibit-pdfs.sh, not committed (reuse terms)
+Assets/StreamingAssets/exhibit-pdfs/*.pdf

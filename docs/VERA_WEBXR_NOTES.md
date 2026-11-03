@@ -109,6 +109,21 @@ flat browser view shows it, and the participant presses VR to return. A
 unchanged: `Application.OpenURL` overlays the system browser there.
 Unverified on hardware: `WebXRManager.ToggleVR()` ending the session.
 
+**PDFs stay in VR.** `PdfBridge` + `NSFGrantPdf.jslib` draw PDF pages with
+pdf.js (vendored in `StreamingAssets/pdfjs`, Apache-2.0, loaded on first
+use) onto a canvas and copy it into a Unity texture each time a page is
+ready; `VRSurveyPanel` shows it with Previous / Next / Open in browser /
+Close. The browser can only read a PDF that is same-origin or sends CORS
+headers, and most publishers send none, so the viewer first tries
+`StreamingAssets/exhibit-pdfs/<name>` (filled by
+`scripts/fetch-exhibit-pdfs.sh`; the PDFs are gitignored until their reuse
+terms are checked), then the original URL, else offers the browser reader.
+Tested headless in Chromium against a generated PDF with a mocked GL
+context (mirror hit, fallback, error, rapid page flips); NOT yet tested in
+Unity or on a headset. Risks: the raw `texSubImage2D` into Unity's texture
+(the Babylon.js forum reports pdf.js-in-XR trouble), and legibility of dense
+reports at headset resolution.
+
 ### What still does NOT work in WebXR (platform limits, not fixable here)
 - **Eye tracking** — finding #1 above. Still head-gaze only in a browser.
 - **Haptics** — the bridge sends an impulse where supported and silently
