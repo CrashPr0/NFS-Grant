@@ -81,8 +81,11 @@ upload.config.json
 /[Aa]ssets/WebGLTemplates.meta
 # Meta SDK build artifact (empty)
 RuntimeActionBindings.json
-/[Aa]ssets/StreamingAssets/
+/[Aa]ssets/StreamingAssets/*
 /[Aa]ssets/StreamingAssets.meta
+# ...except the vendored pdf.js and the PDF-mirror folder's README (see below)
+!/Assets/StreamingAssets/pdfjs/
+!/Assets/StreamingAssets/exhibit-pdfs/
 
 # --- VERA login/build tokens - NEVER commit (public repo) ---
 /[Aa]ssets/VERA/Authentication/**/*.json
