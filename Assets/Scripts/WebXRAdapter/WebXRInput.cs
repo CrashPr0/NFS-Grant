@@ -35,6 +35,19 @@ namespace NSFGrant.WebXRAdapter
         public static bool IsVRActive =>
             WebXRManager.Instance != null && WebXRManager.Instance.XRState == WebXRState.VR;
 
+        /// <summary>
+        /// Ends the immersive session (back to the flat page). No-op when not
+        /// in VR. Needed before showing any web content: an immersive session
+        /// draws only the WebGL scene, never a page, PDF or tab.
+        /// </summary>
+        public static void ExitVR()
+        {
+            if (IsVRActive)
+            {
+                WebXRManager.Instance.ToggleVR();
+            }
+        }
+
         public static bool IsConnected(bool left)
         {
             var c = Get(left);

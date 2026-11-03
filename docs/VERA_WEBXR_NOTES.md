@@ -96,6 +96,19 @@ compile error rather than a silently dead control path.
 call still lands on `OVRInput` exactly as before, and the pose drivers
 disable themselves.
 
+### Links and PDFs from inside VR (2026-11-03)
+
+An immersive WebXR session shows only the WebGL scene: the browser cannot
+draw a web page, a PDF or another tab inside it (there is no DOM overlay on
+headsets), so a link opened from VR landed in a tab nobody could see. Third-
+party pages can't be rendered into the scene either (no CORS for the UN PDFs,
+and sites refuse framing). So `BrowserTab` ends the immersive session and
+shows the link in an in-page reader (`NSFGrantReader.jslib`); the headset's
+flat browser view shows it, and the participant presses VR to return. A
+"leave VR?" panel (`VRSurveyPanel`) asks first. The native Quest APK is
+unchanged: `Application.OpenURL` overlays the system browser there.
+Unverified on hardware: `WebXRManager.ToggleVR()` ending the session.
+
 ### What still does NOT work in WebXR (platform limits, not fixable here)
 - **Eye tracking** — finding #1 above. Still head-gaze only in a browser.
 - **Haptics** — the bridge sends an impulse where supported and silently

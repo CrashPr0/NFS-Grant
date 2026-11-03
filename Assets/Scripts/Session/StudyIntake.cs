@@ -288,21 +288,20 @@ namespace NSFGrant.Session
 
         private void FinishSession()
         {
-            // Headset in a browser (WebXR): the participant can't see the
-            // done screen's button until they leave VR (ending the session
-            // closes the immersive view), so open the final survey in a
-            // browser tab now. If the popup blocker refuses, it opens on
-            // their next click on the page.
+            // Headset in a browser (WebXR): nothing but the scene can be seen
+            // inside an immersive session, so the final survey would be
+            // invisible. Leave VR and show it in the in-page reader instead
+            // (no confirmation - the study is over).
             string link = PostSurveyLink;
-            bool openSurveyTab = link != null && BrowserTab.IsSupported && PlatformDetector.IsXRActive;
+            bool showSurvey = link != null && BrowserTab.IsSupported && PlatformDetector.IsXRActive;
 
             session.StopSession();
             _phase = Phase.Done;
 
-            if (openSurveyTab)
+            if (showSurvey)
             {
                 StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "source=headset_auto");
-                BrowserTab.Open(link);
+                BrowserTab.OpenReader(link, "Final survey");
             }
         }
 
@@ -532,11 +531,11 @@ namespace NSFGrant.Session
             message = message.Replace(" You may close this window.", "");
             if (inHeadset)
             {
-                // A browser headset run (WebXR) has the survey waiting in a
-                // tab of the same browser; the native Quest app has no
-                // browser, so the researcher starts it.
+                // A browser headset run (WebXR) leaves VR and shows the survey
+                // in the page; the native Quest app has no browser page, so
+                // the researcher starts it.
                 return PostSurveyLink != null && BrowserTab.IsSupported
-                    ? message + " Please remove the headset - your final survey is open in a browser tab."
+                    ? message + " Your final survey is opening in the browser - please continue there."
                     : message + " Please remove the headset; the researcher will start the final questions.";
             }
             return PostSurveyLink != null

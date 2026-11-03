@@ -47,7 +47,12 @@ Nothing validates the instrumentation like one real session.
 - [ ] Headset (native and Quest-browser WebXR): the "Finish exploring" tab
       floats low in front of you during exploration; point + trigger opens
       "End exploring?". After Yes, on a browser run with a post-survey URL
-      set, the final survey opens in a browser tab.
+      set, VR ends and the final survey shows in the page's reader.
+- [ ] Quest-browser WebXR: click a PDF/link exhibit in VR -> "Open this
+      link?" panel -> "Open it" leaves VR and shows the page in the reader
+      (YouTube links use the embed form). "Open in new tab" works for
+      sites that refuse framing; "Back to the hall" + the VR button
+      returns (check the `xr_session_start`/`_end` rows bracket it).
 - [ ] Open the three CSVs in `Application.persistentDataPath/StudyData`
       (`gaze_*`, `events_*`, `summary_*`) and sanity-check: AOI ids look
       right, station enter/exit pair up, quiz responses logged,

@@ -28,7 +28,8 @@ namespace NSFGrant.Interaction
                 interactable != null ? interactable.ObjectId : gameObject.name,
                 url);
 
-            // New tab on WebGL, so the study page (and session) stays open.
+            // New tab on a flat browser (study page and session stay open);
+            // in a WebXR headset it queues a "leave VR?" confirmation.
             BrowserTab.Open(url);
         }
     }

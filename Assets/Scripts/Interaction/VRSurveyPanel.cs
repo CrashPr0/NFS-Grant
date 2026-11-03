@@ -100,6 +100,7 @@ namespace NSFGrant.Interaction
             if (!PlatformDetector.IsXRActive)
             {
                 _confirmOpen = false;
+                BrowserTab.CancelPending();
                 Hide();
                 HideFinishTab();
                 return;
@@ -151,6 +152,19 @@ namespace NSFGrant.Interaction
                     OnChoose = () => { _confirmOpen = false; intake.RequestFinishExploration(); } });
                 c.Options.Add(new Option { Label = "No, keep exploring", Enabled = true,
                     OnChoose = () => _confirmOpen = false });
+            }
+            else if (BrowserTab.PendingUrl != null)
+            {
+                // A web page or PDF can't be shown inside an immersive
+                // session, so opening one means leaving VR (see BrowserTab).
+                c.Header = "OPEN THIS LINK?";
+                c.Body = "It opens in the browser, which takes you out of VR for a moment. " +
+                         "When you are done, choose Back to the hall, then press the VR button " +
+                         "to return.";
+                c.Options.Add(new Option { Label = "Open it (leave VR)", Enabled = true,
+                    OnChoose = BrowserTab.ConfirmPending });
+                c.Options.Add(new Option { Label = "Not now", Enabled = true,
+                    OnChoose = BrowserTab.CancelPending });
             }
             else if (quiz != null && quiz.IsVisible)
             {

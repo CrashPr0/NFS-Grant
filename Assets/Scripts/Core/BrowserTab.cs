@@ -1,32 +1,54 @@
+using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using NSFGrant.Logging;
 
 namespace NSFGrant.Core
 {
     /// <summary>
-    /// Opens a URL in a NEW browser tab so the study page (and its session)
-    /// stays open. Unity's Application.OpenURL navigated the study page
-    /// itself in the WebGL build, which ended the participant's session.
-    /// Elsewhere (editor, desktop, Quest) it falls back to Application.OpenURL.
+    /// Shows a link or PDF to the participant, wherever they are.
     ///
-    /// In a browser the tab can only open from a user gesture; the jslib
-    /// retries on the participant's next click if the popup blocker refuses
-    /// (e.g. a headset participant finishing inside an immersive session).
+    /// Desktop / flat browser: a NEW browser tab, so the study page (and its
+    /// session) stays open (Application.OpenURL navigated the study page
+    /// itself in the WebGL build). Elsewhere (editor, native Quest, where
+    /// the system browser overlays the app): Application.OpenURL.
+    ///
+    /// Headset in a browser (WebXR): an immersive session draws only the
+    /// WebGL scene - no page, PDF or tab can appear inside it, and a tab
+    /// opened from VR is invisible. So the immersive session is ended and the
+    /// page opens in an in-page reader (NSFGrantReader.jslib) the headset's
+    /// flat browser view shows; the participant presses VR to come back.
+    /// Because that drops them out of VR, <see cref="Open"/> only QUEUES the
+    /// request there; VRSurveyPanel asks "Leave VR to open this?" and calls
+    /// <see cref="ConfirmPending"/>.
     /// </summary>
     public static class BrowserTab
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")]
         private static extern void NSFGrantOpenUrlInNewTab(string url);
+
+        [DllImport("__Internal")]
+        private static extern void NSFGrantShowReader(string frameUrl, string openUrl, string title);
 #endif
 
-        /// <summary>True where Open really creates a separate browser tab.</summary>
+        /// <summary>True in a browser build (new tabs and the reader exist).</summary>
         public static bool IsSupported => Application.platform == RuntimePlatform.WebGLPlayer;
 
-        public static void Open(string url)
+        /// <summary>A headset link request waiting for the participant's OK (else null).</summary>
+        public static string PendingUrl { get; private set; }
+        public static string PendingTitle { get; private set; }
+
+        public static void Open(string url, string title = null)
         {
             if (string.IsNullOrEmpty(url))
             {
+                return;
+            }
+            if (IsSupported && PlatformDetector.IsXRActive)
+            {
+                PendingUrl = url;
+                PendingTitle = title;
                 return;
             }
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -34,6 +56,72 @@ namespace NSFGrant.Core
 #else
             Application.OpenURL(url);
 #endif
+        }
+
+        /// <summary>The participant agreed to leave VR for the queued link.</summary>
+        public static void ConfirmPending()
+        {
+            string url = PendingUrl, title = PendingTitle;
+            CancelPending();
+            OpenReader(url, title);
+        }
+
+        public static void CancelPending()
+        {
+            PendingUrl = null;
+            PendingTitle = null;
+        }
+
+        /// <summary>
+        /// Ends any immersive session and shows <paramref name="url"/> in the
+        /// in-page reader (browser builds); elsewhere just opens it.
+        /// </summary>
+        public static void OpenReader(string url, string title = null)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
+                return;
+            }
+            StudyEventLogger.Instance?.LogEvent("link_reader_opened", "",
+                $"left_vr={(PlatformDetector.IsXRActive ? 1 : 0)};url={url}");
+#if UNITY_WEBGL && !UNITY_EDITOR
+            NSFGrant.WebXRAdapter.WebXRInput.ExitVR();
+            NSFGrantShowReader(ToFrameable(url), url, title ?? "");
+#else
+            Application.OpenURL(url);
+#endif
+        }
+
+        /// <summary>
+        /// YouTube watch pages refuse to be framed; their /embed/ form works.
+        /// Everything else is framed as given (the reader's "Open in new tab"
+        /// covers sites that refuse).
+        /// </summary>
+        internal static string ToFrameable(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return url;
+            }
+            string host = uri.Host.ToLowerInvariant();
+            string id = null;
+            if (host == "youtu.be")
+            {
+                id = uri.AbsolutePath.Trim('/');
+            }
+            else if (host.EndsWith("youtube.com") && uri.AbsolutePath == "/watch")
+            {
+                foreach (string pair in uri.Query.TrimStart('?').Split('&'))
+                {
+                    if (pair.StartsWith("v=", StringComparison.Ordinal))
+                    {
+                        id = pair.Substring(2);
+                        break;
+                    }
+                }
+            }
+            return string.IsNullOrEmpty(id) ? url
+                : "https://www.youtube.com/embed/" + Uri.EscapeDataString(id);
         }
     }
 }
