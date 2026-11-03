@@ -58,6 +58,10 @@ namespace NSFGrant.EditorTools
 
         public static void BuildQuest()
         {
+            // Quest needs API 29+, and the TLabWebView plugin's manifest
+            // declares 26; a drifted saved value (25) failed the Gradle
+            // manifest merge.
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel29;
             PrepareScene();
             EditorUserBuildSettings.buildAppBundle = false;
             Run(new BuildPlayerOptions
