@@ -91,20 +91,33 @@ namespace NSFGrant.Core
             {
                 return;
             }
+            string frameUrl = ToFrameable(url);
             StudyEventLogger.Instance?.LogEvent("link_reader_opened", "",
-                $"left_vr={(PlatformDetector.IsXRActive ? 1 : 0)};url={url}");
+                $"left_vr={(PlatformDetector.IsXRActive ? 1 : 0)};" +
+                $"framed={(frameUrl.Length > 0 ? 1 : 0)};url={url}");
 #if UNITY_WEBGL && !UNITY_EDITOR
             NSFGrant.WebXRAdapter.WebXRInput.ExitVR();
-            NSFGrantShowReader(ToFrameable(url), url, title ?? "");
+            NSFGrantShowReader(frameUrl, url, title ?? "");
 #else
             Application.OpenURL(url);
 #endif
         }
 
+        // Exhibit sites whose pages send X-Frame-Options: SAMEORIGIN, so a
+        // frame of them stays blank (checked 2026-11-03 against every link in
+        // SdgContentLibrary). The browser hides a refused frame from the page,
+        // so this can't be detected at run time; re-check when links change.
+        // PDFs on these hosts are fine (no header on the files themselves).
+        private static readonly string[] FrameBlockingHosts =
+        {
+            "sdgs.un.org", "unsdglearn.org", "unrisd.org", "ala.fi",
+        };
+
         /// <summary>
-        /// YouTube watch pages refuse to be framed; their /embed/ form works.
-        /// Everything else is framed as given (the reader's "Open in new tab"
-        /// covers sites that refuse).
+        /// The URL to show in the reader's frame. YouTube watch pages refuse
+        /// to be framed; their /embed/ form works. Sites known to refuse get
+        /// "" so the reader shows an "Open in new tab" notice instead of a
+        /// blank frame. Everything else is framed as given.
         /// </summary>
         internal static string ToFrameable(string url)
         {
@@ -113,6 +126,16 @@ namespace NSFGrant.Core
                 return url;
             }
             string host = uri.Host.ToLowerInvariant();
+            if (!uri.AbsolutePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (string blocked in FrameBlockingHosts)
+                {
+                    if (host == blocked || host.EndsWith("." + blocked, StringComparison.Ordinal))
+                    {
+                        return "";
+                    }
+                }
+            }
             string id = null;
             if (host == "youtu.be")
             {

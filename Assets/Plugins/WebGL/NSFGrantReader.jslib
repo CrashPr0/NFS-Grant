@@ -10,8 +10,9 @@
 //  - "Back to the hall" closes the reader; press the page's VR button to
 //    re-enter (a browser only lets a user gesture start an immersive session).
 //  - "Open in new tab" is a real anchor click, so popup blockers allow it.
-//    Some sites (YouTube watch pages, many news sites) refuse to be framed and
-//    the frame stays blank; the participant uses this button for those.
+//    Some sites refuse to be framed and the frame would stay blank; C#
+//    passes an empty frame URL for the known ones (BrowserTab.ToFrameable)
+//    and the reader shows a notice pointing at this button instead.
 mergeInto(LibraryManager.library, {
   NSFGrantShowReader: function (frameUrlPtr, openUrlPtr, titlePtr) {
     var frameUrl = UTF8ToString(frameUrlPtr);
@@ -61,12 +62,34 @@ mergeInto(LibraryManager.library, {
       'If this page stays blank, the site does not allow viewing here: use Open in new tab.';
     hint.style.cssText = 'padding:8px 16px;font-size:15px;color:#aab4c3;background:#171d29;';
 
-    var frame = document.createElement('iframe');
-    frame.src = frameUrl;
-    frame.title = title || 'Exhibit link';
-    frame.referrerPolicy = 'no-referrer';
-    frame.setAttribute('allow', 'fullscreen; autoplay; encrypted-media; picture-in-picture');
-    frame.style.cssText = 'flex:1 1 auto;width:100%;border:0;background:#fff;';
+    var frame;
+    if (frameUrl) {
+      frame = document.createElement('iframe');
+      frame.src = frameUrl;
+      frame.title = title || 'Exhibit link';
+      frame.referrerPolicy = 'no-referrer';
+      frame.setAttribute('allow', 'fullscreen; autoplay; encrypted-media; picture-in-picture');
+      frame.style.cssText = 'flex:1 1 auto;width:100%;border:0;background:#fff;';
+    } else {
+      // A site known to refuse framing: say so up front rather than show
+      // an empty white box.
+      hint.textContent = 'To go back into the headset, press Back to the hall, then the VR button.';
+      frame = document.createElement('div');
+      frame.style.cssText = 'flex:1 1 auto;display:flex;flex-direction:column;align-items:center;' +
+        'justify-content:center;gap:24px;padding:32px;text-align:center;';
+      var msg = document.createElement('div');
+      msg.textContent = 'This website can\'t be shown inside the study page. ' +
+        'Open it in a new tab, then come back to this tab when you are done.';
+      msg.style.cssText = 'max-width:640px;font-size:22px;line-height:1.45;';
+      var bigTab = newTab.cloneNode(true);
+      bigTab.style.cssText = btnCss + 'background:#009edc;font-size:24px;padding:18px 30px;';
+      var host = document.createElement('div');
+      try { host.textContent = new URL(openUrl).hostname; } catch (e) { host.textContent = openUrl; }
+      host.style.cssText = 'font-size:16px;color:#aab4c3;';
+      frame.appendChild(msg);
+      frame.appendChild(bigTab);
+      frame.appendChild(host);
+    }
 
     function close() {
       document.removeEventListener('keydown', onKey, true);

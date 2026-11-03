@@ -105,7 +105,11 @@ party pages can't be rendered into the scene either (no CORS for the UN PDFs,
 and sites refuse framing). So `BrowserTab` ends the immersive session and
 shows the link in an in-page reader (`NSFGrantReader.jslib`); the headset's
 flat browser view shows it, and the participant presses VR to return. A
-"leave VR?" panel (`VRSurveyPanel`) asks first. The native Quest APK is
+"leave VR?" panel (`VRSurveyPanel`) asks first. Pages from sites that send
+`X-Frame-Options: SAMEORIGIN` (checked 2026-11-03: sdgs.un.org pages,
+unsdglearn.org, unrisd.org, ala.fi; listed in `BrowserTab.FrameBlockingHosts`)
+would show as a blank frame, so the reader shows an "Open in new tab" notice
+for them instead. Re-check that list whenever exhibit links change. The native Quest APK is
 unchanged: `Application.OpenURL` overlays the system browser there.
 Unverified on hardware: `WebXRManager.ToggleVR()` ending the session.
 
