@@ -1,5 +1,20 @@
 # Qualtrics surveys (IRB 26-285)
 
+**Imported and set up on 2026-11-03** in Chris's SJSU Qualtrics account:
+
+| Survey | ID | Link (live once published) |
+|---|---|---|
+| IRB 26-285 Pre-Study Survey (SDG Discovery Hall) | `SV_3kl32wdpmPpz9H0` | `https://sjsu.pdx1.qualtrics.com/jfe/form/SV_3kl32wdpmPpz9H0?pid=<study id>` |
+| IRB 26-285 Post-Study Survey (SDG Discovery Hall) | `SV_1YAupNqsgyX3LaC` | `https://sjsu.pdx1.qualtrics.com/jfe/form/SV_1YAupNqsgyX3LaC?pid={pid}` (set as the app's Post Survey Url) |
+
+Done in Qualtrics: pre-study consent/P1 end-of-survey branches, P9
+display logic, `pid` embedded data, and a final End of Survey that
+redirects to the app (declined/under-18 endings show the thank-you
+message instead). Post-study: AI1/AI2 and T2 display logic, force
+response on K4/E1-E5/E7, `pid` embedded data. **Still to do:** paste the
+stamped consent text into CONSENT_TEXT; publish both surveys; decide how
+participants get their `pid`; B1-B4/T3 browser-only (see below).
+
 Two files in Qualtrics "Advanced Format" (Survey → Tools → Import/Export →
 Import Survey, choose the .txt). The item wording is verbatim from the
 approved Survey Questionnaire (10.12.26) and SDG Knowledge Test (9.10.26);

@@ -67,7 +67,7 @@ namespace NSFGrant.Session
         [Tooltip("Qualtrics post-study survey link. {pid} is replaced with the " +
                  "participant's study ID, e.g. https://sjsu.qualtrics.com/jfe/form/SV_xxx?pid={pid}. " +
                  "Empty = the done screen tells the participant the team will send it.")]
-        [SerializeField] private string postSurveyUrl = "";
+        [SerializeField] private string postSurveyUrl = "https://sjsu.pdx1.qualtrics.com/jfe/form/SV_1YAupNqsgyX3LaC?pid={pid}";
 
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
