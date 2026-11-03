@@ -29,6 +29,8 @@ namespace NSFGrant.Core
         [DllImport("__Internal")] private static extern int NSFGrantPdfPageCount();
         [DllImport("__Internal")] private static extern int NSFGrantPdfPageReady();
         [DllImport("__Internal")] private static extern void NSFGrantPdfGoTo(int page);
+        [DllImport("__Internal")] private static extern void NSFGrantPdfSetZoom(float zoom);
+        [DllImport("__Internal")] private static extern void NSFGrantPdfPan(int dx, int dy);
         [DllImport("__Internal")] private static extern int NSFGrantPdfUpload(int textureId);
         [DllImport("__Internal")] private static extern void NSFGrantPdfClose();
 #endif
@@ -43,6 +45,13 @@ namespace NSFGrant.Core
         public static int Page { get; private set; }
         public static int PageCount { get; private set; }
         public static Status State { get; private set; } = Status.Idle;
+
+        /// <summary>Zoom steps; 1 shows the whole page.</summary>
+        public static readonly float[] ZoomLevels = { 1f, 1.5f, 2f, 3f };
+        public static int ZoomIndex { get; private set; }
+        public static float Zoom => ZoomLevels[ZoomIndex];
+        public static bool CanZoomIn => ZoomIndex < ZoomLevels.Length - 1;
+        public static bool CanZoomOut => ZoomIndex > 0;
 
         /// <summary>The page image; valid once <see cref="State"/> is Ready.</summary>
         public static Texture2D Texture => _texture;
@@ -72,6 +81,7 @@ namespace NSFGrant.Core
             Title = !string.IsNullOrEmpty(title) ? title : name.Replace('_', ' ').Replace('-', ' ');
             Page = 1;
             PageCount = 0;
+            ZoomIndex = 0;
             State = Status.Loading;
 
             if (_texture == null)
@@ -104,6 +114,35 @@ namespace NSFGrant.Core
             StudyEventLogger.Instance?.LogEvent("pdf_page", "", $"page={page}/{PageCount};url={Url}");
 #if UNITY_WEBGL && !UNITY_EDITOR
             NSFGrantPdfGoTo(page);
+#endif
+        }
+
+        public static void ZoomIn() => SetZoomIndex(ZoomIndex + 1);
+        public static void ZoomOut() => SetZoomIndex(ZoomIndex - 1);
+
+        private static void SetZoomIndex(int index)
+        {
+            index = Mathf.Clamp(index, 0, ZoomLevels.Length - 1);
+            if (State != Status.Ready || index == ZoomIndex)
+            {
+                return;
+            }
+            ZoomIndex = index;
+            StudyEventLogger.Instance?.LogEvent("pdf_zoom", "", $"zoom={Zoom:0.0};page={Page}/{PageCount};url={Url}");
+#if UNITY_WEBGL && !UNITY_EDITOR
+            NSFGrantPdfSetZoom(Zoom);
+#endif
+        }
+
+        /// <summary>Moves the zoomed view half a window; dx right is +1, dy down is +1.</summary>
+        public static void Pan(int dx, int dy)
+        {
+            if (State != Status.Ready || ZoomIndex == 0)
+            {
+                return;
+            }
+#if UNITY_WEBGL && !UNITY_EDITOR
+            NSFGrantPdfPan(dx, dy);
 #endif
         }
 

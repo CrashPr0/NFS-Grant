@@ -27,12 +27,16 @@ mergeInto(LibraryManager.library, {
     S.token++;
     var token = S.token;
     S.state = 1; S.pages = 0; S.page = 0; S.ready = 0; S.err = '';
+    S.zoom = 1; S.cx = 0.5; S.cy = 0; S.pw = 0; S.ph = 0; // view: zoom, centre in page fractions
     S.w = texW; S.h = texH;
     S.canvas = document.createElement('canvas');
     S.canvas.width = texW; S.canvas.height = texH;
 
-    S.render = function (n) {
+    // keepView: re-draw the same page after a zoom/pan; otherwise a new page
+    // starts at its top, centred, at the current zoom.
+    S.render = function (n, keepView) {
       S.page = n; S.ready = 0;
+      if (!keepView) { S.cx = 0.5; S.cy = 0; }
       var prev = Promise.resolve();
       if (S.task) { try { S.task.cancel(); } catch (e) {} prev = S.task.promise.catch(function () {}); }
       prev.then(function () {
@@ -40,16 +44,22 @@ mergeInto(LibraryManager.library, {
         return S.doc.getPage(n).then(function (page) {
           if (token !== S.token || S.page !== n) return;
           var v1 = page.getViewport({ scale: 1 });
-          var scale = Math.min(S.w / v1.width, S.h / v1.height);
-          var vp = page.getViewport({ scale: scale });
+          var fit = Math.min(S.w / v1.width, S.h / v1.height);
+          var vp = page.getViewport({ scale: fit * S.zoom });
+          // Keep the view inside the page; a page smaller than the texture
+          // along an axis stays centred on it.
+          S.pw = vp.width; S.ph = vp.height;
+          var hx = S.w / 2 / S.pw, hy = S.h / 2 / S.ph;
+          S.cx = S.pw <= S.w ? 0.5 : Math.min(Math.max(S.cx, hx), 1 - hx);
+          S.cy = S.ph <= S.h ? 0.5 : Math.min(Math.max(S.cy, hy), 1 - hy);
           var ctx = S.canvas.getContext('2d');
           ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, S.w, S.h);
-          // Centre the page: pdf.js applies this before the viewport transform.
+          // Put the view centre (cx, cy) mid-texture; pdf.js applies this before the viewport transform.
           S.task = page.render({
             canvasContext: ctx, viewport: vp,
-            transform: [1, 0, 0, 1, (S.w - vp.width) / 2, (S.h - vp.height) / 2]
+            transform: [1, 0, 0, 1, S.w / 2 - S.cx * S.pw, S.h / 2 - S.cy * S.ph]
           });
           return S.task.promise.then(function () {
             if (token === S.token && S.page === n) S.ready = 1;
@@ -105,6 +115,21 @@ mergeInto(LibraryManager.library, {
   NSFGrantPdfGoTo: function (n) {
     var S = window.nsfPdf;
     if (S && S.doc && n >= 1 && n <= S.pages) S.render(n);
+  },
+
+  // Zoom (1 = whole page) about the current view centre; re-draws the page.
+  NSFGrantPdfSetZoom: function (z) {
+    var S = window.nsfPdf;
+    if (S && S.doc && z >= 1) { S.zoom = z; S.render(S.page, true); }
+  },
+
+  // Moves the view by half a window per step (dx, dy in -1, 0, 1; y down).
+  NSFGrantPdfPan: function (dx, dy) {
+    var S = window.nsfPdf;
+    if (!S || !S.doc || !S.pw || !S.ph) return;
+    S.cx += dx * 0.5 * S.w / S.pw;
+    S.cy += dy * 0.5 * S.h / S.ph;
+    S.render(S.page, true);
   },
 
   // Copies the rendered page into the Unity texture (RGBA32, texW x texH).

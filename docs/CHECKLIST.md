@@ -50,8 +50,9 @@ Nothing validates the instrumentation like one real session.
       set, VR ends and the final survey shows in the page's reader.
 - [ ] Quest-browser WebXR, PDFs: run `scripts/fetch-exhibit-pdfs.sh`
       (after checking reuse terms), rebuild, click the SDG 4 report in VR:
-      the PDF shows on a panel in VR with Previous/Next/Close (text legible
-      at arm's length?). Without the mirror copies it should say it can't
+      the PDF shows on a panel in VR with Previous/Next/Close and a side
+      column of Zoom in/out + Up/Down/Left/Right (1x, 1.5x, 2x, 3x; is body
+      text legible at 2x?). Without the mirror copies it should say it can't
       be shown and offer "Open in browser (leave VR)". Check the
       `pdf_open` / `pdf_page` / `pdf_close` event rows.
 - [ ] Quest-browser WebXR: click a non-PDF link exhibit in VR -> "Open this

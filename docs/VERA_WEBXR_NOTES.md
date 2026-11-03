@@ -113,7 +113,10 @@ Unverified on hardware: `WebXRManager.ToggleVR()` ending the session.
 pdf.js (vendored in `StreamingAssets/pdfjs`, Apache-2.0, loaded on first
 use) onto a canvas and copy it into a Unity texture each time a page is
 ready; `VRSurveyPanel` shows it with Previous / Next / Open in browser /
-Close. The browser can only read a PDF that is same-origin or sends CORS
+Close and a side column of Zoom in / Zoom out / Up / Down / Left / Right.
+Zoom (1x-3x) re-renders the page at a larger scale into the same texture
+(so text gets sharper, not just bigger); pan moves half a window per press;
+a new page keeps the zoom and starts at its top. The browser can only read a PDF that is same-origin or sends CORS
 headers, and most publishers send none, so the viewer first tries
 `StreamingAssets/exhibit-pdfs/<name>` (filled by
 `scripts/fetch-exhibit-pdfs.sh`; the PDFs are gitignored until their reuse

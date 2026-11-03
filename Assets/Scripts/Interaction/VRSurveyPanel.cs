@@ -75,6 +75,8 @@ namespace NSFGrant.Interaction
             public Texture Image;
             public float ImageAspect = 1.4f; // height / width
             public bool RowOptions;
+            // Buttons stacked beside the picture (PDF zoom / pan).
+            public readonly List<Option> SideOptions = new List<Option>();
         }
 
         private Transform _root;
@@ -237,6 +239,7 @@ namespace NSFGrant.Interaction
             sig.Append(c.Header).Append('|').Append(c.Counter).Append('|').Append(c.Body)
                .Append(c.Image != null ? "|img" : "");
             foreach (var o in c.Options) sig.Append('|').Append(o.Label).Append(o.Enabled ? '+' : '-');
+            foreach (var o in c.SideOptions) sig.Append('|').Append(o.Label).Append(o.Enabled ? '+' : '-');
             c.Signature = sig.ToString();
             return c;
         }
@@ -259,8 +262,23 @@ namespace NSFGrant.Interaction
                     c.Image = PdfBridge.Texture;
                     c.ImageAspect = (float)PdfBridge.TexHeight / PdfBridge.TexWidth;
                     c.RowOptions = true;
-                    c.Counter = $"Page {page} / {count}";
+                    c.Counter = PdfBridge.ZoomIndex > 0
+                        ? $"Page {page} / {count}  -  {PdfBridge.Zoom:0.#}x"
+                        : $"Page {page} / {count}";
                     c.Progress = count > 0 ? (float)page / count : 0f;
+                    bool zoomed = PdfBridge.ZoomIndex > 0;
+                    c.SideOptions.Add(new Option { Label = "Zoom in", Enabled = PdfBridge.CanZoomIn,
+                        OnChoose = PdfBridge.ZoomIn });
+                    c.SideOptions.Add(new Option { Label = "Zoom out", Enabled = PdfBridge.CanZoomOut,
+                        OnChoose = PdfBridge.ZoomOut });
+                    c.SideOptions.Add(new Option { Label = "Up", Enabled = zoomed,
+                        OnChoose = () => PdfBridge.Pan(0, -1) });
+                    c.SideOptions.Add(new Option { Label = "Down", Enabled = zoomed,
+                        OnChoose = () => PdfBridge.Pan(0, 1) });
+                    c.SideOptions.Add(new Option { Label = "Left", Enabled = zoomed,
+                        OnChoose = () => PdfBridge.Pan(-1, 0) });
+                    c.SideOptions.Add(new Option { Label = "Right", Enabled = zoomed,
+                        OnChoose = () => PdfBridge.Pan(1, 0) });
                     c.Options.Add(new Option { Label = "Previous", Enabled = page > 1,
                         OnChoose = PdfBridge.Previous });
                     c.Options.Add(new Option { Label = "Next", Enabled = page < count,
@@ -333,7 +351,11 @@ namespace NSFGrant.Interaction
             float optionsH = c.RowOptions ? buttonH + gap : c.Options.Count * (buttonH + gap);
             float h = headerH + progressH + pad + bodyH + pad * 0.5f + optionsH + pad * 0.5f;
             float top = h / 2f;
-            float w = img ? imageW + pad : panelWidth;
+            // Picture panels: content width = picture (+ side column).
+            const float sideW = 0.25f, sideGap = 0.03f;
+            bool side = img && c.SideOptions.Count > 0;
+            float cw = img ? imageW + (side ? sideGap + sideW : 0f) : 0f;
+            float w = img ? cw + pad : panelWidth;
 
             Quad("Panel", new Vector3(0f, 0f, 0.01f), new Vector2(w, h), _panelMat);
             Quad("Header", new Vector3(0f, top - headerH / 2f, 0f), new Vector2(w, headerH), _headerMat);
@@ -367,7 +389,32 @@ namespace NSFGrant.Interaction
                     _pageMat.renderQueue = 3150;
                 }
                 _pageMat.mainTexture = c.Image;
-                Quad("Page", new Vector3(0f, y - imageH / 2f, -0.002f), new Vector2(imageW, imageH), _pageMat);
+                Quad("Page", new Vector3(-cw / 2f + imageW / 2f, y - imageH / 2f, -0.002f),
+                    new Vector2(imageW, imageH), _pageMat);
+                if (side)
+                {
+                    const float sideBtnH = 0.09f, sideBtnGap = 0.02f;
+                    float sx = cw / 2f - sideW / 2f;
+                    float sy = y - sideBtnH / 2f;
+                    for (int i = 0; i < c.SideOptions.Count; i++)
+                    {
+                        var option = c.SideOptions[i];
+                        // A little extra space after the zoom pair, before the pan buttons.
+                        if (i == 2) sy -= sideBtnGap * 2f;
+                        var quad = Quad("SideOption", new Vector3(sx, sy, 0f), new Vector2(sideW, sideBtnH),
+                            option.Enabled ? _buttonMat : _doneMat);
+                        var box = quad.AddComponent<BoxCollider>();
+                        box.size = new Vector3(1f, 1f, 0.02f);
+                        Label(option.Label, new Vector3(sx, sy, -0.005f), 0.022f,
+                            TextAnchor.MiddleCenter, FontStyle.Normal,
+                            option.Enabled ? Color.white : new Color(0.6f, 0.66f, 0.75f));
+                        if (option.Enabled)
+                        {
+                            _buttons.Add((box, quad.GetComponent<Renderer>(), option));
+                        }
+                        sy -= sideBtnH + sideBtnGap;
+                    }
+                }
             }
             else
             {
@@ -380,7 +427,7 @@ namespace NSFGrant.Interaction
             {
                 // One row of buttons under the picture.
                 int n = c.Options.Count;
-                float rowW = w - pad;
+                float rowW = img ? cw : w - pad;
                 float bw = (rowW - gap * (n - 1)) / n;
                 float cy = y - buttonH / 2f;
                 for (int i = 0; i < n; i++)
