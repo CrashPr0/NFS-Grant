@@ -67,7 +67,9 @@ mergeInto(LibraryManager.library, {
       frame = document.createElement('iframe');
       frame.src = frameUrl;
       frame.title = title || 'Exhibit link';
-      frame.referrerPolicy = 'no-referrer';
+      // Origin only: YouTube's embed refuses to play without a referrer
+      // (error 153), and the full URL would leak ?pid= to the framed site.
+      frame.referrerPolicy = 'strict-origin';
       frame.setAttribute('allow', 'fullscreen; autoplay; encrypted-media; picture-in-picture');
       frame.style.cssText = 'flex:1 1 auto;width:100%;border:0;background:#fff;';
     } else {
