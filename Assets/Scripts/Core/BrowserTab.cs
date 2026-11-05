@@ -8,10 +8,10 @@ namespace NSFGrant.Core
     /// <summary>
     /// Shows a link or PDF to the participant, wherever they are.
     ///
-    /// Desktop / flat browser: a NEW browser tab, so the study page (and its
-    /// session) stays open (Application.OpenURL navigated the study page
-    /// itself in the WebGL build). Elsewhere (editor, native Quest, where
-    /// the system browser overlays the app): Application.OpenURL.
+    /// Flat browser: the in-page reader (NSFGrantReader.jslib), so materials
+    /// open inside the study page and its session stays open. Elsewhere
+    /// (editor, native Quest, where the system browser overlays the app):
+    /// Application.OpenURL.
     ///
     /// Headset in a browser (WebXR): an immersive session draws only the
     /// WebGL scene - no page, PDF or tab can appear inside it, and a tab
@@ -58,6 +58,21 @@ namespace NSFGrant.Core
                 }
                 PendingUrl = url;
                 PendingTitle = title;
+                return;
+            }
+            // Flat browser: the same in-page reader, so materials open inside
+            // the study page rather than in a separate tab.
+            OpenReader(url, title);
+        }
+
+        /// <summary>
+        /// A new browser tab (browser builds), for pages that must leave the
+        /// study page, like the final survey; elsewhere just opens the URL.
+        /// </summary>
+        public static void OpenInNewTab(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+            {
                 return;
             }
 #if UNITY_WEBGL && !UNITY_EDITOR

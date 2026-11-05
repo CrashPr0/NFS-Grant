@@ -67,7 +67,7 @@ namespace NSFGrant.Session
         [Tooltip("Qualtrics post-study survey link. {pid} is replaced with the " +
                  "participant's study ID, e.g. https://sjsu.qualtrics.com/jfe/form/SV_xxx?pid={pid}. " +
                  "Empty = the done screen tells the participant the team will send it.")]
-        [SerializeField] private string postSurveyUrl = "https://sjsu.pdx1.qualtrics.com/jfe/form/SV_1YAupNqsgyX3LaC?pid={pid}";
+        [SerializeField] private string postSurveyUrl = "https://sjsu.qualtrics.com/jfe/form/SV_3IDLDmGaP2AEfc2?pid={pid}";
 
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
@@ -143,6 +143,15 @@ namespace NSFGrant.Session
 
             string pid = GetUrlParameter("pid");
             string cond = GetUrlParameter("cond");
+            if (string.IsNullOrEmpty(pid) && Application.platform == RuntimePlatform.WebGLPlayer)
+            {
+                // A browser participant is never asked to type an ID. The
+                // normal path is ?pid= from Qualtrics; this is the fallback
+                // for someone who opens the bare link. "W-" marks IDs that
+                // can't be matched to their Qualtrics responses.
+                pid = "W-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                Debug.LogWarning($"[StudyIntake] No ?pid= in the link; generated {pid}.");
+            }
             if (!string.IsNullOrEmpty(pid))
             {
                 Begin(pid, cond, skipQuizzes: false);
@@ -590,7 +599,7 @@ namespace NSFGrant.Session
                            "Continue to the final survey", StudyGuiKit.ButtonStyle(baseUnit)))
             {
                 StudyEventLogger.Instance?.LogEvent("post_survey_opened", "", "source=button");
-                BrowserTab.Open(link);
+                BrowserTab.OpenInNewTab(link);
             }
         }
     }

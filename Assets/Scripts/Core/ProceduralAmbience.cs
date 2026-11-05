@@ -17,7 +17,7 @@ namespace NSFGrant.Core
     /// </summary>
     public class ProceduralAmbience : MonoBehaviour
     {
-        [SerializeField, Range(0f, 1f)] private float volume = 0.35f;
+        [SerializeField, Range(0f, 1f)] private float volume = 0.12f;
         [SerializeField] private float minDistance = 1.5f;
         [SerializeField] private float maxDistance = 14f;
         [SerializeField] private int sampleRate = 22050;
