@@ -89,15 +89,15 @@ namespace NSFGrant.Content
                 DataVizText = "SDG 4 progress data\n2025 SDG Progress Report - Goal 4 extended report",
                 DataVizUrl = "https://unstats.un.org/sdgs/report/2025/extended-report/Extended-Report-2025_Goal-4.pdf",
 
-                VideoText = "Story kiosk\nSDG learning resources:\n\"SDG Learners today, SDG Leaders tomorrow!\"",
-                VideoUrl = "https://www.unsdglearn.org/",
+                VideoText = "Why it matters\nWhy quality education matters (UN)",
+                VideoUrl = "https://www.youtube.com/watch?v=dKip3rpuEvY",
 
                 InteractiveText =
                     "How libraries support Goal 4\n" +
                     "\"The public library, the local gateway to knowledge, provides\n" +
                     "a basic condition for lifelong learning, independent\n" +
                     "decision-making and cultural development.\"\n- IFLA-UNESCO Public Library Manifesto",
-                InteractiveUrl = "https://sdgs.un.org/goals/goal4",
+                InteractiveUrl = "https://globalgoals.org/goals/4-quality-education/",
 
                 CallToActionOptions = new[]
                 {
@@ -122,7 +122,8 @@ namespace NSFGrant.Content
                     "United Nations. (n.d.). Goal 4 | Department of Economic and Social Affairs. https://sdgs.un.org/goals/goal4",
                     "United Nations Statistics Division. (2025). Extended report 2025: Goal 4. https://unstats.un.org/sdgs/report/2025/extended-report/Extended-Report-2025_Goal-4.pdf",
                     "IFLA/UNESCO. (2022). IFLA-UNESCO Public Library Manifesto 2022 and the UN SDGs.",
-                    "UN SDG:Learn. (n.d.). https://www.unsdglearn.org/"
+                    "United Nations. (n.d.). Why quality education matters - Sustainable Development Goal 4 [Video]. https://www.youtube.com/watch?v=dKip3rpuEvY",
+                    "The Global Goals. (n.d.). Goal 4: Quality education. https://globalgoals.org/goals/4-quality-education/"
                 }
             },
 
