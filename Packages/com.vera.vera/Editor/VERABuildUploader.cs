@@ -672,6 +672,20 @@ namespace VERA
         #region BUILD
 
 
+        // Unity 6.3 refuses BuildPlayer inside the player loop, which is where
+        // Task continuations run (UnitySynchronizationContext.ExecuteTasks).
+        // delayCall runs from the editor update instead.
+        private static Task<BuildReport> BuildPlayerOutsidePlayerLoop(BuildPlayerOptions options)
+        {
+            var result = new TaskCompletionSource<BuildReport>();
+            EditorApplication.delayCall += () =>
+            {
+                try { result.SetResult(BuildPipeline.BuildPlayer(options)); }
+                catch (Exception ex) { result.SetException(ex); }
+            };
+            return result.Task;
+        }
+
         // Builds the project for WebXR
         public static async Task<bool> BuildProject(VERABuildProgressWindow progress = null)
         {
@@ -692,7 +706,13 @@ namespace VERA
                     options = BuildOptions.None
                 };
 
-                BuildReport report = BuildPipeline.BuildPlayer(bp);
+                if (bp.scenes.Length == 0)
+                {
+                    progress?.FailStep(STEP_BUILD, "No scenes are enabled in Build Settings.");
+                    throw new Exception("No scenes are enabled in Build Settings, so the build would be empty.");
+                }
+
+                BuildReport report = await BuildPlayerOutsidePlayerLoop(bp);
                 if (report.summary.result != BuildResult.Succeeded)
                 {
                     progress?.FailStep(STEP_BUILD, $"Build failed: {report.summary.result}");

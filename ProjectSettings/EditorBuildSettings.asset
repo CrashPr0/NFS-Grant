@@ -4,7 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/DiscoveryHall.unity
+    guid: 8a78f96bcc602435db7a42637ca1a225
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 29052c024e3f14427986faaaa9854811, type: 2}
     WebXR.Settings: {fileID: 11400000, guid: 86c36b2ff78254e9d80ab3671273a255, type: 2}
