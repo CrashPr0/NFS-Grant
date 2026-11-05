@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using NSFGrant.Interaction;
 using NSFGrant.Logging;
 using NSFGrant.Session;
 using NSFGrant.Stations;
@@ -9,14 +10,15 @@ namespace NSFGrant.Core
     /// <summary>
     /// Light "gamification" (the team's request): a non-intrusive
     /// rooms-explored progress indicator and a completion badge once every SDG
-    /// room has been visited. It reads <see cref="SdgStation.VisitCount"/>, logs
-    /// "room_progress" / "exploration_complete" events, and draws a small
-    /// screen-space HUD on desktop/WebGL.
+    /// room has been explored. A room counts once the participant interacts
+    /// with an exhibit in it, not on entry: station volumes reach into the
+    /// hub, so walking past a doorway would count, and the mid-study check-in
+    /// and payment rule are about interacting too. Logs "room_progress" /
+    /// "exploration_complete" events and draws a small screen-space HUD on
+    /// desktop/WebGL.
     ///
     /// Deliberately kept minimal and symmetric across conditions: the HUD is
-    /// screen-space (never a world AOI, so the gaze raycaster can't hit it) and
-    /// rewards only completion, not interaction, so it does not bias the
-    /// attention measures.
+    /// screen-space (never a world AOI, so the gaze raycaster can't hit it).
     /// </summary>
     public class ProgressTracker : MonoBehaviour
     {
@@ -28,6 +30,7 @@ namespace NSFGrant.Core
         private readonly HashSet<string> _visited = new HashSet<string>();
         private bool _complete;
         private float _completeTime = -1f;
+        private readonly List<InteractableObject> _subscribed = new List<InteractableObject>();
 
         private void Awake()
         {
@@ -37,6 +40,33 @@ namespace NSFGrant.Core
         private void Start()
         {
             _stations = FindObjectsByType<SdgStation>(FindObjectsSortMode.None);
+            foreach (var interactable in FindObjectsByType<InteractableObject>(FindObjectsSortMode.None))
+            {
+                interactable.Activated += OnActivated;
+                _subscribed.Add(interactable);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var interactable in _subscribed)
+            {
+                if (interactable != null) interactable.Activated -= OnActivated;
+            }
+        }
+
+        private void OnActivated(InteractableObject interactable)
+        {
+            if (session != null && !session.SessionRunning)
+            {
+                return;
+            }
+            var station = interactable.GetComponentInParent<SdgStation>();
+            if (station != null && _visited.Add(station.StationId))
+            {
+                StudyEventLogger.Instance?.LogEvent("room_progress", station.StationId,
+                    $"explored={_visited.Count}/{_stations.Length}");
+            }
         }
 
         private void Update()
@@ -52,15 +82,6 @@ namespace NSFGrant.Core
             if (_stations == null || _stations.Length == 0 || _complete)
             {
                 return;
-            }
-
-            foreach (var station in _stations)
-            {
-                if (station.VisitCount > 0 && _visited.Add(station.StationId))
-                {
-                    StudyEventLogger.Instance?.LogEvent("room_progress", station.StationId,
-                        $"explored={_visited.Count}/{_stations.Length}");
-                }
             }
 
             if (_visited.Count >= _stations.Length)
