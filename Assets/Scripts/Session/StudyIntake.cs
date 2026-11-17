@@ -148,20 +148,84 @@ namespace NSFGrant.Session
 
             string pid = GetUrlParameter("pid");
             string cond = GetUrlParameter("cond");
-            if (string.IsNullOrEmpty(pid) && Application.platform == RuntimePlatform.WebGLPlayer)
+            if (Application.platform == RuntimePlatform.WebGLPlayer)
             {
-                // A browser participant is never asked to type an ID. The
-                // normal path is ?pid= from Qualtrics; this is the fallback
-                // for someone who opens the bare link. "W-" marks IDs that
-                // can't be matched to their Qualtrics responses.
-                pid = "W-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                Debug.LogWarning($"[StudyIntake] No ?pid= in the link; generated {pid}.");
+                if (!string.IsNullOrEmpty(pid))
+                {
+                    RememberPid(pid);
+                }
+                else
+                {
+                    // Someone who consented, left, and came back via the bare
+                    // link keeps their ID if it's recent and the session
+                    // wasn't finished; otherwise a "W-" ID that can't be
+                    // matched to their Qualtrics responses.
+                    pid = RecentUnfinishedPid();
+                    if (string.IsNullOrEmpty(pid))
+                    {
+                        // A browser participant is never asked to type an ID.
+                        pid = "W-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        Debug.LogWarning($"[StudyIntake] No ?pid= in the link; generated {pid}.");
+                    }
+                    else
+                    {
+                        Debug.Log($"[StudyIntake] No ?pid= in the link; reusing this browser's recent ID {pid}.");
+                    }
+                }
             }
             if (!string.IsNullOrEmpty(pid))
             {
                 Begin(pid, cond, skipQuizzes: false);
             }
             // Otherwise wait in Intake; OnGUI shows the entry panel.
+        }
+
+        // Browser-local memory of the ID (per origin, so a shared computer's
+        // next person only inherits it within a day and until the study is
+        // finished).
+        private const string PidKey = "nsf.pid";
+        private const string PidTimeKey = "nsf.pid.time";
+        private const string PidDoneKey = "nsf.pid.done";
+        private const long PidMaxAgeSeconds = 24 * 60 * 60;
+
+        private static long NowUnix() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void NSFGrantStoreSet(string key, string value);
+
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern string NSFGrantStoreGet(string key);
+#else
+        private static void NSFGrantStoreSet(string key, string value) { PlayerPrefs.SetString(key, value); }
+        private static string NSFGrantStoreGet(string key) { return PlayerPrefs.GetString(key, ""); }
+#endif
+
+        private static void RememberPid(string pid)
+        {
+            NSFGrantStoreSet(PidKey, pid);
+            NSFGrantStoreSet(PidTimeKey, NowUnix().ToString());
+            NSFGrantStoreSet(PidDoneKey, "0");
+        }
+
+        private static string RecentUnfinishedPid()
+        {
+            string pid = NSFGrantStoreGet(PidKey);
+            if (string.IsNullOrEmpty(pid) || NSFGrantStoreGet(PidDoneKey) == "1")
+            {
+                return null;
+            }
+            if (!long.TryParse(NSFGrantStoreGet(PidTimeKey), out long t)
+                || NowUnix() - t > PidMaxAgeSeconds)
+            {
+                return null;
+            }
+            return pid;
+        }
+
+        private static void MarkPidFinished()
+        {
+            NSFGrantStoreSet(PidDoneKey, "1");
         }
 
         private void Update()
@@ -311,6 +375,7 @@ namespace NSFGrant.Session
 
             session.StopSession();
             _phase = Phase.Done;
+            if (Application.platform == RuntimePlatform.WebGLPlayer) MarkPidFinished();
 
             if (showSurvey)
             {
