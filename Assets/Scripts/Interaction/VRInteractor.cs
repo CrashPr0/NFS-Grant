@@ -41,9 +41,10 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
-            // A survey/confirm panel owns the trigger while it's open, so an
-            // answer click can't also activate the exhibit behind it.
-            if (VRSurveyPanel.IsOpen)
+            // A survey/confirm panel or the browser panel owns the trigger
+            // while it's open, so a click can't also activate the exhibit
+            // behind it.
+            if (VRSurveyPanel.IsOpen || VRWebPanel.IsOpen)
             {
                 return;
             }
