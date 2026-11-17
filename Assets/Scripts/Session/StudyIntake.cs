@@ -69,6 +69,11 @@ namespace NSFGrant.Session
                  "Empty = the done screen tells the participant the team will send it.")]
         [SerializeField] private string postSurveyUrl = "https://sjsu.qualtrics.com/jfe/form/SV_3IDLDmGaP2AEfc2?pid={pid}";
 
+        [Tooltip("Qualtrics mid-study questionnaire (M1-M4) link, opened in browser builds " +
+                 "when the participant has explored two zones. {pid} is replaced with the " +
+                 "study ID. Empty = M1-M4 run inside the app instead.")]
+        [SerializeField] private string midSurveyUrl = "https://sjsu.qualtrics.com/jfe/form/SV_doDNDZNAfePfVNI?pid={pid}";
+
         private Phase _phase = Phase.Intake;
         private string _enteredId = "";
         private bool _skipSurveys;
@@ -523,6 +528,22 @@ namespace NSFGrant.Session
                     return null;
                 }
                 return postSurveyUrl.Trim().Replace("{pid}", Uri.EscapeDataString(session.ParticipantId ?? ""));
+            }
+        }
+
+        /// <summary>
+        /// The Qualtrics mid-study link for this participant, or null when
+        /// M1-M4 should run in the app (no link, or questionnaires not in Qualtrics).
+        /// </summary>
+        public string MidSurveyLink
+        {
+            get
+            {
+                if (!questionnairesInQualtrics || string.IsNullOrWhiteSpace(midSurveyUrl))
+                {
+                    return null;
+                }
+                return midSurveyUrl.Trim().Replace("{pid}", Uri.EscapeDataString(session.ParticipantId ?? ""));
             }
         }
 
