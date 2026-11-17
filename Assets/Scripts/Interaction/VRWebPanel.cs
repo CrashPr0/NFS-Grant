@@ -153,7 +153,12 @@ namespace NSFGrant.Interaction
                     _browser.LoadUrl(_pendingUrl);
                     _pendingUrl = null;
                 }
-                _browser.UpdateFrame();
+                // Skip frame capture while the panel is hidden; the page is
+                // blank then and the 30 fps copy only costs battery.
+                if (IsOpen)
+                {
+                    _browser.UpdateFrame();
+                }
                 _browser.DispatchMessageQueue();
             }
 

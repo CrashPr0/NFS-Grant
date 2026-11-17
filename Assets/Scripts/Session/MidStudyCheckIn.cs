@@ -110,8 +110,8 @@ namespace NSFGrant.Session
             }
 
             // Wait for a calm moment: not over the VR "end exploring?"
-            // confirmation.
-            if (_explored.Count >= 2 && !VRSurveyPanel.IsOpen && !_quiz.IsVisible)
+            // confirmation or an open in-headset browser tab.
+            if (_explored.Count >= 2 && !VRSurveyPanel.IsOpen && !VRWebPanel.IsOpen && !_quiz.IsVisible)
             {
                 _shown = true;
                 _qualtricsLink = _intake.MidSurveyLink;
