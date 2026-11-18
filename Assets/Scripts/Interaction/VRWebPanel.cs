@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
@@ -41,6 +42,8 @@ namespace NSFGrant.Interaction
             false;
 #endif
 
+        private const bool ClearBrowserDataOnClose = true;
+
         private const float Distance = 1.5f;
         private const float PageWidth = 1.5f;
         // Page layout size in CSS-ish pixels, and the texture it's drawn to.
@@ -72,6 +75,20 @@ namespace NSFGrant.Interaction
         private string _sourceId;
         private float _openedAt;
 
+        // Navigation is limited to the sites the exhibits link to: the page
+        // has no address bar, but links on a page could otherwise lead the
+        // participant anywhere. The plugin has no navigation callback, so the
+        // current URL is polled and an off-list page is sent back.
+        private const float UrlCheckSeconds = 0.4f;
+        private const float NoticeSeconds = 3f;
+        private HashSet<string> _allowedHosts;
+        private string _homeUrl, _lastAllowedUrl, _lastCheckedUrl;
+        private float _nextUrlCheck, _noticeUntil;
+
+        // Laser pointers, looked up once a second rather than every frame.
+        private VRLaserPointer[] _pointers = Array.Empty<VRLaserPointer>();
+        private float _nextPointerRefresh;
+
         private XRInputBridge.Hand? _dragHand;
         private long _downTime;
         private Vector2Int _lastTouch;
@@ -98,7 +115,13 @@ namespace NSFGrant.Interaction
             StudyEventLogger.Instance?.LogEvent("content_browser_open", sourceId, url);
 
             _title.text = HostOf(url);
+            BuildAllowedHosts(url);
             url = ViewableUrl(url);
+            _homeUrl = url;
+            _lastAllowedUrl = url;
+            _lastCheckedUrl = null;
+            _noticeUntil = 0f;
+            _nextUrlCheck = Time.unscaledTime + 1.5f;
             if (_browser.state == FragmentCapture.State.Initialized)
             {
                 _browser.LoadUrl(url);
@@ -126,6 +149,15 @@ namespace NSFGrant.Interaction
             if (_browser.state == FragmentCapture.State.Initialized)
             {
                 _browser.LoadUrl("about:blank");
+                // Nothing a participant opened (cookies, logins, history,
+                // cached pages) carries over to the next tab or participant.
+                // Set ClearBrowserDataOnClose to false to keep them.
+                if (ClearBrowserDataOnClose)
+                {
+                    _browser.ClearCookie();
+                    _browser.ClearCache(true);
+                    _browser.ClearHistory();
+                }
             }
             _pendingUrl = null;
             _root.gameObject.SetActive(false);
@@ -172,6 +204,7 @@ namespace NSFGrant.Interaction
                 return;
             }
             KeepInView();
+            EnforceAllowedSites();
             // A survey/confirm panel owns the trigger while it's open.
             if (!VRSurveyPanel.IsOpen)
             {
@@ -188,13 +221,114 @@ namespace NSFGrant.Interaction
             }
         }
 
+        // ------------------------------------------------------------- sites
+
+        // Always allowed besides the exhibits' own sites: Google's document
+        // viewer, which shows the PDFs (ViewableUrl).
+        private static readonly string[] ExtraHosts = { "docs.google.com" };
+
+        private void BuildAllowedHosts(string openedUrl)
+        {
+            _allowedHosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            AddHost(openedUrl);
+            foreach (var link in FindObjectsByType<ContentLink>(FindObjectsSortMode.None))
+            {
+                AddHost(link.Url);
+            }
+            foreach (string h in ExtraHosts)
+            {
+                _allowedHosts.Add(h);
+            }
+        }
+
+        private void AddHost(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri)) return;
+            string host = StripWww(uri.Host);
+            _allowedHosts.Add(host);
+            // youtu.be short links resolve to YouTube.
+            if (host == "youtu.be") _allowedHosts.Add("youtube.com");
+        }
+
+        private static string StripWww(string host)
+        {
+            return host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? host.Substring(4) : host;
+        }
+
+        /// <summary>A host is allowed if it, or a parent domain, is on the list (m.youtube.com for youtube.com).</summary>
+        private bool IsAllowed(string url)
+        {
+            if (string.IsNullOrEmpty(url) || url.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri uri)
+                || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+            {
+                return false;
+            }
+            string host = StripWww(uri.Host);
+            while (true)
+            {
+                if (_allowedHosts.Contains(host)) return true;
+                int dot = host.IndexOf('.');
+                if (dot < 0 || host.IndexOf('.', dot + 1) < 0) return false; // keep at least two labels
+                host = host.Substring(dot + 1);
+            }
+        }
+
+        private void EnforceAllowedSites()
+        {
+            if (_browser.state != FragmentCapture.State.Initialized)
+            {
+                return;
+            }
+            if (_noticeUntil > 0f && Time.unscaledTime >= _noticeUntil)
+            {
+                _noticeUntil = 0f;
+                _title.text = HostOf(_lastAllowedUrl ?? _homeUrl ?? "");
+            }
+            if (Time.unscaledTime < _nextUrlCheck)
+            {
+                return;
+            }
+            _nextUrlCheck = Time.unscaledTime + UrlCheckSeconds;
+
+            string current = _browser.GetUrl();
+            if (string.IsNullOrEmpty(current) || current == _lastCheckedUrl)
+            {
+                return;
+            }
+            _lastCheckedUrl = current;
+            if (IsAllowed(current))
+            {
+                if (!current.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastAllowedUrl = current;
+                    _title.text = HostOf(current);
+                }
+                return;
+            }
+
+            StudyEventLogger.Instance?.LogEvent("content_browser_blocked", _sourceId, current);
+            _title.text = "That link isn't part of the study";
+            _noticeUntil = Time.unscaledTime + NoticeSeconds;
+            _browser.LoadUrl(_lastAllowedUrl ?? _homeUrl);
+        }
+
         // ------------------------------------------------------------- input
 
         private void HandlePointer()
         {
             int hovered = -1;
-            foreach (var pointer in FindObjectsByType<VRLaserPointer>(FindObjectsSortMode.None))
+            if (Time.unscaledTime >= _nextPointerRefresh)
             {
+                _pointers = FindObjectsByType<VRLaserPointer>(FindObjectsSortMode.None);
+                _nextPointerRefresh = Time.unscaledTime + 1f;
+            }
+            foreach (var pointer in _pointers)
+            {
+                if (pointer == null) continue;
                 XRInputBridge.Hand hand = pointer.Hand;
                 if (!XRInputBridge.IsConnected(hand))
                 {
