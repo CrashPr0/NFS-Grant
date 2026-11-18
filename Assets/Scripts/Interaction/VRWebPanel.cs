@@ -28,11 +28,23 @@ namespace NSFGrant.Interaction
     /// Quest app only: the plugin needs an Android device (it shows nothing
     /// in the Editor), and a browser's WebXR session can't draw web pages at
     /// all, so ContentLink keeps opening a new tab there.
+    ///
+    /// On-device diagnostics: every step logs with a "[VRWebPanel]" prefix,
+    /// so `adb logcat -s Unity | grep VRWebPanel` shows the WebView start-up
+    /// (state, graphics API, capture mode), the first frame, page
+    /// start/finish and any fallback with its reason.
     /// </summary>
     public class VRWebPanel : MonoBehaviour
     {
         /// <summary>True while the browser panel is shown (blocks exhibit selection).</summary>
         public static bool IsOpen { get; private set; }
+
+        /// <summary>
+        /// True while open and on the frame it closed: the trigger press on
+        /// Close must not also select the exhibit behind the panel.
+        /// </summary>
+        public static bool OwnsTrigger => IsOpen || Time.frameCount == _closedFrame;
+        private static int _closedFrame = -1;
 
         /// <summary>Whether links open here rather than in an external browser.</summary>
         public static bool Supported =>
@@ -63,11 +75,17 @@ namespace NSFGrant.Interaction
 
         private static VRWebPanel _instance;
 
-        // Set when the browser can't start or throws: links then go back to
-        // the system browser (ContentLink checks Supported), so a participant
-        // never gets a dead panel.
+        // Set when the browser can't start, never draws, or throws: links
+        // then go back to the system browser (ContentLink checks Supported),
+        // so a participant never gets a dead panel.
         private static bool _failed;
-        private const float StartTimeoutSeconds = 12f;
+        // Time from opening for the WebView to start and hand over its first
+        // frame. It draws about:blank as soon as it starts, so this doesn't
+        // depend on the network; a page still loading shows as white, not
+        // as "no frame".
+        private const float FirstFrameTimeoutSeconds = 10f;
+        // Once a frame has arrived the plugin works on this device.
+        private static bool _hadFrame;
         private const int MaxBlocksBeforeClose = 5;
         private const float BlockWindowSeconds = 10f;
         private readonly List<float> _blockTimes = new List<float>();
@@ -76,6 +94,11 @@ namespace NSFGrant.Interaction
         private RectTransform _page;
         private BoxCollider _pageCollider;
         private WebView _browser;
+        private RawImage _view;
+        private FragmentCapture.State _loggedState = FragmentCapture.State.None;
+        private float _initStartedAt;
+        private bool _backPressed;
+        private int _shownFrame = -1;
         private string _pendingUrl;
         private (BoxCollider collider, Renderer renderer, Action onClick)[] _buttons;
         private Material _buttonMat, _hoverMat;
@@ -139,6 +162,7 @@ namespace NSFGrant.Interaction
         private static void Fail(Exception e, string url, string sourceId)
         {
             _failed = true;
+            if (IsOpen) _closedFrame = Time.frameCount;
             IsOpen = false;
             if (_instance != null && _instance._root != null)
             {
@@ -146,7 +170,8 @@ namespace NSFGrant.Interaction
             }
             Debug.LogError($"[VRWebPanel] Browser failed ({e.GetType().Name}: {e.Message}); " +
                            "falling back to the system browser.");
-            StudyEventLogger.Instance?.LogEvent("content_browser_error", sourceId, e.GetType().Name);
+            StudyEventLogger.Instance?.LogEvent("content_browser_error", sourceId,
+                $"{e.GetType().Name}: {e.Message}");
             if (!string.IsNullOrEmpty(url))
             {
                 Application.OpenURL(url);
@@ -172,7 +197,9 @@ namespace NSFGrant.Interaction
             _lastCheckedUrl = null;
             _noticeUntil = 0f;
             _blockTimes.Clear();
+            _backPressed = false;
             _nextUrlCheck = Time.unscaledTime + 1.5f;
+            Debug.Log($"[VRWebPanel] Open {url} (webview state={_browser.state}, had frame={_hadFrame})");
             if (_browser.state == FragmentCapture.State.Initialized)
             {
                 _browser.LoadUrl(url);
@@ -186,6 +213,8 @@ namespace NSFGrant.Interaction
             _root.gameObject.SetActive(true);
             PlaceInFrontOfHead();
             IsOpen = true;
+            // The trigger press that opened the link must not also tap the page.
+            _shownFrame = Time.frameCount;
         }
 
         private void Close()
@@ -213,6 +242,7 @@ namespace NSFGrant.Interaction
             _pendingUrl = null;
             _root.gameObject.SetActive(false);
             IsOpen = false;
+            _closedFrame = Time.frameCount;
         }
 
         private void LogClose()
@@ -241,6 +271,7 @@ namespace NSFGrant.Interaction
                 return;
             }
             FragmentCapture.GarbageCollect();
+            LogStateChange();
             if (_browser.state == FragmentCapture.State.Initialized)
             {
                 if (_pendingUrl != null)
@@ -253,6 +284,12 @@ namespace NSFGrant.Interaction
                 if (IsOpen)
                 {
                     _browser.UpdateFrame();
+                    if (!_hadFrame && HasFrame())
+                    {
+                        _hadFrame = true;
+                        Debug.Log($"[VRWebPanel] First frame after {Time.unscaledTime - _initStartedAt:F1}s " +
+                                  $"({_view.texture.width}x{_view.texture.height})");
+                    }
                 }
                 _browser.DispatchMessageQueue();
             }
@@ -273,11 +310,14 @@ namespace NSFGrant.Interaction
                 Close();
                 return;
             }
-            // The plugin never came up (or the device can't run it).
-            if (_browser.state != FragmentCapture.State.Initialized
-                && Time.unscaledTime - _openedAt > StartTimeoutSeconds)
+            // The plugin never came up, or came up but never drew (a blank
+            // panel): hand the link to the system browser.
+            if (!_hadFrame && Time.unscaledTime - _openedAt > FirstFrameTimeoutSeconds)
             {
-                Fail(new TimeoutException("WebView did not start"), _homeUrl, _sourceId);
+                string reason = _browser.state != FragmentCapture.State.Initialized
+                    ? $"WebView did not start (state={_browser.state})"
+                    : "WebView started but produced no frame";
+                Fail(new TimeoutException(reason), _homeUrl, _sourceId);
                 return;
             }
             KeepInView();
@@ -287,6 +327,22 @@ namespace NSFGrant.Interaction
             {
                 HandlePointer();
             }
+        }
+
+        private bool HasFrame()
+        {
+            // Before the first frame the plugin shows a small grey loading
+            // texture; frames arrive in a texture of TexSize.
+            Texture t = _view != null ? _view.texture : null;
+            return t != null && t.width == TexSize.x && t.height == TexSize.y;
+        }
+
+        private void LogStateChange()
+        {
+            if (_browser.state == _loggedState) return;
+            _loggedState = _browser.state;
+            Debug.Log($"[VRWebPanel] WebView state {_loggedState} after {Time.unscaledTime - _initStartedAt:F1}s " +
+                      $"(gfx={SystemInfo.graphicsDeviceType}, render thread={SystemInfo.renderingThreadingMode})");
         }
 
         private void OnDestroy()
@@ -376,7 +432,17 @@ namespace NSFGrant.Interaction
             {
                 return;
             }
+            // Back from the first page lands on the about:blank the panel
+            // starts on; show the exhibit page again instead of a blank panel.
+            if (_backPressed && current.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+            {
+                _backPressed = false;
+                _lastCheckedUrl = null;
+                _browser.LoadUrl(_homeUrl);
+                return;
+            }
             _lastCheckedUrl = current;
+            _backPressed = false;
             if (IsAllowed(current))
             {
                 if (!current.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
@@ -411,6 +477,7 @@ namespace NSFGrant.Interaction
                 return;
             }
             int hovered = -1;
+            bool acceptPress = Time.frameCount != _shownFrame;
             if (Time.unscaledTime >= _nextPointerRefresh)
             {
                 _pointers = FindObjectsByType<VRLaserPointer>(FindObjectsSortMode.None);
@@ -446,7 +513,7 @@ namespace NSFGrant.Interaction
                 {
                     hovered = button;
                 }
-                if (!XRInputBridge.GetTriggerDown(hand))
+                if (!acceptPress || !XRInputBridge.GetTriggerDown(hand))
                 {
                     if (onPage)
                     {
@@ -586,10 +653,16 @@ namespace NSFGrant.Interaction
                 TMPro.TextAlignmentOptions.Left);
             _buttons = new[]
             {
-                Button("Back", PageWidth / 2f - ButtonW * 1.5f - 0.03f, barY, font, textMat, () => _browser.GoBack()),
+                Button("Back", PageWidth / 2f - ButtonW * 1.5f - 0.03f, barY, font, textMat, GoBack),
                 Button("Close", PageWidth / 2f - ButtonW / 2f - 0.015f, barY, font, textMat, Close),
             };
             _root.gameObject.SetActive(false);
+        }
+
+        private void GoBack()
+        {
+            _backPressed = true;
+            _browser.GoBack();
         }
 
         private void BuildPage(float pageH)
@@ -610,16 +683,48 @@ namespace NSFGrant.Interaction
             viewRect.anchorMin = Vector2.zero;
             viewRect.anchorMax = Vector2.one;
             viewRect.offsetMin = viewRect.offsetMax = Vector2.zero;
-            var raw = viewGo.GetComponent<RawImage>();
-            raw.color = Color.white;
+            _view = viewGo.GetComponent<RawImage>();
+            _view.color = Color.white;
 
-            _browser = viewGo.AddComponent<WebView>();
+            // The WebView lives on this (always active) object, not in the
+            // panel: Init() runs the plugin's start-up as a coroutine, and
+            // hiding the panel right after building it stopped that
+            // coroutine, so the WebView never started and the page stayed
+            // blank. It only needs the RawImage to draw into.
+            _browser = gameObject.AddComponent<WebView>();
             // The plugin only exposes these as serialized fields (normally
             // set on its prefab). ByteBuffer capture: the HardwareBuffer
             // default is reported blank on Quest with Unity 6 / Vulkan.
-            SetField(typeof(FragmentCapture), "m_rawImage", raw);
+            SetField(typeof(FragmentCapture), "m_rawImage", _view);
             SetField(typeof(FragmentCapture), "m_captureMode", CaptureMode.ByteBuffer);
+            // A prefab would serialize these; added from code they are null,
+            // which breaks start-up (SetIntentFilters(null)) and every page
+            // event (DispatchMessageQueue invokes the callbacks unchecked).
+            SetField(typeof(Browser), "m_intentFilters", Array.Empty<string>());
+            SetField(typeof(Browser), "m_eventCallback", MakeEventCallback());
+            _initStartedAt = Time.unscaledTime;
+            Debug.Log($"[VRWebPanel] Starting WebView (view {ViewSize}, tex {TexSize}, capture ByteBuffer, " +
+                      $"gfx={SystemInfo.graphicsDeviceType})");
             _browser.Init(ViewSize, TexSize, "about:blank", Fps, new Download.Option());
+        }
+
+        private EventCallback MakeEventCallback()
+        {
+            var callback = new EventCallback
+            {
+                onPageStart = new UnityEngine.Events.UnityEvent<string>(),
+                onPageFinish = new UnityEngine.Events.UnityEvent<string>(),
+                onDownload = new UnityEngine.Events.UnityEvent<Download.Request>(),
+                onDownloadError = new UnityEngine.Events.UnityEvent<Download.EventInfo>(),
+                onDownloadStart = new UnityEngine.Events.UnityEvent<Download.EventInfo>(),
+                onDownloadFinish = new UnityEngine.Events.UnityEvent<Download.EventInfo>(),
+                onDialog = new UnityEngine.Events.UnityEvent<TLab.WebView.Widget.AlertDialog.Init,
+                    TLab.WebView.Widget.AlertDialog>(),
+            };
+            callback.onPageStart.AddListener(url => Debug.Log($"[VRWebPanel] Page start {url}"));
+            callback.onPageFinish.AddListener(url => Debug.Log($"[VRWebPanel] Page finish {url}"));
+            callback.onDownload.AddListener(req => Debug.Log($"[VRWebPanel] Download ignored {req.url}"));
+            return callback;
         }
 
         private void SetField(Type owner, string name, object value)
