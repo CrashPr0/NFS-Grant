@@ -21,9 +21,10 @@ namespace NSFGrant.Interaction
     /// head-locked, for comfort).
     ///
     /// Ending exploration in VR (there is no F10 key): point at the
-    /// "Finish exploring" tab floating low in front of you and pull the
-    /// trigger, or hold BOTH triggers for <see cref="finishHoldSeconds"/>.
-    /// Either opens an "End exploring?" Yes/No confirmation.
+    /// "Finish exploring" tab floating low in front of you (shown once the
+    /// mid-study check-in is done, or after five minutes) and pull the
+    /// trigger, or hold BOTH triggers for <see cref="finishHoldSeconds"/>
+    /// (any time). Either opens an "End exploring?" Yes/No confirmation.
     ///
     /// Built at runtime from primitives + the NSFGrant/UnlitTransparentColor
     /// shader already in the build; not an AttentionTarget, so it never
@@ -118,9 +119,10 @@ namespace NSFGrant.Interaction
             UpdateFinishGesture();
 
             Content content = BuildContent();
-            // The always-available "Finish exploring" tab, only while
-            // exploring with no survey panel in the way.
-            UpdateFinishTab(content == null && intake != null && intake.IsExploring);
+            // The "Finish exploring" tab, once the flow has reached that step
+            // (after the mid-study check-in; StudyIntake.IsFinishDue) and with
+            // no survey or browser panel in the way.
+            UpdateFinishTab(content == null && intake != null && intake.IsFinishDue && !VRWebPanel.IsOpen);
             if (content == null)
             {
                 Hide();
@@ -678,13 +680,17 @@ namespace NSFGrant.Interaction
 
         // ------------------------------------------------------ finish tab
 
-        // A small button floating low in front of the participant for the
-        // whole exploration, so ending the study never depends on knowing
-        // the hold-both-triggers gesture. It opens the same "End exploring?"
-        // confirmation. Not head-locked: it stays put and re-centres when
-        // the participant turns away. Lives on the Ignore Raycast layer so
-        // it never intercepts exhibit selection, gaze or teleport aiming;
-        // the pointer test below hits its collider directly.
+        // A small button floating low in front of the participant once the
+        // study reaches its finish step (after the mid-study check-in), so
+        // ending the study never depends on knowing the hold-both-triggers
+        // gesture (which works throughout). It opens the same "End
+        // exploring?" confirmation. Not head-locked: it stays put and
+        // re-centres when the participant turns away. Lives on the Ignore
+        // Raycast layer so it never intercepts exhibit selection, gaze or
+        // teleport aiming; the pointer test below hits its collider
+        // directly. The collider is a trigger: the rig's CharacterController
+        // collides with every layer, so a solid one stopped the participant
+        // walking forward into it.
         private Transform _tab;
         private Collider _tabCollider;
         private Renderer _tabRenderer;
@@ -731,6 +737,7 @@ namespace NSFGrant.Interaction
             quad.layer = 2;
             var box = quad.AddComponent<BoxCollider>();
             box.size = new Vector3(1f, 1f, 0.02f);
+            box.isTrigger = true;
             _tabCollider = box;
             _tabRenderer = quad.GetComponent<Renderer>();
             Label("Finish exploring", new Vector3(0f, 0f, -0.005f), 0.03f,
