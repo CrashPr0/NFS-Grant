@@ -37,7 +37,7 @@ namespace NSFGrant.Interaction
         /// <summary>Whether links open here rather than in an external browser.</summary>
         public static bool Supported =>
 #if UNITY_ANDROID && !UNITY_EDITOR
-            PlatformDetector.IsXRActive;
+            PlatformDetector.IsXRActive && !_failed;
 #else
             false;
 #endif
@@ -62,6 +62,15 @@ namespace NSFGrant.Interaction
         private static readonly Color HoverColor = new Color(0f, 0.50f, 0.78f, 1f);
 
         private static VRWebPanel _instance;
+
+        // Set when the browser can't start or throws: links then go back to
+        // the system browser (ContentLink checks Supported), so a participant
+        // never gets a dead panel.
+        private static bool _failed;
+        private const float StartTimeoutSeconds = 12f;
+        private const int MaxBlocksBeforeClose = 5;
+        private const float BlockWindowSeconds = 10f;
+        private readonly List<float> _blockTimes = new List<float>();
 
         private Transform _root;
         private RectTransform _page;
@@ -96,11 +105,52 @@ namespace NSFGrant.Interaction
         /// <summary>Shows the panel in front of the participant and loads the link.</summary>
         public static void Open(string url, string sourceId)
         {
-            if (_instance == null)
+            // Only web pages: no javascript:, file:, intent: and so on.
+            if (!IsWebUrl(url))
             {
-                _instance = new GameObject("VRWebPanel").AddComponent<VRWebPanel>();
+                Debug.LogWarning($"[VRWebPanel] Refusing to open non-web link: {url}");
+                StudyEventLogger.Instance?.LogEvent("content_browser_refused", sourceId, url);
+                return;
             }
-            _instance.Show(url, sourceId);
+            try
+            {
+                if (_instance == null)
+                {
+                    _instance = new GameObject("VRWebPanel").AddComponent<VRWebPanel>();
+                }
+                _instance.Show(url, sourceId);
+            }
+            catch (Exception e)
+            {
+                Fail(e, url, sourceId);
+            }
+        }
+
+        private static bool IsWebUrl(string url)
+        {
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri uri)
+                   && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+        }
+
+        /// <summary>
+        /// The browser is unusable: hide the panel, remember that, log it, and
+        /// open the link in the system browser instead (the previous behaviour).
+        /// </summary>
+        private static void Fail(Exception e, string url, string sourceId)
+        {
+            _failed = true;
+            IsOpen = false;
+            if (_instance != null && _instance._root != null)
+            {
+                _instance._root.gameObject.SetActive(false);
+            }
+            Debug.LogError($"[VRWebPanel] Browser failed ({e.GetType().Name}: {e.Message}); " +
+                           "falling back to the system browser.");
+            StudyEventLogger.Instance?.LogEvent("content_browser_error", sourceId, e.GetType().Name);
+            if (!string.IsNullOrEmpty(url))
+            {
+                Application.OpenURL(url);
+            }
         }
 
         private void Show(string url, string sourceId)
@@ -121,6 +171,7 @@ namespace NSFGrant.Interaction
             _lastAllowedUrl = url;
             _lastCheckedUrl = null;
             _noticeUntil = 0f;
+            _blockTimes.Clear();
             _nextUrlCheck = Time.unscaledTime + 1.5f;
             if (_browser.state == FragmentCapture.State.Initialized)
             {
@@ -173,6 +224,18 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
+            try
+            {
+                Tick();
+            }
+            catch (Exception e)
+            {
+                Fail(e, _homeUrl, _sourceId);
+            }
+        }
+
+        private void Tick()
+        {
             if (_browser == null)
             {
                 return;
@@ -201,6 +264,20 @@ namespace NSFGrant.Interaction
             if (!PlatformDetector.IsXRActive)
             {
                 Close();
+                return;
+            }
+            // A survey or confirmation takes over the participant's view; the
+            // exhibit link can be opened again afterwards.
+            if (VRSurveyPanel.IsOpen)
+            {
+                Close();
+                return;
+            }
+            // The plugin never came up (or the device can't run it).
+            if (_browser.state != FragmentCapture.State.Initialized
+                && Time.unscaledTime - _openedAt > StartTimeoutSeconds)
+            {
+                Fail(new TimeoutException("WebView did not start"), _homeUrl, _sourceId);
                 return;
             }
             KeepInView();
@@ -311,6 +388,15 @@ namespace NSFGrant.Interaction
             }
 
             StudyEventLogger.Instance?.LogEvent("content_browser_blocked", _sourceId, current);
+            _blockTimes.Add(Time.unscaledTime);
+            _blockTimes.RemoveAll(t => Time.unscaledTime - t > BlockWindowSeconds);
+            if (_blockTimes.Count >= MaxBlocksBeforeClose)
+            {
+                // The page keeps sending the participant off-site; give up on it.
+                _blockTimes.Clear();
+                Close();
+                return;
+            }
             _title.text = "That link isn't part of the study";
             _noticeUntil = Time.unscaledTime + NoticeSeconds;
             _browser.LoadUrl(_lastAllowedUrl ?? _homeUrl);
@@ -320,6 +406,10 @@ namespace NSFGrant.Interaction
 
         private void HandlePointer()
         {
+            if (_browser == null || _pageCollider == null || _buttons == null)
+            {
+                return;
+            }
             int hovered = -1;
             if (Time.unscaledTime >= _nextPointerRefresh)
             {
