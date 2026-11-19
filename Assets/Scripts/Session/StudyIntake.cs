@@ -253,6 +253,19 @@ namespace NSFGrant.Session
         /// <summary>True while the participant is exploring (between the surveys).</summary>
         public bool IsExploring => _phase == Phase.Running;
 
+        /// <summary>
+        /// True once exploring has reached the "Finish exploring" step of the
+        /// flow above: the mid-study check-in is done (it comes first, and
+        /// RequestFinishExploration waits for it), or the participant has
+        /// explored for the consent form's five minutes without reaching a
+        /// second zone, so nobody is left without a visible way out. The
+        /// headset tab waits for this; the desktop button and F10 don't.
+        /// </summary>
+        public bool IsFinishDue =>
+            IsExploring &&
+            ((_midStudy != null && _midStudy.Completed) ||
+             Time.unscaledTime - _explorationStart >= StudyProtocol.PaymentMinExplorationSeconds);
+
         /// <summary>True waiting for a participant ID (no ?pid= and no ID entered yet).</summary>
         public bool IsAwaitingIntake => _phase == Phase.Intake && !_waitingForVera;
 
