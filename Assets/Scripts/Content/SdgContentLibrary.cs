@@ -18,12 +18,26 @@ namespace NSFGrant.Content
         /// <summary>Goal icon file name (downloaded via NSF Grant > Download SDG Media Assets).</summary>
         public string IconFileName;
 
-        /// <summary>Text panel: overview + key facts.</summary>
+        /// <summary>Text panel: overview + key facts (shown when the panel is clicked).</summary>
         public string OverviewText;
+
+        /// <summary>The one sentence printed large on the text panel; OverviewText is the click-through.</summary>
+        public string OverviewSummary;
 
         /// <summary>Data visualization display: caption + source link.</summary>
         public string DataVizText;
         public string DataVizUrl;
+
+        /// <summary>
+        /// The progress-data panel is a bar graph: a title, 3 bars (label +
+        /// value, every value a percentage quoted from the UN's 2025 SDG
+        /// Progress Report page linked in DataVizUrl) and the largest value
+        /// the bars are scaled against. Clicking the panel opens the report.
+        /// </summary>
+        public string DataVizTitle;
+        public string[] DataVizLabels;
+        public float[] DataVizValues;
+        public float DataVizScaleMax;
 
         /// <summary>
         /// Optional image (in Assets/StudyContent/Textures) shown on the
@@ -86,8 +100,14 @@ namespace NSFGrant.Content
                     "eliminating gender disparities (4.5); universal literacy and\n" +
                     "numeracy (4.6); education for sustainable development (4.7).",
 
-                DataVizText = "SDG 4 progress data\n2025 SDG Progress Report - Goal 4 extended report",
-                DataVizUrl = "https://unstats.un.org/sdgs/report/2025/extended-report/Extended-Report-2025_Goal-4.pdf",
+                OverviewSummary = "Ensure inclusive and equitable quality education and promote lifelong learning opportunities for all.",
+
+                DataVizText = "SDG 4 progress data\n2025 SDG Progress Report - Goal 4",
+                DataVizUrl = "https://unstats.un.org/sdgs/report/2025/Goal-04/",
+                DataVizTitle = "School completion rate, 2024",
+                DataVizLabels = new[] { "Primary", "Lower secondary", "Upper secondary" },
+                DataVizValues = new[] { 88f, 78f, 60f },
+                DataVizScaleMax = 100f,
 
                 VideoText = "Why it matters\nWhy quality education matters (UN)",
                 VideoUrl = "https://www.youtube.com/watch?v=dKip3rpuEvY",
@@ -143,8 +163,14 @@ namespace NSFGrant.Content
                     "particular for women and children, older persons and\n" +
                     "persons with disabilities.",
 
-                DataVizText = "City progress reporting\nStuttgart - a Livable City (voluntary local review)",
-                DataVizUrl = "https://sdgs.un.org/sites/default/files/vlrs/2024-04/stuttgart-a_livable_city_1.pdf",
+                OverviewSummary = "Make cities and human settlements inclusive, safe, resilient and sustainable.",
+
+                DataVizText = "SDG 11 progress data\n2025 SDG Progress Report - Goal 11",
+                DataVizUrl = "https://unstats.un.org/sdgs/report/2025/Goal-11/",
+                DataVizTitle = "Housing cost burden, 2023",
+                DataVizLabels = new[] { "Global", "Sub-Saharan Africa", "Europe & N. America" },
+                DataVizValues = new[] { 31.0f, 43.5f, 21.4f },
+                DataVizScaleMax = 50f,
 
                 VideoText = "Case study: Helsinki Central Library Oodi\n\"Oodi - the library of a new era\"",
                 VideoUrl = "https://www.youtube.com/watch?v=f3MPmnpl1lI",
@@ -201,9 +227,14 @@ namespace NSFGrant.Content
                     "our infrastructure, which will create new jobs and promote\n" +
                     "greater prosperity across the globe.",
 
+                OverviewSummary = "Take urgent action to tackle climate change and its impacts.",
+
                 DataVizText = "SDG 13 progress data\n2025 SDG Progress Report - Goal 13",
                 DataVizUrl = "https://unstats.un.org/sdgs/report/2025/Goal-13/",
-                DataVizImageFileName = "SDG13_ProgressCard_2025.png",
+                DataVizTitle = "Greenhouse gas emissions by sector, 2023",
+                DataVizLabels = new[] { "Power", "Transport", "Agriculture" },
+                DataVizValues = new[] { 26f, 15f, 11f },
+                DataVizScaleMax = 30f,
 
                 PhotoFileNames = new[]
                 {

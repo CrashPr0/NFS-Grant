@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using NSFGrant.Docent;
 using NSFGrant.Logging;
 using NSFGrant.Stations;
 
@@ -63,6 +64,7 @@ namespace NSFGrant.Core
 
             PermuteStationPositions(stations, seed, parts);
             PermuteZonesWithinStations(stations, seed, parts);
+            PlaceDocents(stations, seed, parts);
             ApplySpawnHeading(seed, parts);
 
             AssignmentDescription = string.Join("|", parts);
@@ -129,6 +131,35 @@ namespace NSFGrant.Core
                 }
 
                 parts.Add($"{stations[s].StationId}:row{row}");
+            }
+        }
+
+        /// <summary>
+        /// Stands each room's docent on the visitor's left or right, chosen
+        /// per room and participant from the participant ID (so the same ID
+        /// always gets the same sides) and logged as docent=L/R per station.
+        /// </summary>
+        private void PlaceDocents(SdgStation[] stations, int seed, List<string> parts)
+        {
+            var sides = new List<string>();
+            for (int s = 0; s < stations.Length; s++)
+            {
+                var slot = stations[s].GetComponentInChildren<DocentSideSlot>(true);
+                if (slot == null)
+                {
+                    continue;
+                }
+                // Hash mix (not System.Random with a nearby seed, whose first
+                // draws are correlated across neighbouring participant IDs).
+                uint h = unchecked((uint)seed * 2654435761u ^ (uint)(s + 1) * 2246822519u);
+                h ^= h >> 15; h = unchecked(h * 2246822519u); h ^= h >> 13;
+                bool left = (h & 1u) == 0u;
+                slot.Apply(left);
+                sides.Add($"{stations[s].StationId}:{(left ? "L" : "R")}");
+            }
+            if (sides.Count > 0)
+            {
+                parts.Add("docent=" + string.Join(",", sides));
             }
         }
 

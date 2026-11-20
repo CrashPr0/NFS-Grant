@@ -42,7 +42,6 @@ namespace NSFGrant.EditorTools
             // editor session re-bakes instead of pointing at dead assets.
             _plasterTexture = null;
             _terrazzoTexture = null;
-            _referencesLayout = null;
             ProceduralPlanter.Reset();
             ProceduralDocent.Reset();
             _contactShadows.Clear();
@@ -452,107 +451,66 @@ namespace NSFGrant.EditorTools
             CreatePhotoBoards(root.transform, content);
             CreateRoomInterior(root.transform, themeColor, neutralWall);
 
-            // --- Format zones (the study's comparison conditions). Slot
-            // positions are authored here; the CounterbalanceManager permutes
-            // which zone occupies which slot per participant at runtime.
+            // --- Format zones (the study's comparison conditions). Every exhibit
+            // panel is the same size (StandardPanel) in every room, with
+            // text fitted to fill it; what doesn't fit is behind a click (the
+            // link, or the panel's detail text). Four zones on four slots; the
+            // CounterbalanceManager permutes which zone occupies which slot per
+            // participant at runtime.
+            string overviewFirstLine = FirstLine(content.InteractiveText);
             var zoneTextPanel = CreateZone(root.transform, content.StationId, "TextPanel",
                 "Overview", AttentionTarget.ContentFormat.TextPanel,
-                new Vector3(-4.2f, 1.5f, 1f), new Vector2(2.1f, 1.5f), themeColor,
-                null, content.OverviewText, 0.019f, 42);
+                new Vector3(ZoneSlotX[0], PanelCenterY, ZoneSlotZ[0]), themeColor,
+                null, content.OverviewSummary, detailText: content.OverviewText);
             AddCounterbalanceMarker(zoneTextPanel, 0);
 
             var zoneDataViz = CreateZone(root.transform, content.StationId, "DataViz",
                 "Progress data", AttentionTarget.ContentFormat.DataVisualization,
-                new Vector3(-2.1f, 1.5f, 0.3f), new Vector2(1.9f, 1.4f), themeColor,
-                content.DataVizUrl, content.DataVizText, 0.019f, 38,
-                content.DataVizImageFileName);
+                new Vector3(ZoneSlotX[1], PanelCenterY, ZoneSlotZ[1]), themeColor,
+                content.DataVizUrl, null,
+                customBody: zone => BuildBarChart(zone.transform, content, themeColor));
             AddCounterbalanceMarker(zoneDataViz, 1);
 
             var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
                 "Video story", AttentionTarget.ContentFormat.VideoStory,
-                new Vector3(0f, 1.5f, 0f), new Vector2(2.1f, 1.4f), themeColor,
-                content.VideoUrl, content.VideoText, 0.019f, 42);
+                new Vector3(ZoneSlotX[2], PanelCenterY, ZoneSlotZ[2]), themeColor,
+                content.VideoUrl, content.VideoText);
             AddCounterbalanceMarker(zoneVideo, 2);
 
             var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
                 "Case study", AttentionTarget.ContentFormat.InteractiveObject,
-                new Vector3(2.1f, 1.5f, 0.3f), new Vector2(1.9f, 1.4f), themeColor,
-                content.InteractiveUrl, content.InteractiveText, 0.019f, 36);
+                new Vector3(ZoneSlotX[3], PanelCenterY, ZoneSlotZ[3]), themeColor,
+                content.InteractiveUrl, overviewFirstLine);
             AddCounterbalanceMarker(zoneInteractive, 3);
-
-            var ctaWall = CreateCallToActionWall(root.transform, content, themeColor,
-                new Vector3(4.2f, 1.5f, 1f));
-            AddCounterbalanceMarker(ctaWall, 4);
 
             CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 3.4f));
 
-            // References hang on the left side wall, facing into the room,
-            // sized to fit their text (see ReferencesLayout).
-            var refLayout = ReferencesLayout();
-            var references = CreateZone(root.transform, content.StationId, "References",
-                "References", AttentionTarget.ContentFormat.Other,
-                new Vector3(-6.1f, refLayout.centerY, 2.4f), refLayout.panel, themeColor,
-                null, string.Join("\n", content.References), refLayout.charSize, ReferencesWrapChars);
-            references.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
+            // The "What will your library do?" panel hangs on the left side
+            // wall (where the references used to be), same size as every
+            // other panel. Clicking it shows the room's ideas.
+            string ideas = "Ideas for your library:\n\n- " + string.Join("\n- ", content.CallToActionOptions);
+            var action = CreateZone(root.transform, content.StationId, "Action",
+                "Your library", AttentionTarget.ContentFormat.Other,
+                new Vector3(-6.1f, PanelCenterY, 2.4f), themeColor,
+                null, null, detailText: ideas,
+                customBody: zone => BuildActionPanel(zone.transform, themeColor));
+            action.transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
 
             return station;
         }
 
-        private const int ReferencesWrapChars = 84;
-        private static (Vector2 panel, float centerY, float charSize)? _referencesLayout;
+        // One panel size for every exhibit in every room (room parity), and
+        // the four counterbalanced slots across the back of the room.
+        private static readonly Vector2 StandardPanel = new Vector2(2.2f, 1.6f);
+        private const float PanelCenterY = 1.5f;
+        private static readonly float[] ZoneSlotX = { -3.9f, -1.3f, 1.3f, 3.9f };
+        private static readonly float[] ZoneSlotZ = { 0.9f, 0.3f, 0.3f, 0.9f };
 
-        /// <summary>
-        /// One References panel size for every room, fitted to the longest
-        /// list (room parity: the panels must not differ in size, and a
-        /// fixed 1.9 x 1.5 m panel let long lists and URLs spill past its
-        /// edges). Text is scaled to fill the side wall comfortably (larger
-        /// than before, or smaller if a list is too long); the panel stands
-        /// on its legs (bottom >= 0.35 m) and stays under the crown trim.
-        /// </summary>
-        private static (Vector2 panel, float centerY, float charSize) ReferencesLayout()
+        private static string FirstLine(string text)
         {
-            if (_referencesLayout.HasValue)
-            {
-                return _referencesLayout.Value;
-            }
-            const float maxTextHeight = 2.6f, maxTextWidth = 4.6f, margin = 0.3f, maxGrow = 1.6f;
-            float charSize = 0.011f;
-            Vector2 size = MeasureReferences(charSize);
-            // Fill the wall space (up to 1.6x the old text size) for
-            // readability, or shrink if the list is too long to fit.
-            float scale = Mathf.Min(maxGrow, maxTextHeight / size.y, maxTextWidth / size.x);
-            if (!Mathf.Approximately(scale, 1f))
-            {
-                charSize *= scale;
-                size = MeasureReferences(charSize);
-            }
-            var panel = new Vector2(Mathf.Max(1.9f, size.x + margin), Mathf.Max(1.5f, size.y + margin));
-            float centerY = Mathf.Max(1.6f, 0.35f + panel.y / 2f);
-            _referencesLayout = (panel, centerY, charSize);
-            Debug.Log($"[DiscoveryHallBuilder] References panel {panel.x:F2} x {panel.y:F2} m at y {centerY:F2}, " +
-                      $"text {size.x:F2} x {size.y:F2} m, char size {charSize:F4}.");
-            return _referencesLayout.Value;
-        }
-
-        private static Vector2 MeasureReferences(float charSize)
-        {
-            var temp = new GameObject("MeasureReferences");
-            Vector2 max = Vector2.zero;
-            try
-            {
-                foreach (var station in SdgContentLibrary.Stations)
-                {
-                    var mesh = CreateTextMesh(temp.transform, Vector3.zero, charSize);
-                    Vector2 v = mesh.GetPreferredValues(
-                        Wrap(string.Join("\n", station.References), ReferencesWrapChars));
-                    max = Vector2.Max(max, v);
-                }
-            }
-            finally
-            {
-                Object.DestroyImmediate(temp);
-            }
-            return max;
+            if (string.IsNullOrEmpty(text)) return "";
+            int nl = text.IndexOf('\n');
+            return nl < 0 ? text : text.Substring(0, nl);
         }
 
         private static void AddCounterbalanceMarker(GameObject zone, int slotIndex)
@@ -846,12 +804,20 @@ namespace NSFGrant.EditorTools
             return material;
         }
 
+        /// <summary>
+        /// A framed exhibit panel of the standard size: dark face, theme
+        /// header bar and legs. The body text is fitted to fill the face as
+        /// large as it can be; a link makes the panel clickable (opens the
+        /// source), and so does detailText (a click swaps in the fuller text).
+        /// customBody builds the face itself (the bar graph, the action panel).
+        /// </summary>
         private static GameObject CreateZone(Transform parent, string stationId, string zoneName,
             string headerText, AttentionTarget.ContentFormat format,
-            Vector3 localPos, Vector2 panelSize, Color themeColor,
-            string linkUrl, string bodyText, float bodyCharSize, int bodyWrapChars,
-            string imageFileName = null)
+            Vector3 localPos, Color themeColor,
+            string linkUrl, string bodyText,
+            string detailText = null, System.Action<GameObject> customBody = null)
         {
+            Vector2 panelSize = StandardPanel;
             string id = $"{stationId}_{zoneName}";
             var go = new GameObject(id);
             go.transform.SetParent(parent, false);
@@ -861,25 +827,24 @@ namespace NSFGrant.EditorTools
             // raycasters resolve hits with GetComponentInParent, and the
             // decorative children carry no colliders of their own.
             var box = go.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 0.2f, 0f);
-            box.size = new Vector3(panelSize.x + 0.16f, panelSize.y + 0.7f, 0.2f);
+            box.center = new Vector3(0f, 0.22f, 0f);
+            box.size = new Vector3(panelSize.x + 0.16f, panelSize.y + 0.76f, 0.2f);
 
             AddAttentionTarget(go, id, format, stationId);
 
-            // Framed exhibit panel: dark face for legible white copy, theme
-            // header bar, thin frame, and legs down to the platform.
             CreateVisualCube(go.transform, "Frame",
                 new Vector3(0f, 0f, -0.025f),
                 new Vector3(panelSize.x + 0.14f, panelSize.y + 0.14f, 0.05f), FrameColor);
             CreateVisualCube(go.transform, "Face",
                 new Vector3(0f, 0f, 0.005f),
                 new Vector3(panelSize.x, panelSize.y, 0.06f), PanelFaceColor);
+            float headerY = panelSize.y / 2f + 0.22f;
             CreateVisualCube(go.transform, "Header",
-                new Vector3(0f, panelSize.y / 2f + 0.2f, -0.01f),
-                new Vector3(panelSize.x + 0.14f, 0.34f, 0.05f), themeColor);
-            CreateText(go.transform, headerText,
-                new Vector3(0f, panelSize.y / 2f + 0.2f, 0.02f), 0.024f, 40,
-                TextAnchor.MiddleCenter);
+                new Vector3(0f, headerY, -0.01f),
+                new Vector3(panelSize.x + 0.14f, 0.42f, 0.05f), themeColor);
+            CreateFittedText(go.transform, headerText, new Vector3(0f, headerY, 0.02f),
+                new Vector2(panelSize.x - 0.1f, 0.34f), 0.045f, 0.012f,
+                TextAnchor.MiddleCenter, Color.white);
 
             float legHeight = localPos.y - panelSize.y / 2f;
             if (legHeight > 0.05f)
@@ -892,83 +857,172 @@ namespace NSFGrant.EditorTools
                 }
             }
 
-            // Optional image (e.g. the 2025 progress-report card); the body
-            // copy drops to a caption strip under it.
-            float textY = 0f;
-            if (!string.IsNullOrEmpty(imageFileName) &&
-                CreateTexturedQuad(go.transform, imageFileName, "Image",
-                    new Vector3(0f, 0.16f, PanelFaceZ), new Vector2(0.95f, 0.95f)) != null)
+            // Text area: the face minus a margin.
+            Vector2 textBox = new Vector2(panelSize.x - 0.3f, panelSize.y - 0.3f);
+            GameObject summaryText = null;
+            if (customBody != null)
             {
-                textY = -(panelSize.y / 2f) + 0.2f;
+                customBody(go);
+            }
+            else if (!string.IsNullOrEmpty(bodyText))
+            {
+                summaryText = CreateFittedText(go.transform, bodyText,
+                    new Vector3(0f, 0f, PanelFaceZ + 0.005f), textBox, 0.06f, 0.012f,
+                    TextAnchor.MiddleCenter, Color.white).gameObject;
             }
 
-            CreateText(go.transform, bodyText,
-                new Vector3(0f, textY, PanelFaceZ + 0.005f),
-                bodyCharSize, bodyWrapChars, TextAnchor.MiddleCenter);
+            GameObject detail = null;
+            if (!string.IsNullOrEmpty(detailText))
+            {
+                detail = CreateFittedText(go.transform, detailText,
+                    new Vector3(0f, 0f, PanelFaceZ + 0.005f), textBox, 0.03f, 0.008f,
+                    TextAnchor.MiddleCenter, Color.white).gameObject;
+                detail.name = "DetailText";
+                detail.SetActive(false);
+            }
 
-            if (!string.IsNullOrEmpty(linkUrl))
+            if (!string.IsNullOrEmpty(linkUrl) || detail != null)
             {
                 var interactable = go.AddComponent<InteractableObject>();
                 var interactableSo = new SerializedObject(interactable);
                 interactableSo.FindProperty("objectId").stringValue = id;
                 interactableSo.ApplyModifiedPropertiesWithoutUndo();
+            }
 
+            if (!string.IsNullOrEmpty(linkUrl))
+            {
                 var link = go.AddComponent<ContentLink>();
                 var linkSo = new SerializedObject(link);
                 linkSo.FindProperty("url").stringValue = linkUrl;
                 linkSo.ApplyModifiedPropertiesWithoutUndo();
             }
+            else if (detail != null)
+            {
+                // The summary is whatever sits on the face: the body text, or
+                // the custom body's root (named "Body").
+                if (summaryText == null)
+                {
+                    var body = go.transform.Find("Body");
+                    summaryText = body != null ? body.gameObject : null;
+                }
+                var toggle = go.AddComponent<PanelDetailToggle>();
+                var toggleSo = new SerializedObject(toggle);
+                toggleSo.FindProperty("summary").objectReferenceValue = summaryText;
+                toggleSo.FindProperty("detail").objectReferenceValue = detail;
+                toggleSo.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             return go;
         }
 
-        private static GameObject CreateCallToActionWall(Transform parent,
-            SdgStationContent content, Color color, Vector3 localPos)
+        /// <summary>
+        /// Text fitted to a box: wraps inside it and takes the largest size
+        /// (charSize units, as CreateText) at which it still fits, within
+        /// [minSize, maxSize]. TMP does the wrapping and measuring.
+        /// </summary>
+        private static TMPro.TextMeshPro CreateFittedText(Transform parent, string text,
+            Vector3 localPos, Vector2 box, float maxSize, float minSize,
+            TextAnchor anchor, Color color)
         {
-            var wall = new GameObject($"{content.StationId}_CallToAction");
-            wall.transform.SetParent(parent, false);
-            wall.transform.localPosition = localPos;
-
-            // Backing board + theme header bar, matching the framed zone
-            // panels; the option buttons keep their own colliders in front.
-            CreateSolidCube(wall.transform, "Backing", new Vector3(0f, 0.3f, -0.06f),
-                new Vector3(2.9f, 2.9f, 0.05f), PanelFaceColor);
-            CreateVisualCube(wall.transform, "Header", new Vector3(0f, 1.45f, -0.07f),
-                new Vector3(2.9f, 0.55f, 0.05f), color);
-            CreateText(wall.transform, "What will your library do?\nPick an action:",
-                new Vector3(0f, 1.45f, -0.03f), 0.022f, 30, TextAnchor.MiddleCenter);
-            foreach (float x in new[] { -1.25f, 1.25f })
+            var mesh = CreateTextMesh(parent, localPos, maxSize);
+            SetAnchor(mesh, anchor);
+            mesh.color = color;
+            mesh.textWrappingMode = TMPro.TextWrappingModes.Normal;
+            mesh.rectTransform.sizeDelta = box;
+            mesh.text = text;
+            float lo = minSize, hi = maxSize;
+            for (int i = 0; i < 16; i++)
             {
-                CreateSolidCube(wall.transform, "Leg", new Vector3(x, -1.325f, -0.06f),
-                    new Vector3(0.08f, 0.35f, 0.08f), FrameColor);
+                float mid = (lo + hi) / 2f;
+                mesh.fontSize = 48f * mid;
+                Vector2 preferred = mesh.GetPreferredValues(text, box.x, box.y);
+                if (preferred.y <= box.y && preferred.x <= box.x + 0.001f)
+                {
+                    lo = mid;
+                }
+                else
+                {
+                    hi = mid;
+                }
             }
+            mesh.fontSize = 48f * lo;
+            return mesh;
+        }
 
-            for (int i = 0; i < content.CallToActionOptions.Length; i++)
+        /// <summary>
+        /// Progress data as a horizontal bar graph: title, three labelled
+        /// bars (values are percentages quoted from the UN 2025 SDG
+        /// Progress Report) on a track scaled to the room's DataVizScaleMax.
+        /// Laid out in the visitor's frame (u to their right); parent x is -u.
+        /// </summary>
+        private static void BuildBarChart(Transform zone, SdgStationContent content, Color theme)
+        {
+            var body = new GameObject("Body").transform;
+            body.SetParent(zone, false);
+
+            const float z = PanelFaceZ + 0.005f;
+            CreateFittedText(body, content.DataVizTitle, new Vector3(0f, 0.57f, z),
+                new Vector2(1.95f, 0.34f), 0.05f, 0.012f, TextAnchor.MiddleCenter, Color.white);
+
+            int n = content.DataVizLabels.Length;
+            float rowH = 0.34f, firstY = 0.2f;
+            const float labelLeft = -1.0f, labelW = 0.72f, trackLeft = -0.24f, trackLen = 1.22f;
+            Color barColor = Color.Lerp(theme, Color.white, 0.35f);
+            Color trackColor = new Color(0.20f, 0.21f, 0.25f);
+            var labelMeshes = new List<TMPro.TextMeshPro>();
+            var valueMeshes = new List<TMPro.TextMeshPro>();
+            for (int i = 0; i < n; i++)
             {
-                var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                string id = $"{content.StationId}_CTA_{i + 1}";
-                button.name = id;
-                button.transform.SetParent(wall.transform, false);
-                button.transform.localPosition = new Vector3(0f, 0.85f - i * 0.55f, 0f);
-                button.transform.localScale = new Vector3(2.4f, 0.4f, 0.06f);
+                float y = firstY - i * rowH;
+                float frac = Mathf.Clamp01(content.DataVizValues[i] / content.DataVizScaleMax);
+                float len = frac * trackLen;
 
-                // Darken toward black so the white option text stays legible
-                // on light theme colors (e.g. SDG 11 orange).
-                ApplyColor(button, Color.Lerp(color, Color.black, 0.25f));
-                AddAttentionTarget(button, id,
-                    AttentionTarget.ContentFormat.CallToActionWall, content.StationId);
+                labelMeshes.Add(CreateFittedText(body, content.DataVizLabels[i], new Vector3(-labelLeft, y, z),
+                    new Vector2(labelW, rowH - 0.04f), 0.04f, 0.01f, TextAnchor.MiddleLeft, Color.white));
 
-                var interactable = button.AddComponent<InteractableObject>();
-                var interactableSo = new SerializedObject(interactable);
-                interactableSo.FindProperty("objectId").stringValue = id;
-                interactableSo.ApplyModifiedPropertiesWithoutUndo();
-                // One pick per wall: the chosen option stays outlined.
-                button.AddComponent<InteractionHighlight>().LatchSelection = true;
+                CreateVisualCube(body, $"Track{i}",
+                    new Vector3(-(trackLeft + trackLen / 2f), y, z + 0.005f),
+                    new Vector3(trackLen, rowH - 0.1f, 0.01f), trackColor);
+                CreateVisualCube(body, $"Bar{i}",
+                    new Vector3(-(trackLeft + len / 2f), y, z + 0.012f),
+                    new Vector3(len, rowH - 0.1f, 0.012f), barColor);
 
-                CreateBodyText(button.transform, content.CallToActionOptions[i], 0.022f, 40);
+                string value = content.DataVizValues[i].ToString(
+                    content.DataVizValues[i] % 1f == 0f ? "0" : "0.0",
+                    System.Globalization.CultureInfo.InvariantCulture) + "%";
+                valueMeshes.Add(CreateFittedText(body, value, new Vector3(-(trackLeft + len - 0.04f), y, z + 0.03f),
+                    new Vector2(Mathf.Min(0.5f, len - 0.06f), rowH - 0.14f), 0.04f, 0.01f,
+                    TextAnchor.MiddleRight, Color.black));
             }
+            // One size for every label and one for every value, so a short
+            // label isn't printed bigger than its neighbours.
+            UnifyFontSize(labelMeshes);
+            UnifyFontSize(valueMeshes);
 
-            return wall;
+            CreateFittedText(body, "Source: UN SDG Report 2025", new Vector3(0f, -0.72f, z),
+                new Vector2(1.95f, 0.1f), 0.02f, 0.008f, TextAnchor.MiddleCenter,
+                new Color(0.75f, 0.77f, 0.82f));
+        }
+
+        private static void UnifyFontSize(List<TMPro.TextMeshPro> meshes)
+        {
+            if (meshes.Count == 0) return;
+            float min = float.MaxValue;
+            foreach (var m in meshes) min = Mathf.Min(min, m.fontSize);
+            foreach (var m in meshes) m.fontSize = min;
+        }
+
+        /// <summary>The question and its answer, printed as large as the panel allows.</summary>
+        private static void BuildActionPanel(Transform zone, Color theme)
+        {
+            var body = new GameObject("Body").transform;
+            body.SetParent(zone, false);
+            const float z = PanelFaceZ + 0.005f;
+            CreateFittedText(body, "What will your library do?", new Vector3(0f, 0.3f, z),
+                new Vector2(1.9f, 0.62f), 0.06f, 0.012f, TextAnchor.MiddleCenter, Color.white);
+            CreateFittedText(body, "TAKE ACTION", new Vector3(0f, -0.35f, z),
+                new Vector2(1.9f, 0.55f), 0.08f, 0.012f, TextAnchor.MiddleCenter,
+                Color.Lerp(theme, Color.white, 0.45f));
         }
 
         private static void CreateDocent(Transform parent,
@@ -1011,18 +1065,28 @@ namespace NSFGrant.EditorTools
                 new Vector3(1.9f, 0.95f, 0.04f), PanelFaceColor);
             CreateVisualCube(card, "CardHeader", new Vector3(0f, 0.6f, 0.0f),
                 new Vector3(1.9f, 0.22f, 0.04f), color);
-            CreateText(card, content.DocentName,
-                new Vector3(0f, 0.6f, 0.03f), 0.026f, 20, TextAnchor.MiddleCenter);
+            CreateFittedText(card, content.DocentName, new Vector3(0f, 0.6f, 0.03f),
+                new Vector2(1.8f, 0.2f), 0.04f, 0.01f, TextAnchor.MiddleCenter, Color.white);
             var pointer = CreateVisualCube(card, "CardPointer", new Vector3(-0.99f, -0.2f, -0.012f),
                 new Vector3(0.12f, 0.12f, 0.03f), FrameColor);
             pointer.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
-            CreateText(card, content.DocentGreeting,
-                new Vector3(0f, -0.01f, 0.03f), 0.016f, 44, TextAnchor.MiddleCenter);
+            CreateFittedText(card, content.DocentGreeting.Replace("\n", " "),
+                new Vector3(0f, -0.01f, 0.03f), new Vector2(1.8f, 0.72f), 0.04f, 0.01f,
+                TextAnchor.MiddleCenter, Color.white);
 
             // Code-built holographic guide on a projector pedestal (see
             // ProceduralDocent), animated by DocentPresence.
             ProceduralDocent.Create(docent.transform, color, card);
             CreateDocentSparkles(docent.transform, color);
+
+            // Stands on the visitor's left or right; the CounterbalanceManager
+            // picks the side per room and participant.
+            var sideSlot = docent.AddComponent<DocentSideSlot>();
+            var sideSo = new SerializedObject(sideSlot);
+            sideSo.FindProperty("speechCard").objectReferenceValue = card;
+            sideSo.FindProperty("cardPointer").objectReferenceValue = pointer.transform;
+            sideSo.ApplyModifiedPropertiesWithoutUndo();
+            sideSlot.Apply(true);
         }
 
         /// <summary>

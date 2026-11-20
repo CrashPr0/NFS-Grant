@@ -329,7 +329,7 @@ namespace NSFGrant.EditorTools
                 // The room's docent (local z = 3.4, facing the door), from a
                 // visitor's eye height a couple of meters in front of it.
                 Vector3 docentEye = station.transform.TransformPoint(new Vector3(-0.6f, EyeHeight, 6.1f));
-                Vector3 docentAim = station.transform.TransformPoint(new Vector3(0.45f, 1.25f, 3.4f));
+                Vector3 docentAim = station.transform.TransformPoint(new Vector3(3.6f, 1.25f, 3.4f));
                 shots.Add(new Shot
                 {
                     Location = Slug(station.StationId) + "_Docent",
@@ -338,12 +338,12 @@ namespace NSFGrant.EditorTools
                     Template = null
                 });
 
-                // The References panel on the room's left side wall.
+                // The "What will your library do?" panel on the room's left side wall.
                 Vector3 refEye = station.transform.TransformPoint(new Vector3(-2.6f, EyeHeight, 2.4f));
                 Vector3 refAim = station.transform.TransformPoint(new Vector3(-6.1f, 1.8f, 2.4f));
                 shots.Add(new Shot
                 {
-                    Location = Slug(station.StationId) + "_References",
+                    Location = Slug(station.StationId) + "_Action",
                     Position = refEye,
                     Rotation = Quaternion.LookRotation(refAim - refEye, Vector3.up),
                     Template = null
