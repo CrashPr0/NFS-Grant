@@ -55,6 +55,8 @@ namespace NSFGrant.Content
         /// <summary>Video/audio story kiosk.</summary>
         public string VideoText;
         public string VideoUrl;
+        /// <summary>The video's YouTube thumbnail (Assets/StudyContent/Textures), 16:9.</summary>
+        public string VideoThumbFileName;
 
         /// <summary>Interactive object / simulation seed content.</summary>
         public string InteractiveText;
@@ -111,6 +113,7 @@ namespace NSFGrant.Content
 
                 VideoText = "Why it matters\nWhy quality education matters (UN)",
                 VideoUrl = "https://www.youtube.com/watch?v=dKip3rpuEvY",
+                VideoThumbFileName = "SDG04_VideoThumb.jpg",
 
                 InteractiveText =
                     "How libraries support Goal 4\n" +
@@ -174,6 +177,7 @@ namespace NSFGrant.Content
 
                 VideoText = "Case study: Helsinki Central Library Oodi\n\"Oodi - the library of a new era\"",
                 VideoUrl = "https://www.youtube.com/watch?v=f3MPmnpl1lI",
+                VideoThumbFileName = "SDG11_VideoThumb.jpg",
 
                 InteractiveText =
                     "Oodi, Helsinki (Finland)\n" +
@@ -249,6 +253,7 @@ namespace NSFGrant.Content
 
                 VideoText = "Why it matters\nWhy taking action to fight climate change matters (UN)",
                 VideoUrl = "https://www.youtube.com/watch?v=oSqmCNNV2dQ",
+                VideoThumbFileName = "SDG13_VideoThumb.jpg",
 
                 InteractiveText =
                     "Case study: Thammasat University Library, Bangkok\n" +

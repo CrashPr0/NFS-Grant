@@ -474,7 +474,8 @@ namespace NSFGrant.EditorTools
             var zoneVideo = CreateZone(root.transform, content.StationId, "VideoKiosk",
                 "Video story", AttentionTarget.ContentFormat.VideoStory,
                 new Vector3(ZoneSlotX[2], PanelCenterY, ZoneSlotZ[2]), themeColor,
-                content.VideoUrl, content.VideoText);
+                content.VideoUrl, null,
+                customBody: zone => BuildVideoPanel(zone.transform, content, themeColor));
             AddCounterbalanceMarker(zoneVideo, 2);
 
             var zoneInteractive = CreateZone(root.transform, content.StationId, "Interactive",
@@ -1002,6 +1003,54 @@ namespace NSFGrant.EditorTools
             CreateFittedText(body, "Source: UN SDG Report 2025", new Vector3(0f, -0.72f, z),
                 new Vector2(1.95f, 0.1f), 0.02f, 0.008f, TextAnchor.MiddleCenter,
                 new Color(0.75f, 0.77f, 0.82f));
+        }
+
+        /// <summary>
+        /// The video's YouTube thumbnail filling the top of the panel, a play
+        /// badge on it, and the video's title (the second line of VideoText)
+        /// printed as large as the strip below allows. Clicking opens the video.
+        /// </summary>
+        private static void BuildVideoPanel(Transform zone, SdgStationContent content, Color theme)
+        {
+            var body = new GameObject("Body").transform;
+            body.SetParent(zone, false);
+            const float z = PanelFaceZ + 0.005f;
+
+            const float thumbW = 2.0f, thumbH = thumbW * 9f / 16f, thumbY = 0.195f;
+            var thumb = CreateTexturedQuad(body, content.VideoThumbFileName, "Thumbnail",
+                new Vector3(0f, thumbY, z), new Vector2(thumbW, thumbH));
+
+            // Play badge: dark disc with a white triangle, centred on the thumbnail.
+            if (thumb != null)
+            {
+                var disc = CreateVisualPrimitive(body, PrimitiveType.Cylinder, "PlayDisc",
+                    new Vector3(0f, thumbY, z + 0.01f), new Vector3(0.36f, 0.005f, 0.36f),
+                    new Color(0.05f, 0.05f, 0.08f));
+                disc.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                var tri = new GameObject("PlayTriangle");
+                tri.transform.SetParent(body, false);
+                tri.transform.localPosition = new Vector3(-0.02f, thumbY, z + 0.02f);
+                var mesh = new Mesh { name = "PlayTriangle" };
+                // Tip toward the visitor's right (local -x), front face toward +Z.
+                mesh.vertices = new[]
+                {
+                    new Vector3(-0.09f, 0f, 0f), new Vector3(0.07f, -0.09f, 0f), new Vector3(0.07f, 0.09f, 0f)
+                };
+                mesh.triangles = new[] { 0, 1, 2 };
+                mesh.RecalculateNormals();
+                tri.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var renderer = tri.AddComponent<MeshRenderer>();
+                var unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                var white = new Material(unlit) { color = Color.white };
+                if (white.HasProperty("_BaseColor")) white.SetColor("_BaseColor", Color.white);
+                renderer.sharedMaterial = white;
+            }
+
+            string title = content.VideoText ?? "";
+            int nl = title.IndexOf('\n');
+            if (nl >= 0) title = title.Substring(nl + 1);
+            CreateFittedText(body, title, new Vector3(0f, -0.58f, z),
+                new Vector2(2.0f, 0.4f), 0.05f, 0.012f, TextAnchor.MiddleCenter, Color.white);
         }
 
         private static void UnifyFontSize(List<TMPro.TextMeshPro> meshes)
