@@ -484,7 +484,7 @@ namespace NSFGrant.EditorTools
                 content.InteractiveUrl, overviewFirstLine);
             AddCounterbalanceMarker(zoneInteractive, 3);
 
-            CreateDocent(root.transform, content, themeColor, new Vector3(0f, 0f, 3.4f));
+            CreateDocent(root.transform, content, themeColor, new Vector3(5.2f, 0f, 4.9f));
 
             // The "What will your library do?" panel hangs on the left side
             // wall (where the references used to be), same size as every

@@ -326,10 +326,10 @@ namespace NSFGrant.EditorTools
                     Template = null
                 });
 
-                // The room's docent (local z = 3.4, facing the door), from a
+                // The room's docent (local z = 4.9, in the front corner, facing the door), from a
                 // visitor's eye height a couple of meters in front of it.
-                Vector3 docentEye = station.transform.TransformPoint(new Vector3(-0.6f, EyeHeight, 6.1f));
-                Vector3 docentAim = station.transform.TransformPoint(new Vector3(3.6f, 1.25f, 3.4f));
+                Vector3 docentEye = station.transform.TransformPoint(new Vector3(-0.4f, EyeHeight, 6.5f));
+                Vector3 docentAim = station.transform.TransformPoint(new Vector3(4.2f, 1.3f, 4.9f));
                 shots.Add(new Shot
                 {
                     Location = Slug(station.StationId) + "_Docent",

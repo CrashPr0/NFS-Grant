@@ -14,10 +14,10 @@ namespace NSFGrant.Docent
     {
         [SerializeField] private Transform speechCard;
         [SerializeField] private Transform cardPointer;
-        [SerializeField] private float sideOffset = 3.6f;
+        [SerializeField] private float sideOffset = 5.2f;
         [SerializeField] private float cardOffset = 1.35f;
         [SerializeField] private float pointerOffset = 0.99f;
-        [SerializeField] private float depth = 3.4f;
+        [SerializeField] private float depth = 4.9f;
 
         public bool VisitorLeft { get; private set; } = true;
 
