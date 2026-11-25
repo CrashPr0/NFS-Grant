@@ -923,11 +923,15 @@ namespace NSFGrant.EditorTools
         /// </summary>
         private static TMPro.TextMeshPro CreateFittedText(Transform parent, string text,
             Vector3 localPos, Vector2 box, float maxSize, float minSize,
-            TextAnchor anchor, Color color)
+            TextAnchor anchor, Color color, bool bold = false)
         {
             var mesh = CreateTextMesh(parent, localPos, maxSize);
             SetAnchor(mesh, anchor);
             mesh.color = color;
+            if (bold)
+            {
+                mesh.fontStyle = TMPro.FontStyles.Bold;
+            }
             mesh.textWrappingMode = TMPro.TextWrappingModes.Normal;
             mesh.rectTransform.sizeDelta = box;
             mesh.text = text;
@@ -1061,17 +1065,90 @@ namespace NSFGrant.EditorTools
             foreach (var m in meshes) m.fontSize = min;
         }
 
-        /// <summary>The question and its answer, printed as large as the panel allows.</summary>
+        /// <summary>
+        /// The "What will your library do?" panel, dressed as a poster ad: a
+        /// full-bleed theme-colour field with a bright edge bar, a bold
+        /// all-caps headline as large as the panel allows, and a white
+        /// call-to-action pill with an arrow. Same layout in every room (only
+        /// the theme colour differs). Clicking still swaps in the ideas list.
+        /// </summary>
         private static void BuildActionPanel(Transform zone, Color theme)
         {
             var body = new GameObject("Body").transform;
             body.SetParent(zone, false);
             const float z = PanelFaceZ + 0.005f;
-            CreateFittedText(body, "What will your library do?", new Vector3(0f, 0.3f, z),
-                new Vector2(1.9f, 0.62f), 0.06f, 0.012f, TextAnchor.MiddleCenter, Color.white);
-            CreateFittedText(body, "TAKE ACTION", new Vector3(0f, -0.35f, z),
-                new Vector2(1.9f, 0.55f), 0.08f, 0.012f, TextAnchor.MiddleCenter,
-                Color.Lerp(theme, Color.white, 0.45f));
+            Vector2 face = StandardPanel;
+
+            Color field = Color.Lerp(theme, Color.black, 0.35f);
+            Color edge = Color.Lerp(theme, Color.white, 0.55f);
+            Color ink = Color.Lerp(theme, Color.black, 0.75f);
+
+            // Colour field and the edge bar (visitor's left = local +x).
+            // Unlit so the poster stays vivid whatever the room's lighting does.
+            MakeUnlit(CreateVisualCube(body, "Field", new Vector3(0f, 0f, z + 0.005f),
+                new Vector3(face.x, face.y, 0.01f), field), field);
+            MakeUnlit(CreateVisualCube(body, "EdgeBar", new Vector3(face.x / 2f - 0.06f, 0f, z + 0.012f),
+                new Vector3(0.12f, face.y, 0.012f), edge), edge);
+
+            // Headline, bold, all caps. Offset right of the edge bar.
+            CreateFittedText(body, "WHAT WILL YOUR LIBRARY DO?",
+                new Vector3(-0.06f, 0.27f, z + 0.03f), new Vector2(1.84f, 0.92f),
+                0.085f, 0.015f, TextAnchor.MiddleCenter, Color.white, bold: true);
+
+            // Call-to-action pill: body plus rounded ends, then label and arrow.
+            const float pillW = 1.5f, pillH = 0.4f, pillY = -0.45f, pillX = -0.06f;
+            MakeUnlit(CreateVisualCube(body, "PillBody", new Vector3(pillX, pillY, z + 0.02f),
+                new Vector3(pillW - pillH, pillH, 0.012f), Color.white), Color.white);
+            foreach (float end in new[] { -1f, 1f })
+            {
+                var cap = CreateVisualPrimitive(body, PrimitiveType.Cylinder, "PillEnd",
+                    new Vector3(pillX + end * (pillW - pillH) / 2f, pillY, z + 0.02f),
+                    new Vector3(pillH, 0.006f, pillH), Color.white);
+                cap.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                MakeUnlit(cap, Color.white);
+            }
+            CreateFittedText(body, "TAKE ACTION", new Vector3(pillX + 0.14f, pillY, z + 0.045f),
+                new Vector2(1.0f, 0.3f), 0.07f, 0.012f, TextAnchor.MiddleCenter, ink, bold: true);
+            // Arrow, tip toward the visitor's right (local -x).
+            CreateFlatTriangle(body, "PillArrow", new Vector3(pillX - 0.52f, pillY, z + 0.045f),
+                0.07f, ink);
+        }
+
+        private static void MakeUnlit(GameObject go, Color color)
+        {
+            var unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            var material = new Material(unlit) { color = color };
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            go.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        /// <summary>
+        /// A small unlit triangle in the panel plane, tip toward the visitor's
+        /// right (local -x on a station panel), front face toward +Z.
+        /// </summary>
+        private static GameObject CreateFlatTriangle(Transform parent, string name,
+            Vector3 localPos, float halfSize, Color color)
+        {
+            var tri = new GameObject(name);
+            tri.transform.SetParent(parent, false);
+            tri.transform.localPosition = localPos;
+            var mesh = new Mesh { name = name };
+            mesh.vertices = new[]
+            {
+                new Vector3(-1.3f * halfSize, 0f, 0f),
+                new Vector3(0.9f * halfSize, -halfSize * 1.2f, 0f),
+                new Vector3(0.9f * halfSize, halfSize * 1.2f, 0f)
+            };
+            mesh.triangles = new[] { 0, 1, 2 };
+            mesh.RecalculateNormals();
+            tri.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = tri.AddComponent<MeshRenderer>();
+            var unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            var material = new Material(unlit) { color = color };
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return tri;
         }
 
         private static void CreateDocent(Transform parent,
