@@ -14,6 +14,11 @@ namespace NSFGrant.Session
     /// the participant has entered and explored a second distinct SDG zone."
     /// A zone counts as explored after StudyProtocol.ZoneExploredSeconds
     /// inside it, or once the participant interacts with information in it.
+    /// Both are counted from the start of exploration (SdgStation keeps time
+    /// from session start, before the pre-survey ends), and an interaction
+    /// only counts while the participant is inside that zone: the VR gaze
+    /// fallback and the laser reach 50 m, so an exhibit selected from the
+    /// hub or another room said nothing about having entered it.
     /// Runs on the shared QuizRunner, so it shows as the desktop panel or,
     /// in the headset, on VRSurveyPanel. Each item offers "Prefer not to
     /// answer", which the browser payment rule counts as answered.
@@ -33,6 +38,9 @@ namespace NSFGrant.Session
         private readonly HashSet<string> _explored = new HashSet<string>();
         private readonly HashSet<string> _interacted = new HashSet<string>();
         private readonly List<InteractableObject> _subscribed = new List<InteractableObject>();
+        // Each zone's time already on the clock when exploration started.
+        private readonly Dictionary<SdgStation, float> _timeBeforeExploring = new Dictionary<SdgStation, float>();
+        private bool _baselineTaken;
         private bool _shown;
         // Browser builds run M1-M4 in the team's Qualtrics survey (opened with
         // the participant ID); elsewhere (the native Quest app has no browser)
@@ -82,6 +90,12 @@ namespace NSFGrant.Session
             var station = interactable.GetComponentInParent<SdgStation>();
             if (station == null) return;
             _interacted.Add(station.StationId);
+            if (!station.IsOccupied)
+            {
+                StudyEventLogger.Instance?.LogEvent("zone_interaction_from_outside", station.StationId,
+                    $"object={interactable.ObjectId}");
+                return;
+            }
             MarkExplored(station.StationId, "interaction");
         }
 
@@ -98,11 +112,21 @@ namespace NSFGrant.Session
                 return;
             }
 
+            if (_stations != null && !_baselineTaken)
+            {
+                _baselineTaken = true;
+                foreach (var station in _stations)
+                {
+                    _timeBeforeExploring[station] = station.TotalTimeIncludingCurrentVisit;
+                }
+            }
+
             if (_stations != null)
             {
                 foreach (var station in _stations)
                 {
-                    if (station.TotalTimeIncludingCurrentVisit >= StudyProtocol.ZoneExploredSeconds)
+                    _timeBeforeExploring.TryGetValue(station, out float before);
+                    if (station.TotalTimeIncludingCurrentVisit - before >= StudyProtocol.ZoneExploredSeconds)
                     {
                         MarkExplored(station.StationId, "time");
                     }
@@ -110,8 +134,8 @@ namespace NSFGrant.Session
             }
 
             // Wait for a calm moment: not over the VR "end exploring?"
-            // confirmation.
-            if (_explored.Count >= 2 && !VRSurveyPanel.IsOpen && !_quiz.IsVisible)
+            // confirmation or an open in-headset browser tab.
+            if (_explored.Count >= 2 && !VRSurveyPanel.IsOpen && !VRWebPanel.IsOpen && !_quiz.IsVisible)
             {
                 _shown = true;
                 _qualtricsLink = _intake.MidSurveyLink;

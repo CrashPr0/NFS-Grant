@@ -96,9 +96,12 @@ namespace NSFGrant.Interaction
                 end = hit.point;
                 _dot.position = hit.point;
                 _dot.gameObject.SetActive(true);
-                // An open survey panel owns the beam (VRInteractor ignores
-                // the trigger then too), so nothing behind it lights up.
-                target = VRSurveyPanel.IsOpen ? null : hit.collider.GetComponentInParent<InteractableObject>();
+                // An open survey or browser panel owns the beam
+                // (VRInteractor ignores the trigger then too), so nothing
+                // behind it lights up.
+                target = VRSurveyPanel.IsOpen || VRWebPanel.IsOpen
+                    ? null
+                    : hit.collider.GetComponentInParent<InteractableObject>();
                 HitPoint = hit.point;
             }
             else

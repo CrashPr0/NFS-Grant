@@ -129,6 +129,20 @@ namespace NSFGrant.Interaction
 
         private void Update()
         {
+            // The in-headset browser panel scrolls with the thumbsticks, so
+            // they must not also walk, aim or turn the participant.
+            if (VRWebPanel.IsOpen)
+            {
+                if (_aiming)
+                {
+                    _aiming = false;
+                    if (_arc != null) _arc.enabled = false;
+                    if (_reticle != null) _reticle.gameObject.SetActive(false);
+                }
+                _stickWalking = false;
+                UpdateVignette();
+                return;
+            }
             HandleSmoothMove();
             HandleTeleportAim();
             HandleSnapTurn();

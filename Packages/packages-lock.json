@@ -9,12 +9,35 @@
       },
       "url": "https://package.openupm.com"
     },
+    "com.de-panther.webxr-interactions": {
+      "version": "https://github.com/De-Panther/unity-webxr-export.git?path=/Packages/webxr-interactions",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.de-panther.webxr": "0.25.0"
+      },
+      "hash": "1f7a06c57867f300dabfa2bbbee85a6b03fa0005"
+    },
     "com.meta.xr.sdk.core": {
       "version": "71.0.0",
       "depth": 0,
       "source": "registry",
       "dependencies": {},
       "url": "https://npm.developer.oculus.com"
+    },
+    "com.tlabaltoh.vkeyborad": {
+      "version": "https://github.com/TLabAltoh/TLabVKeyborad.git#2b2755158be4a28d13384f22415782d57b9efab4",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "2b2755158be4a28d13384f22415782d57b9efab4"
+    },
+    "com.tlabaltoh.webview": {
+      "version": "https://github.com/TLabAltoh/TLabWebView.git#88d68af5bcabc12d3a2f78d0e979464a388519c0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "88d68af5bcabc12d3a2f78d0e979464a388519c0"
     },
     "com.unity.burst": {
       "version": "1.8.28",
