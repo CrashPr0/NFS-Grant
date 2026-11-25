@@ -225,24 +225,47 @@ namespace NSFGrant.Interaction
             }
             LogClose();
             EndDrag();
-            // Stops any video/audio still playing on the hidden page.
-            if (_browser.state == FragmentCapture.State.Initialized)
-            {
-                _browser.LoadUrl("about:blank");
-                // Nothing a participant opened (cookies, logins, history,
-                // cached pages) carries over to the next tab or participant.
-                // Set ClearBrowserDataOnClose to false to keep them.
-                if (ClearBrowserDataOnClose)
-                {
-                    _browser.ClearCookie();
-                    _browser.ClearCache(true);
-                    _browser.ClearHistory();
-                }
-            }
+            Guard("EndStickDrag", EndStickDrag);
+            // Hide first: whatever the browser plugin does next, the panel is
+            // gone and the participant is back in the hall.
             _pendingUrl = null;
             _root.gameObject.SetActive(false);
             IsOpen = false;
             _closedFrame = Time.frameCount;
+            if (_browser.state == FragmentCapture.State.Initialized)
+            {
+                // Stops any video/audio still playing on the hidden page.
+                Guard("about:blank", () => _browser.LoadUrl("about:blank"));
+                // Nothing a participant opened (cookies, logins, history)
+                // carries over to the next tab or participant. Set
+                // ClearBrowserDataOnClose to false to keep them. The plugin's
+                // Android side has no ClearCache, so a call to it throws
+                // (that, caught by Update, used to disable the panel and send
+                // the link to the system browser after the first Close).
+                if (ClearBrowserDataOnClose)
+                {
+                    Guard("ClearCookie", () => _browser.ClearCookie());
+                    Guard("ClearHistory", () => _browser.ClearHistory());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Runs a non-essential call into the browser plugin; a failure is
+        /// logged and ignored, never allowed to take the panel down.
+        /// </summary>
+        private void Guard(string what, Action call)
+        {
+            try
+            {
+                call();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[VRWebPanel] {what} failed ({e.GetType().Name}): {e.Message}");
+                StudyEventLogger.Instance?.LogEvent("content_browser_warn", _sourceId,
+                    $"{what}:{e.GetType().Name}");
+            }
         }
 
         private void LogClose()
@@ -252,15 +275,30 @@ namespace NSFGrant.Interaction
                 $"seconds={seconds:F1}");
         }
 
+        private int _tickErrors;
+        private const int MaxTickErrors = 8;
+
         private void Update()
         {
             try
             {
                 Tick();
+                _tickErrors = 0;
             }
             catch (Exception e)
             {
-                Fail(e, _homeUrl, _sourceId);
+                // One bad frame isn't a dead browser; give up only on a run of them.
+                if (++_tickErrors == 1)
+                {
+                    Debug.LogWarning($"[VRWebPanel] Tick error ({e.GetType().Name}): {e.Message}");
+                    StudyEventLogger.Instance?.LogEvent("content_browser_warn", _sourceId,
+                        "tick:" + e.GetType().Name);
+                }
+                if (_tickErrors >= MaxTickErrors)
+                {
+                    _tickErrors = 0;
+                    Fail(e, IsOpen ? _homeUrl : null, _sourceId);
+                }
             }
         }
 
@@ -478,6 +516,7 @@ namespace NSFGrant.Interaction
             }
             int hovered = -1;
             bool acceptPress = Time.frameCount != _shownFrame;
+            _scrolledThisFrame = false;
             if (Time.unscaledTime >= _nextPointerRefresh)
             {
                 _pointers = FindObjectsByType<VRLaserPointer>(FindObjectsSortMode.None);
@@ -517,10 +556,12 @@ namespace NSFGrant.Interaction
                 {
                     if (onPage)
                     {
-                        Scroll(XRInputBridge.GetThumbstick(hand).y);
+                        Scroll(hand, XRInputBridge.GetThumbstick(hand).y);
                     }
                     continue;
                 }
+                // A trigger pull is a tap or a drag of its own.
+                EndStickDrag();
 
                 if (button >= 0)
                 {
@@ -539,6 +580,10 @@ namespace NSFGrant.Interaction
                 }
             }
 
+            if (_stickHand != null && !_scrolledThisFrame)
+            {
+                EndStickDrag();
+            }
             for (int i = 0; i < _buttons.Length; i++)
             {
                 _buttons[i].renderer.sharedMaterial = i == hovered ? _hoverMat : _buttonMat;
@@ -555,18 +600,69 @@ namespace NSFGrant.Interaction
             _dragHand = null;
         }
 
-        private void Scroll(float stickY)
+        // The document viewer that shows the PDFs keeps its pages in an inner
+        // scroller that the browser's own scroll call never moves, so on that
+        // page the thumbstick drives a held synthetic touch drag instead (the
+        // same thing dragging the page by hand does). Other pages scroll
+        // natively.
+        private const string ViewerPrefix = "https://docs.google.com/viewer";
+        private XRInputBridge.Hand? _stickHand;
+        private long _stickDown;
+        private float _stickFingerY;
+        private bool _scrolledThisFrame;
+
+        private void Scroll(XRInputBridge.Hand hand, float stickY)
         {
             if (Mathf.Abs(stickY) < 0.2f)
             {
                 return;
             }
-            // Stick up scrolls toward the top of the page.
-            int dy = Mathf.RoundToInt(-stickY * ScrollPixelsPerSecond * Time.unscaledDeltaTime);
-            if (dy != 0)
+            if (_homeUrl == null || !_homeUrl.StartsWith(ViewerPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                _browser.ScrollBy(0, dy);
+                // Stick up scrolls toward the top of the page.
+                int dy = Mathf.RoundToInt(-stickY * ScrollPixelsPerSecond * Time.unscaledDeltaTime);
+                if (dy != 0)
+                {
+                    _browser.ScrollBy(0, dy);
+                }
+                return;
             }
+            if (_stickHand != null && _stickHand != hand)
+            {
+                return; // one finger at a time
+            }
+            _scrolledThisFrame = true;
+            // Finger moving down the page scrolls toward the top: stick up = finger down.
+            float delta = stickY * ScrollPixelsPerSecond * Time.unscaledDeltaTime;
+            int x = ViewSize.x / 2;
+            if (_stickHand == null)
+            {
+                _stickFingerY = ViewSize.y * 0.5f;
+                _stickDown = _browser.TouchEvent(x, Mathf.RoundToInt(_stickFingerY), TouchDown, 0);
+                _stickHand = hand;
+                // Start past the touch slop so letting go is never read as a tap.
+                delta = Mathf.Sign(delta) * Mathf.Max(Mathf.Abs(delta), 24f);
+            }
+            _stickFingerY += delta;
+            float lo = ViewSize.y * 0.2f, hi = ViewSize.y * 0.8f;
+            bool atEdge = _stickFingerY < lo || _stickFingerY > hi;
+            _stickFingerY = Mathf.Clamp(_stickFingerY, lo, hi);
+            _browser.TouchEvent(x, Mathf.RoundToInt(_stickFingerY), TouchMove, _stickDown);
+            if (atEdge)
+            {
+                // Lift and re-grip in the middle on the next frame to keep going.
+                EndStickDrag();
+            }
+        }
+
+        private void EndStickDrag()
+        {
+            if (_stickHand == null)
+            {
+                return;
+            }
+            _stickHand = null;
+            _browser.TouchEvent(ViewSize.x / 2, Mathf.RoundToInt(_stickFingerY), TouchUp, _stickDown);
         }
 
         /// <summary>Ray onto the page, as page pixels from the top-left.</summary>
