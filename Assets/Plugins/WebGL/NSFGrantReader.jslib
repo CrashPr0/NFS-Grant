@@ -19,6 +19,14 @@ mergeInto(LibraryManager.library, {
     var openUrl = UTF8ToString(openUrlPtr);
     var title = UTF8ToString(titlePtr);
 
+    // Give the mouse back first. The hall holds pointer lock for mouse-look,
+    // and while it does the cursor is hidden and clicks can't reach the page
+    // or video shown here, so a viewer had to press Esc before they could
+    // press play. (The hall notices the release and frees its own cursor.)
+    try {
+      if (document.pointerLockElement) document.exitPointerLock();
+    } catch (e) { /* nothing held, or the browser refused: harmless */ }
+
     var old = document.getElementById('nsf-reader');
     if (old && old.parentNode) old.parentNode.removeChild(old);
 

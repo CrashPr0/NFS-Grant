@@ -111,6 +111,9 @@ namespace NSFGrant.Core
                 $"left_vr={(PlatformDetector.IsXRActive ? 1 : 0)};" +
                 $"framed={(frameUrl.Length > 0 ? 1 : 0)};url={url}");
 #if UNITY_WEBGL && !UNITY_EDITOR
+            // Free the mouse so the page or video can be clicked straight
+            // away (NSFGrantShowReader also drops the browser's pointer lock).
+            Cursor.lockState = CursorLockMode.None;
             NSFGrant.WebXRAdapter.WebXRInput.ExitVR();
             NSFGrantShowReader(frameUrl, url, title ?? "");
 #else
